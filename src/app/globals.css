@@ -1,26 +1,301 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* =========================
+   DESIGN TOKENS
+========================= */
+@theme {
+  /* Background */
+  --color-background: #f3f3f4;
+  --color-surface: #f9f9f9;
+
+  /* Surface scale */
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f3f4;
+  --color-surface-container: #eeeeee;
+  --color-surface-container-high: #e8e8e8;
+  --color-surface-container-highest: #e2e2e2;
+  --color-surface-variant: #e2e2e2;
+
+  /* Primary */
+  --color-primary: #000000;
+  --color-primary-container: #1c1b1b;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #ffffff;
+
+  /* Secondary */
+  --color-secondary: #5e604d;
+  --color-secondary-container: #e1e1c9;
+  --color-on-secondary-container: #636451;
+
+  /* System */
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+
+  /* Border */
+  --color-outline: #747878;
+  --color-outline-variant: #c4c7c7;
+
+  /* Text */
+  --color-on-surface: #1a1c1c;
+  --color-on-surface-variant: #444748;
+
+  /* Fonts */
+  --font-body-md: Inter, sans-serif;
+  --font-body-lg: Inter, sans-serif;
+  --font-label-sm: Inter, sans-serif;
+  --font-label-md: Inter, sans-serif;
+
+  --font-headline-md: "Playfair Display", serif;
+  --font-headline-lg: "Playfair Display", serif;
+  --font-display-lg: "Playfair Display", serif;
+
+  /* Radius */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Layout spacing */
+  --spacing-margin-mobile: 20px;
+  --spacing-margin-desktop: 80px;
+  --spacing-container-max: 1440px;
+  --spacing-stack-sm: 16px;
+  --spacing-stack-md: 32px;
+  --spacing-stack-lg: 64px;
+  --spacing-gutter: 32px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* =========================
+   TYPOGRAPHY UTILITIES
+========================= */
+@utility text-display-lg {
+  font-size: 64px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@utility text-headline-lg {
+  font-size: 40px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+@utility text-headline-md {
+  font-size: 28px;
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+@utility text-body-lg {
+  font-size: 18px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+@utility text-body-md {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+@utility text-label-md {
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+@utility text-label-sm {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* =========================
+   CALENDAR UTILITIES
+========================= */
+@utility calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(6, 132px);
+}
+
+@utility calendar-day-content {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* =========================
+   GLASS SYSTEM (FIXED CONSISTENT)
+========================= */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(196, 199, 199, 0.45);
+  box-shadow: 0 24px 60px -32px rgba(26, 28, 28, 0.28);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(196, 199, 199, 0.35);
+  box-shadow: 0 40px 80px -40px rgba(26, 28, 28, 0.18);
+}
+
+/* =========================
+   AUTH
+========================= */
+.auth-gradient {
+  background: radial-gradient(circle at top right, #f5f5dc 0%, #f9f9f9 100%);
+}
+
+.auth-input {
+  border: none;
+  border-bottom: 1px solid #c4c7c7;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  transition: border-color 0.3s ease;
+}
+
+.auth-input:focus {
+  outline: none;
+  box-shadow: none;
+  border-bottom-color: #000000;
+}
+
+/* =========================
+   SCROLLBAR
+========================= */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c4c7c7;
+  border-radius: 9999px;
+}
+
+/* =========================
+   ANIMATION
+========================= */
+.fade-in {
+  animation: fadeIn 1s ease-out forwards;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.35s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================
+   SHIMMER LOADING
+========================= */
+@layer utilities {
+  .animate-shimmer {
+    animation: shimmer 1.2s infinite linear;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
+
+
+/* =========================
+   CONTENT SLIDE ANIMATION
+========================= */
+
+.content-slide-enter-right {
+  animation: contentSlideEnterRight 0.3s ease-out both;
+}
+
+.content-slide-enter-left {
+  animation: contentSlideEnterLeft 0.3s ease-out both;
+}
+
+.content-slide-exit-left {
+  animation: contentSlideExitLeft 0.3s ease-in both;
+}
+
+@keyframes contentSlideEnterRight {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes contentSlideEnterLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes contentSlideExitLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-slide-enter-right,
+  .content-slide-enter-left,
+  .content-slide-exit-left {
+    animation-duration: 0.01ms;
+  }
 }
