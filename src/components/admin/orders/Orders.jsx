@@ -911,13 +911,24 @@ export default function Orders() {
       );
     }
 
+    const rawDepositInvoiceId =
+      currentDepositInvoice.id ?? null;
+
+    const isLocalDepositInvoice =
+      !existingDepositInvoice?.id &&
+      (!rawDepositInvoiceId ||
+        String(rawDepositInvoiceId).startsWith(
+          "local_"
+        ));
+
     const fallbackInvoiceId =
       `${currentBooking.id}_deposit_v1`;
 
     const depositInvoiceId =
-      currentDepositInvoice.id ??
       existingDepositInvoice?.id ??
-      fallbackInvoiceId;
+      (isLocalDepositInvoice
+        ? fallbackInvoiceId
+        : rawDepositInvoiceId);
 
     setProcessingBillingId(
       depositInvoiceId
@@ -972,8 +983,13 @@ export default function Orders() {
           currentBooking.package?.price
         ) || 0;
 
+      const {
+        id: _ignoredDepositInvoiceId,
+        ...depositInvoiceData
+      } = currentDepositInvoice;
+
       const invoicePayload = {
-        ...currentDepositInvoice,
+        ...depositInvoiceData,
         bookingId: currentBooking.id,
         clientId:
           currentBooking.client?.uid ??
@@ -1027,7 +1043,7 @@ export default function Orders() {
        * Jika invoice masih draft lokal, buat dokumen baru.
        */
       if (
-        !currentDepositInvoice.id &&
+        isLocalDepositInvoice ||
         !existingDepositInvoice?.id
       ) {
         await db.setDoc(
