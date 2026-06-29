@@ -8,6 +8,8 @@ import { useCollection } from "@/hooks/useCollection";
 
 import ScheduleOrder from "./details/ScheduleOrder";
 
+const REQUIRED_CREW_COUNT = 3;
+
 /* =========================================================
    BOOKING STATUS
 ========================================================= */
@@ -818,7 +820,7 @@ export default function Orders() {
    */
   const handleSubmitAndSend = async ({
     booking,
-    assignment,
+    crewAssignment,
     depositInvoice,
     preparation,
   }) => {
@@ -841,38 +843,56 @@ export default function Orders() {
       );
     }
 
+    /*
+     * Di preparation mode, ScheduleOrder mengirim crewAssignment
+     * sebagai draft lokal. Draft ini memang belum memiliki id
+     * karena Firestore baru ditulis saat Final Confirmation.
+     */
     const currentAssignment =
-      assignment ?? selectedAssignment;
+      crewAssignment ?? selectedAssignment;
 
     if (
-      !currentAssignment?.id ||
       !Array.isArray(
-        currentAssignment.crewIds
+        currentAssignment?.crewIds
       ) ||
-      currentAssignment.crewIds.length === 0
+      currentAssignment.crewIds.length <
+        REQUIRED_CREW_COUNT
     ) {
       throw new Error(
         "Crew assignment belum lengkap."
       );
     }
 
-    const currentDepositInvoice =
-      depositInvoice ??
+    const existingDepositInvoice =
       bookingInvoices.find(
         (invoice) =>
           invoice.type === "deposit" &&
           invoice.status !== "void"
       );
 
-    if (!currentDepositInvoice?.id) {
+    /*
+     * Sama seperti crew assignment, BillingPayment dapat mengirim
+     * depositInvoice sebagai draft lokal tanpa id. Jika belum ada
+     * di Firestore, invoice akan dibuat saat final submit.
+     */
+    const currentDepositInvoice =
+      depositInvoice ?? existingDepositInvoice;
+
+    if (
+      !currentDepositInvoice ||
+      Number(currentDepositInvoice.amount) <= 0
+    ) {
       throw new Error(
         "Deposit invoice belum dibuat."
       );
     }
 
+    const depositInvoiceStatus =
+      currentDepositInvoice.status ?? "draft";
+
     if (
       !["draft", "issued"].includes(
-        currentDepositInvoice.status
+        depositInvoiceStatus
       )
     ) {
       throw new Error(
@@ -891,56 +911,141 @@ export default function Orders() {
       );
     }
 
+    const fallbackInvoiceId =
+      `${currentBooking.id}_deposit_v1`;
+
+    const depositInvoiceId =
+      currentDepositInvoice.id ??
+      existingDepositInvoice?.id ??
+      fallbackInvoiceId;
+
     setProcessingBillingId(
-      currentDepositInvoice.id
+      depositInvoiceId
     );
 
     try {
+      let assignmentId =
+        currentAssignment.id ??
+        selectedAssignment?.id ??
+        `${currentBooking.id}_crew_assignment`;
+
+      const assignmentPayload = {
+        ...currentAssignment,
+        bookingId: currentBooking.id,
+        crewIds: [
+          ...currentAssignment.crewIds,
+        ],
+        status: "published",
+        publishedAt:
+          db.serverTimestamp(),
+        updatedAt:
+          db.serverTimestamp(),
+      };
+
       /*
        * Publish assignment terlebih dahulu.
+       * Jika assignment masih draft lokal, buat dokumen baru.
        */
-      if (
+      if (!currentAssignment.id) {
+        await db.setDoc(
+          "CrewAssignments",
+          assignmentId,
+          {
+            ...assignmentPayload,
+            createdAt:
+              db.serverTimestamp(),
+          }
+        );
+      } else if (
         currentAssignment.status !==
         "published"
       ) {
         await db.updateDoc(
           "CrewAssignments",
-          currentAssignment.id,
-          {
-            status: "published",
-            publishedAt:
-              db.serverTimestamp(),
-            updatedAt:
-              db.serverTimestamp(),
-          }
+          assignmentId,
+          assignmentPayload
         );
       }
 
+      const packageTotal =
+        Number(
+          currentBooking.package?.price
+        ) || 0;
+
+      const invoicePayload = {
+        ...currentDepositInvoice,
+        bookingId: currentBooking.id,
+        clientId:
+          currentBooking.client?.uid ??
+          null,
+        type: "deposit",
+        revision:
+          currentDepositInvoice.revision ??
+          existingDepositInvoice?.revision ??
+          1,
+        packageTotal:
+          currentDepositInvoice.packageTotal ??
+          packageTotal,
+        amount:
+          Number(
+            currentDepositInvoice.amount
+          ) ||
+          packageTotal * 0.3,
+        currency:
+          currentDepositInvoice.currency ??
+          currentBooking.package?.currency ??
+          "IDR",
+        dueAt:
+          currentDepositInvoice.dueAt ??
+          getDefaultInvoiceDueDate(
+            "deposit",
+            currentBooking.event
+              ?.preferredDate
+          ),
+        status: "issued",
+        invoiceNumber:
+          currentDepositInvoice.invoiceNumber ??
+          createInvoiceNumber({
+            ...currentDepositInvoice,
+            id: depositInvoiceId,
+            type: "deposit",
+          }),
+        note:
+          currentDepositInvoice.note ??
+          "30% booking deposit",
+        pdfUrl:
+          currentDepositInvoice.pdfUrl ??
+          null,
+        issuedAt:
+          db.serverTimestamp(),
+        updatedAt:
+          db.serverTimestamp(),
+      };
+
       /*
        * Invoice deposit baru diterbitkan pada final submit.
+       * Jika invoice masih draft lokal, buat dokumen baru.
        */
       if (
-        currentDepositInvoice.status !==
-        "issued"
+        !currentDepositInvoice.id &&
+        !existingDepositInvoice?.id
+      ) {
+        await db.setDoc(
+          "Invoices",
+          depositInvoiceId,
+          {
+            ...invoicePayload,
+            createdAt:
+              db.serverTimestamp(),
+          }
+        );
+      } else if (
+        depositInvoiceStatus !== "issued"
       ) {
         await db.updateDoc(
           "Invoices",
-          currentDepositInvoice.id,
-          {
-            status: "issued",
-
-            invoiceNumber:
-              currentDepositInvoice.invoiceNumber ??
-              createInvoiceNumber(
-                currentDepositInvoice
-              ),
-
-            issuedAt:
-              db.serverTimestamp(),
-
-            updatedAt:
-              db.serverTimestamp(),
-          }
+          depositInvoiceId,
+          invoicePayload
         );
       }
 
@@ -981,10 +1086,8 @@ export default function Orders() {
         "BOOKING READY TO SEND:",
         {
           bookingId: currentBooking.id,
-          assignmentId:
-            currentAssignment.id,
-          invoiceId:
-            currentDepositInvoice.id,
+          assignmentId,
+          invoiceId: depositInvoiceId,
         }
       );
     } finally {
@@ -1420,6 +1523,7 @@ export default function Orders() {
       <ScheduleOrder
         booking={selectedBooking}
         crewMembers={crewMembers}
+        assignments={assignments}
         existingAssignment={
           selectedAssignment
         }
