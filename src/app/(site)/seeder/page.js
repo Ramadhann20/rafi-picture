@@ -6,6 +6,7 @@ import { useDb } from "@/context/DbContext";
 import {
   USERS,
   PACKAGES,
+  PACKAGE_CATEGORIES,
   BOOKINGS,
   SCHEDULES,
   PAYMENTS,
@@ -16,13 +17,14 @@ import {
 const seedMap = {
   Users: USERS,
   Packages: PACKAGES,
+  PackageCategories: PACKAGE_CATEGORIES,
   Bookings: BOOKINGS,
   Schedules: SCHEDULES,
   Payments: PAYMENTS,
   Crews: CREWS,
   Assignments: ASSIGNMENTS
 };
-
+  
 export default function SeederPage() {
   const { seedCollection, deleteCollection } = useDb();
 

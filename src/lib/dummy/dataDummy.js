@@ -15,18 +15,438 @@ export const USERS = [
 // =========================
 // PACKAGES
 // =========================
+
+// =========================
+// PACKAGES
+// =========================
+
 export const PACKAGES = [
+  // =====================================================
+  // WEDDING
+  // packageCategoryId: HAxzPXQu9x60Q6G0vrnl
+  // =====================================================
+
   {
-    id: "p1",
-    name: "Wedding Premium",
-    price: 5000000,
-    duration: 8,
-    includes: [
-      "2 Photographer",
-      "1 Videographer",
-      "1 Assistant"
-    ]
-  }
+    name: "Signature Wedding",
+    packageCategoryId: "HAxzPXQu9x60Q6G0vrnl",
+
+    description:
+      "Paket dokumentasi pernikahan lengkap untuk menangkap seluruh rangkaian acara, mulai dari persiapan hingga resepsi.",
+
+    serviceHighlights: [
+      "Liputan 10 Jam",
+      "2 Fotografer",
+      "1 Videografer",
+      "Album Premium",
+    ],
+
+    price: 45000000,
+    durationHours: 10,
+
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Signature Wedding",
+    },
+
+    createdAt: "2026-06-01T08:00:00.000Z",
+    updatedAt: "2026-06-01T08:00:00.000Z",
+  },
+
+  {
+    name: "Classic Union",
+    packageCategoryId: "HAxzPXQu9x60Q6G0vrnl",
+
+    description:
+      "Paket wedding pilihan utama dengan dokumentasi foto dan video untuk prosesi inti serta momen keluarga.",
+
+    serviceHighlights: [
+      "Liputan 8 Jam",
+      "2 Fotografer",
+      "1 Videografer",
+      "Album Mini",
+    ],
+
+    price: 28000000,
+    durationHours: 8,
+
+    status: "active",
+    featured: true,
+    sortOrder: 2,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Classic Union",
+    },
+
+    createdAt: "2026-06-01T08:05:00.000Z",
+    updatedAt: "2026-06-01T08:05:00.000Z",
+  },
+
+  {
+    name: "Essential Wedding",
+    packageCategoryId: "HAxzPXQu9x60Q6G0vrnl",
+
+    description:
+      "Paket dokumentasi ringkas untuk pernikahan sederhana dengan fokus pada prosesi utama dan sesi keluarga.",
+
+    serviceHighlights: [
+      "Liputan 5 Jam",
+      "1 Fotografer",
+      "1 Videografer",
+      "Galeri Digital",
+    ],
+
+    price: 15000000,
+    durationHours: 5,
+
+    status: "active",
+    featured: false,
+    sortOrder: 3,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Essential Wedding",
+    },
+
+    createdAt: "2026-06-01T08:10:00.000Z",
+    updatedAt: "2026-06-01T08:10:00.000Z",
+  },
+
+  // =====================================================
+  // PRE-WEDDING
+  // packageCategoryId: MMqQ3Vb3zxa3cWDwndIw
+  // =====================================================
+
+  {
+    name: "Editorial Journey",
+    packageCategoryId: "MMqQ3Vb3zxa3cWDwndIw",
+
+    description:
+      "Sesi pre-wedding bergaya editorial dengan konsep visual yang dirancang sesuai karakter pasangan.",
+
+    serviceHighlights: [
+      "Sesi 8 Jam",
+      "2 Lokasi",
+      "2 Fotografer",
+      "40 Foto Pilihan",
+    ],
+
+    price: 18000000,
+    durationHours: 8,
+
+    status: "active",
+    featured: true,
+    sortOrder: 1,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Editorial Journey",
+    },
+
+    createdAt: "2026-06-01T08:15:00.000Z",
+    updatedAt: "2026-06-01T08:15:00.000Z",
+  },
+
+  {
+    name: "Natural Escape",
+    packageCategoryId: "MMqQ3Vb3zxa3cWDwndIw",
+
+    description:
+      "Sesi pre-wedding outdoor dengan pendekatan natural dan pilihan lokasi yang menonjolkan suasana alam.",
+
+    serviceHighlights: [
+      "Sesi 6 Jam",
+      "2 Lokasi",
+      "1 Fotografer",
+      "30 Foto Pilihan",
+    ],
+
+    price: 12000000,
+    durationHours: 6,
+
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Natural Escape",
+    },
+
+    createdAt: "2026-06-01T08:20:00.000Z",
+    updatedAt: "2026-06-01T08:20:00.000Z",
+  },
+
+  {
+    name: "Intimate Story",
+    packageCategoryId: "MMqQ3Vb3zxa3cWDwndIw",
+
+    description:
+      "Paket pre-wedding sederhana untuk pasangan yang menginginkan sesi santai dengan hasil foto personal.",
+
+    serviceHighlights: [
+      "Sesi 3 Jam",
+      "1 Lokasi",
+      "1 Fotografer",
+      "20 Foto Pilihan",
+    ],
+
+    price: 7500000,
+    durationHours: 3,
+
+    status: "active",
+    featured: false,
+    sortOrder: 3,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Intimate Story",
+    },
+
+    createdAt: "2026-06-01T08:25:00.000Z",
+    updatedAt: "2026-06-01T08:25:00.000Z",
+  },
+
+  // =====================================================
+  // TUNANGAN
+  // packageCategoryId: d1K5SCKplQQ7IcAkgNDF
+  // =====================================================
+
+  {
+    name: "Engagement Luxe",
+    packageCategoryId: "d1K5SCKplQQ7IcAkgNDF",
+
+    description:
+      "Dokumentasi acara pertunangan lengkap untuk mengabadikan prosesi, dekorasi, pasangan, dan keluarga.",
+
+    serviceHighlights: [
+      "Liputan 6 Jam",
+      "2 Fotografer",
+      "1 Videografer",
+      "Video Highlight",
+    ],
+
+    price: 16000000,
+    durationHours: 6,
+
+    status: "active",
+    featured: true,
+    sortOrder: 1,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Engagement Luxe",
+    },
+
+    createdAt: "2026-06-01T08:30:00.000Z",
+    updatedAt: "2026-06-01T08:30:00.000Z",
+  },
+
+  {
+    name: "Family Intimate",
+    packageCategoryId: "d1K5SCKplQQ7IcAkgNDF",
+
+    description:
+      "Paket dokumentasi pertunangan untuk acara keluarga dengan suasana hangat dan jumlah tamu terbatas.",
+
+    serviceHighlights: [
+      "Liputan 4 Jam",
+      "1 Fotografer",
+      "1 Videografer",
+      "Galeri Digital",
+    ],
+
+    price: 10000000,
+    durationHours: 4,
+
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Family Intimate",
+    },
+
+    createdAt: "2026-06-01T08:35:00.000Z",
+    updatedAt: "2026-06-01T08:35:00.000Z",
+  },
+
+  {
+    name: "Simple Promise",
+    packageCategoryId: "d1K5SCKplQQ7IcAkgNDF",
+
+    description:
+      "Paket foto pertunangan sederhana yang berfokus pada prosesi utama, pasangan, dan keluarga inti.",
+
+    serviceHighlights: [
+      "Liputan 3 Jam",
+      "1 Fotografer",
+      "20 Foto Pilihan",
+      "Galeri Online",
+    ],
+
+    price: 6500000,
+    durationHours: 3,
+
+    status: "active",
+    featured: false,
+    sortOrder: 3,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Simple Promise",
+    },
+
+    createdAt: "2026-06-01T08:40:00.000Z",
+    updatedAt: "2026-06-01T08:40:00.000Z",
+  },
+
+  // =====================================================
+  // ACARA
+  // packageCategoryId: 8kXZV0busmkITm7b6itD
+  // =====================================================
+
+  {
+    name: "Corporate Documentation",
+    packageCategoryId: "8kXZV0busmkITm7b6itD",
+
+    description:
+      "Dokumentasi profesional untuk seminar, peluncuran produk, gathering, dan kegiatan perusahaan.",
+
+    serviceHighlights: [
+      "Liputan 8 Jam",
+      "2 Fotografer",
+      "1 Videografer",
+      "Video Highlight",
+    ],
+
+    price: 20000000,
+    durationHours: 8,
+
+    status: "active",
+    featured: true,
+    sortOrder: 1,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Corporate Documentation",
+    },
+
+    createdAt: "2026-06-01T08:45:00.000Z",
+    updatedAt: "2026-06-01T08:45:00.000Z",
+  },
+
+  {
+    name: "Celebration Story",
+    packageCategoryId: "8kXZV0busmkITm7b6itD",
+
+    description:
+      "Paket dokumentasi untuk ulang tahun, anniversary, bridal shower, dan perayaan keluarga lainnya.",
+
+    serviceHighlights: [
+      "Liputan 5 Jam",
+      "1 Fotografer",
+      "1 Videografer",
+      "30 Foto Pilihan",
+    ],
+
+    price: 12000000,
+    durationHours: 5,
+
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Celebration Story",
+    },
+
+    createdAt: "2026-06-01T08:50:00.000Z",
+    updatedAt: "2026-06-01T08:50:00.000Z",
+  },
+
+  {
+    name: "Graduation Moments",
+    packageCategoryId: "8kXZV0busmkITm7b6itD",
+
+    description:
+      "Paket dokumentasi wisuda untuk individu, pasangan, atau keluarga dengan sesi foto formal dan kasual.",
+
+    serviceHighlights: [
+      "Sesi 3 Jam",
+      "1 Fotografer",
+      "2 Lokasi",
+      "20 Foto Pilihan",
+    ],
+
+    price: 7000000,
+    durationHours: 3,
+
+    status: "active",
+    featured: false,
+    sortOrder: 3,
+
+    cover: {
+      url: null,
+      storagePath: null,
+      alt: "Paket Graduation Moments",
+    },
+
+    createdAt: "2026-06-01T08:55:00.000Z",
+    updatedAt: "2026-06-01T08:55:00.000Z",
+  },
+];
+
+export const PACKAGE_CATEGORIES = [
+  {
+    id: "HAxzPXQu9x60Q6G0vrnl",
+    name: "Wedding",
+    slug: "wedding",
+    icon: "favorite",
+    sortOrder: 1,
+    isActive: true,
+  },
+  {
+    id: "MMqQ3Vb3zxa3cWDwndIw",
+    name: "Pre-Wedding",
+    slug: "pre-wedding",
+    icon: "photo_camera",
+    sortOrder: 2,
+    isActive: true,
+  },
+  {
+    id: "d1K5SCKplQQ7IcAkgNDF",
+    name: "Tunangan",
+    slug: "tunangan",
+    icon: "person",
+    sortOrder: 3,
+    isActive: true,
+  },
+  {
+    id: "8kXZVObusmkITm7b6itD",
+    name: "Acara",
+    slug: "acara",
+    icon: "calendar_month",
+    sortOrder: 4,
+    isActive: true,
+  },
 ];
 
 

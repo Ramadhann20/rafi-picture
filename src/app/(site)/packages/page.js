@@ -1,4 +1,4 @@
-import PackageCards from "@/components/packages/PackageCards";
+import PackageListing from "@/components/packages/PackageListing";
 
 export const metadata = {
   title: "Paket Fotografi | Rafi Picture Studio",
@@ -23,27 +23,9 @@ export default function PackagesPage() {
         </p>
       </header>
 
-      {/* Filter Bar */}
-      <div className="flex justify-center mb-stack-lg overflow-x-auto">
-        <div className="flex p-1 bg-surface-container-low rounded-full">
-          {filterItems.map((item, index) => (
-            <button
-              key={item}
-              type="button"
-              className={`px-8 py-2 rounded-full font-label-md whitespace-nowrap transition-all ${
-                index === 0
-                  ? "text-on-primary bg-primary"
-                  : "text-on-surface-variant hover:text-primary"
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Interactive Package Cards Section */}
-      <PackageCards />
+      <PackageListing />
     </main>
   );
 }
