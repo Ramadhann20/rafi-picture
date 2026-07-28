@@ -22,6 +22,7 @@ export default function RootLayout({ children }) {
           <body className="bg-surface font-body-md text-on-surface">
             <OverlayProvider>{children}</OverlayProvider>
           </body>
+          
         </DbProvider>
       </AuthProvider>
     </html>
