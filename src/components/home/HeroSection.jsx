@@ -15,7 +15,7 @@ export default function HeroSection() {
       <div className="relative z-10 w-full max-w-4xl px-margin-mobile text-center">
         <div className=" p-stack-lg md:p-16 rounded-xl animate-fade-in">
           <h1 className="font-display-lg text-display-lg text-on-primary mb-6 text-shadow-subtle leading-tight">
-            Tangkep Jiwa Kamu <br className="hidden md:block" /> of Your Story
+            Capture The Soul <br className="hidden md:block" /> of Your Story
           </h1>
           <p className="font-body-lg text-body-lg text-white/90 mb-stack-md max-w-2xl mx-auto font-medium">
             High-end wedding and editorial photography for couples who value timeless elegance, authentic emotion, and artistic storytelling.
