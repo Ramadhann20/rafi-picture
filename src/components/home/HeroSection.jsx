@@ -18,7 +18,7 @@ export default function HeroSection() {
             Capture The Soul <br className="hidden md:block" /> of Your Story
           </h1>
           <p className="font-body-lg text-body-lg text-white/90 mb-stack-md max-w-2xl mx-auto font-medium">
-            Low-end wedding and editorial photography for couples who value timeless elegance, authentic emotion, and artistic storytelling.
+            High-end wedding and editorial photography for couples who value timeless elegance, authentic emotion, and artistic storytelling.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
