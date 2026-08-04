@@ -119,7 +119,45 @@ function createPaymentReference() {
   return `PAY-${timestamp}`;
 }
 
-export default function BookingClient() {
+
+const idrFormatter = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
+function normalizePackageId(value) {
+  if (Array.isArray(value)) {
+    return String(value[0] ?? "").trim() || null;
+  }
+
+  return String(value ?? "").trim() || null;
+}
+
+function normalizePackageRecord(packageRecord) {
+  const features = Array.isArray(packageRecord?.features)
+    ? packageRecord.features
+    : Array.isArray(packageRecord?.serviceHighlights)
+      ? packageRecord.serviceHighlights
+      : [];
+
+  const numericPrice = Number(packageRecord?.price);
+  const price = Number.isFinite(numericPrice) ? numericPrice : 0;
+
+  return {
+    ...packageRecord,
+    price,
+    currency: packageRecord?.currency ?? "IDR",
+    priceLabel:
+      packageRecord?.priceLabel ?? idrFormatter.format(price),
+    features,
+    badge:
+      packageRecord?.badge ??
+      (packageRecord?.featured ? "Unggulan" : null),
+  };
+}
+
+export default function BookingClient({ packageId = null }) {
   const {
     user,
     loading: authLoading,
@@ -142,6 +180,45 @@ export default function BookingClient() {
    */
   const [createdBooking, setCreatedBooking] =
     useState(null);
+
+
+  const initialPackageId = useMemo(
+    () => normalizePackageId(packageId),
+    [packageId],
+  );
+
+  /* =========================================================
+     ACTIVE PACKAGES FROM FIRESTORE
+  ========================================================= */
+
+  const {
+    rows: packageRows,
+    loading: packagesLoading,
+    error: packagesError,
+  } = useCollection(
+    () => {
+      if (!userId) return null;
+
+      return db.query(
+        db.colRef("Packages"),
+        db.where("status", "==", "active"),
+      );
+    },
+    [userId],
+    {
+      enabled: Boolean(userId),
+    },
+  );
+
+  const packageOptions = useMemo(() => {
+    return [...packageRows]
+      .sort(
+        (first, second) =>
+          (Number(first.sortOrder) || 0) -
+          (Number(second.sortOrder) || 0),
+      )
+      .map(normalizePackageRecord);
+  }, [packageRows]);
 
   /* =========================================================
      USER BOOKING
@@ -368,18 +445,26 @@ export default function BookingClient() {
 
       package: {
         id: selectedPackage.id,
+        packageCategoryId:
+          selectedPackage.packageCategoryId ?? null,
         name: selectedPackage.name,
-        price: selectedPackage.price,
+        description:
+          selectedPackage.description ?? null,
+        price: Number(selectedPackage.price) || 0,
+        durationHours:
+          Number(selectedPackage.durationHours) || null,
 
         currency:
           selectedPackage.currency ??
           "IDR",
 
         priceLabel:
-          selectedPackage.priceLabel,
+          selectedPackage.priceLabel ?? null,
 
         features:
-          selectedPackage.features ?? [],
+          selectedPackage.features ??
+          selectedPackage.serviceHighlights ??
+          [],
       },
 
       status: "pending",
@@ -754,6 +839,10 @@ export default function BookingClient() {
 
   return (
     <BookingProcess
+      packageOptions={packageOptions}
+      initialPackageId={initialPackageId}
+      packagesLoading={packagesLoading}
+      packagesError={packagesError}
       submitStatus={submitStatus}
       submitError={submitError}
       onSubmitBooking={

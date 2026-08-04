@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import PersonalDetail from "./phases/PersonalDetail";
 import EventInfo from "./phases/EventInfo";
@@ -14,62 +14,33 @@ const phases = [
   { id: "confirm", label: "Confirm" },
 ];
 
-const initialFormData = {
-  personal: {
-    fullName: "",
-    partnerName: "",
-    email: "",
-    phone: "",
-    instagram: "",
-  },
-  event: {
-    eventDate: "",
-    location: "",
-    vision: "",
-  },
-  package: {
-    packageId: "premium",
-  },
-};
+function normalizeInitialPackageId(value) {
+  if (Array.isArray(value)) {
+    return String(value[0] ?? "").trim();
+  }
 
-const packageOptions = [
-  {
-    id: "essential",
-    name: "Essential",
-    price: 1200,
-    priceLabel: "$1,200",
-    features: [
-      "4 Hours Coverage",
-      "Digital Gallery",
-      "150+ Edited Photos",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 2500,
-    priceLabel: "$2,500",
-    badge: "Most Popular",
-    features: [
-      "8 Hours Coverage",
-      "Engagement Session",
-      "400+ Edited Photos",
-      "Luxury Photo Book",
-    ],
-  },
-  {
-    id: "cinema",
-    name: "Cinematic",
-    price: 4000,
-    priceLabel: "$4,000",
-    features: [
-      "Full Day Photo & Video",
-      "2 Videographers",
-      "10min Highlight Film",
-      "Drone Coverage",
-    ],
-  },
-];
+  return String(value ?? "").trim();
+}
+
+function createInitialFormData(initialPackageId) {
+  return {
+    personal: {
+      fullName: "",
+      partnerName: "",
+      email: "",
+      phone: "",
+      instagram: "",
+    },
+    event: {
+      eventDate: "",
+      location: "",
+      vision: "",
+    },
+    package: {
+      packageId: normalizeInitialPackageId(initialPackageId),
+    },
+  };
+}
 
 function getLocalToday() {
   const today = new Date();
@@ -81,13 +52,37 @@ function getLocalToday() {
 }
 
 export default function BookingProcess({
+  packageOptions = [],
+  initialPackageId = null,
+  packagesLoading = false,
+  packagesError = null,
   submitStatus = "idle",
   submitError = null,
   onSubmitBooking,
 }) {
   const [currentPhase, setCurrentPhase] = useState(0);
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(() =>
+    createInitialFormData(initialPackageId)
+  );
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const nextPackageId = normalizeInitialPackageId(initialPackageId);
+
+    setFormData((previousData) => {
+      if (previousData.package.packageId === nextPackageId) {
+        return previousData;
+      }
+
+      return {
+        ...previousData,
+        package: {
+          ...previousData.package,
+          packageId: nextPackageId,
+        },
+      };
+    });
+  }, [initialPackageId]);
 
   const isFirstPhase = currentPhase === 0;
   const isLastPhase = currentPhase === phases.length - 1;
@@ -103,7 +98,7 @@ export default function BookingProcess({
         (item) => item.id === formData.package.packageId
       ) ?? null
     );
-  }, [formData.package.packageId]);
+  }, [formData.package.packageId, packageOptions]);
 
   const updateFormSection = (section, values) => {
     setFormData((previousData) => ({
@@ -376,6 +371,8 @@ export default function BookingProcess({
             <PackageOption
               selectedPackageId={formData.package.packageId}
               packageOptions={packageOptions}
+              loading={packagesLoading}
+              error={packagesError}
               errors={errors.package ?? {}}
               onChange={(packageId) =>
                 updateFormSection("package", { packageId })
@@ -421,7 +418,7 @@ export default function BookingProcess({
             <button
               type="button"
               onClick={goToNextPhase}
-              disabled={isSubmitting}
+              disabled={isSubmitting || (currentPhase === 2 && packagesLoading)}
               className="rounded-lg bg-primary px-10 py-3 font-label-md text-label-md text-on-primary transition-all hover:bg-opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Next Step →
@@ -447,4 +444,3 @@ export default function BookingProcess({
     </>
   );
 }
-
