@@ -1,14 +1,15 @@
-const heroImage =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAOJnesKhXdguwagGD0nzS5D29PCVzWzsu3orERRow5F7lUFN41hBsjfX2-IH8nKBPG55UNM0fxhmeqUuNyhddFo9nZ8-eh3dD5D7KgDiX_tKUwzUKxZM4Xl8bLoHHiB6T2928LG1X0u6ntfFdzfZN4iIDHra8-Q6145SplHvFEfXeqljltCSy7QPRud07KLqOfZDqO-JdZV55PEuy4reM74cwtOsSaSvTPN3HypPlnwuRrfJbygx-mRE5WtWDwqkGENqbbvGK-IpU6";
+import Image from "next/image"
 
 export default function HeroSection() {
   return (
     <section className="relative h-[921px] min-h-[600px] flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <img
+        <Image
           className="w-full h-full object-cover"
-          src={heroImage}
+          src={"/PW.png"}
           alt="A cinematic wide-angle wedding photograph capturing a couple in a sun-drenched meadow during golden hour."
+        width={200}
+        height={150}
         />
       </div>
 
