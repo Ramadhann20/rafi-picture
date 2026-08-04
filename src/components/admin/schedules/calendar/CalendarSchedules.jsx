@@ -64,10 +64,60 @@ function getMonthLabel(date) {
   ).format(date);
 }
 
+function getEventsByDate(
+  events,
+  dateKey,
+) {
+  return events.filter(
+    (event) =>
+      event.date === dateKey,
+  );
+}
+
+function createCalendarDay({
+  date,
+  key,
+  isCurrentMonth,
+  events,
+  lockedDateKeys,
+  blockedDateKeys,
+  todayKey,
+}) {
+  const dateKey =
+    formatDateKey(date);
+
+  return {
+    key,
+    date,
+    dateKey,
+    dayNumber:
+      date.getDate(),
+    isCurrentMonth,
+    isToday:
+      dateKey === todayKey,
+    isPast:
+      dateKey < todayKey,
+    isLocked:
+      lockedDateKeys.has(
+        dateKey,
+      ),
+    isBlocked:
+      blockedDateKeys.has(
+        dateKey,
+      ),
+    events:
+      getEventsByDate(
+        events,
+        dateKey,
+      ),
+  };
+}
+
 function getMonthDays(
   activeDate,
   events,
   lockedDateKeys,
+  blockedDateKeys,
 ) {
   const year =
     activeDate.getFullYear();
@@ -102,6 +152,11 @@ function getMonthDays(
   const totalDays =
     lastDate.getDate();
 
+  const todayKey =
+    formatDateKey(
+      new Date(),
+    );
+
   const days = [];
 
   for (
@@ -118,23 +173,20 @@ function getMonthDays(
           index,
       );
 
-    days.push({
-      key: `prev-${formatDateKey(
+    const dateKey =
+      formatDateKey(date);
+
+    days.push(
+      createCalendarDay({
         date,
-      )}`,
-      date,
-      dateKey:
-        formatDateKey(date),
-      dayNumber:
-        date.getDate(),
-      isCurrentMonth: false,
-      isToday: false,
-      isLocked:
-        lockedDateKeys.has(
-          formatDateKey(date),
-        ),
-      events: [],
-    });
+        key: `prev-${dateKey}`,
+        isCurrentMonth: false,
+        events,
+        lockedDateKeys,
+        blockedDateKeys,
+        todayKey,
+      }),
+    );
   }
 
   for (
@@ -152,28 +204,17 @@ function getMonthDays(
     const dateKey =
       formatDateKey(date);
 
-    days.push({
-      key: dateKey,
-      date,
-      dateKey,
-      dayNumber: day,
-      isCurrentMonth: true,
-      isToday:
-        dateKey ===
-        formatDateKey(
-          new Date(),
-        ),
-      isLocked:
-        lockedDateKeys.has(
-          dateKey,
-        ),
-      events:
-        events.filter(
-          (event) =>
-            event.date ===
-            dateKey,
-        ),
-    });
+    days.push(
+      createCalendarDay({
+        date,
+        key: dateKey,
+        isCurrentMonth: true,
+        events,
+        lockedDateKeys,
+        blockedDateKeys,
+        todayKey,
+      }),
+    );
   }
 
   const remainingSlots =
@@ -191,23 +232,20 @@ function getMonthDays(
         day,
       );
 
-    days.push({
-      key: `next-${formatDateKey(
+    const dateKey =
+      formatDateKey(date);
+
+    days.push(
+      createCalendarDay({
         date,
-      )}`,
-      date,
-      dateKey:
-        formatDateKey(date),
-      dayNumber:
-        day,
-      isCurrentMonth: false,
-      isToday: false,
-      isLocked:
-        lockedDateKeys.has(
-          formatDateKey(date),
-        ),
-      events: [],
-    });
+        key: `next-${dateKey}`,
+        isCurrentMonth: false,
+        events,
+        lockedDateKeys,
+        blockedDateKeys,
+        todayKey,
+      }),
+    );
   }
 
   return days;
@@ -215,22 +253,64 @@ function getMonthDays(
 
 function CalendarDayCell({
   day,
+  selectionMode,
+  selectedDate,
   onCellClick,
   onEventClick,
 }) {
+  const hasScheduledEvent =
+    day.events.length > 0;
+
+  const isUnavailable =
+    selectionMode &&
+    (
+      !day.isCurrentMonth ||
+      day.isPast ||
+      day.isLocked ||
+      day.isBlocked ||
+      hasScheduledEvent
+    );
+
+  const isSelected =
+    selectionMode &&
+    selectedDate ===
+      day.dateKey;
+
   const handleCellClick =
     () => {
+      if (isUnavailable) {
+        return;
+      }
+
       onCellClick?.(day);
     };
 
   return (
     <article
       role="button"
-      tabIndex={0}
+      tabIndex={
+        isUnavailable
+          ? -1
+          : 0
+      }
+      aria-disabled={
+        isUnavailable
+      }
+      aria-pressed={
+        selectionMode
+          ? isSelected
+          : undefined
+      }
       onClick={
         handleCellClick
       }
       onKeyDown={(event) => {
+        if (
+          isUnavailable
+        ) {
+          return;
+        }
+
         if (
           event.key ===
             "Enter" ||
@@ -240,17 +320,26 @@ function CalendarDayCell({
           handleCellClick();
         }
       }}
-      className={`flex min-h-0 cursor-pointer flex-col overflow-hidden border-b border-r p-3 transition-colors ${
-        day.isLocked
-          ? "border-error/20 bg-error-container/20 hover:bg-error-container/35"
-          : "border-outline-variant hover:bg-surface-container-low"
+      className={`flex min-h-0 flex-col overflow-hidden border-b border-r p-3 transition-colors ${
+        isUnavailable
+          ? "cursor-not-allowed bg-surface-container opacity-45"
+          : "cursor-pointer border-outline-variant hover:bg-surface-container-low"
+      } ${
+        day.isLocked ||
+        day.isBlocked
+          ? "border-error/20 bg-error-container/20"
+          : ""
       } ${
         day.isCurrentMonth
           ? ""
-          : "opacity-50"
+          : "opacity-35"
       } ${
         day.isToday
           ? "border-2 border-primary"
+          : ""
+      } ${
+        isSelected
+          ? "border-2 border-secondary bg-secondary-container/35 ring-2 ring-secondary/30"
           : ""
       }`}
     >
@@ -262,20 +351,45 @@ function CalendarDayCell({
             </span>
           )}
 
-          {day.isLocked && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-error-container/80 px-2 py-1 font-label-sm text-[10px] text-error">
-              <AppIcon
-                name="lock"
-                size={12}
-              />
-              Locked
+          {isSelected && (
+            <span className="rounded-full bg-secondary px-2 py-1 font-label-sm text-[10px] text-on-secondary">
+              Selected
             </span>
           )}
+
+          {selectionMode &&
+            day.isCurrentMonth &&
+            !day.isPast &&
+            (
+              day.isLocked ||
+              day.isBlocked ||
+              hasScheduledEvent
+            ) && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-error-container/80 px-2 py-1 font-label-sm text-[10px] text-error">
+                <AppIcon
+                  name="lock"
+                  size={12}
+                />
+                Unavailable
+              </span>
+            )}
+
+          {!selectionMode &&
+            day.isLocked && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-error-container/80 px-2 py-1 font-label-sm text-[10px] text-error">
+                <AppIcon
+                  name="lock"
+                  size={12}
+                />
+                Locked
+              </span>
+            )}
         </div>
 
         <span
           className={`shrink-0 font-label-md text-label-md ${
-            day.isLocked
+            day.isLocked ||
+            day.isBlocked
               ? "text-error"
               : ""
           }`}
@@ -284,23 +398,25 @@ function CalendarDayCell({
         </span>
       </div>
 
-      <div className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {day.events.map(
-          (event) => (
-            <EventPill
-              key={event.id}
-              event={event}
-              onClick={(
-                selectedEvent,
-              ) => {
-                onEventClick?.(
+      {!selectionMode && (
+        <div className="hide-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {day.events.map(
+            (event) => (
+              <EventPill
+                key={event.id}
+                event={event}
+                onClick={(
                   selectedEvent,
-                );
-              }}
-            />
-          ),
-        )}
-      </div>
+                ) => {
+                  onEventClick?.(
+                    selectedEvent,
+                  );
+                }}
+              />
+            ),
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -310,6 +426,9 @@ export default function CalendarSchedule({
   initialDate = new Date(),
   activeFilter = "all",
   filterCounts = {},
+  selectionMode = false,
+  selectedDate = "",
+  blockedDateKeys = [],
   onFilterChange,
   onCellClick,
   onEventClick,
@@ -352,6 +471,17 @@ export default function CalendarSchedule({
       [dateLocks],
     );
 
+  const externalBlockedDateKeys =
+    useMemo(
+      () =>
+        new Set(
+          blockedDateKeys.filter(
+            Boolean,
+          ),
+        ),
+      [blockedDateKeys],
+    );
+
   const monthLabel =
     getMonthLabel(activeDate);
 
@@ -362,11 +492,13 @@ export default function CalendarSchedule({
           activeDate,
           events,
           lockedDateKeys,
+          externalBlockedDateKeys,
         ),
       [
         activeDate,
         events,
         lockedDateKeys,
+        externalBlockedDateKeys,
       ],
     );
 
@@ -398,10 +530,6 @@ export default function CalendarSchedule({
 
   const handleFilterToggle =
     (filterId) => {
-      /*
-       * Secara visual menggunakan checkbox,
-       * tetapi hanya satu mode tampilan yang aktif.
-       */
       if (
         filterId ===
         activeFilter
@@ -468,7 +596,9 @@ export default function CalendarSchedule({
           className="grid min-w-full grid-cols-7 border-l border-t border-outline-variant"
           style={{
             gridTemplateRows:
-              "repeat(6, 148px)",
+              selectionMode
+                ? "repeat(6, 100px)"
+                : "repeat(6, 148px)",
           }}
         >
           {calendarDays.map(
@@ -476,6 +606,12 @@ export default function CalendarSchedule({
               <CalendarDayCell
                 key={day.key}
                 day={day}
+                selectionMode={
+                  selectionMode
+                }
+                selectedDate={
+                  selectedDate
+                }
                 onCellClick={
                   onCellClick
                 }
@@ -488,78 +624,87 @@ export default function CalendarSchedule({
         </div>
       </div>
 
-      <footer className="flex flex-col gap-4 border-t border-outline-variant bg-surface-container-low p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div
-          className="flex flex-wrap items-center gap-x-6 gap-y-3"
-          aria-label="Calendar display filters"
-        >
-          {FILTER_OPTIONS.map(
-            (filter) => {
-              const isChecked =
-                activeFilter ===
-                filter.id;
-
-              return (
-                <label
-                  key={filter.id}
-                  className="group inline-flex cursor-pointer items-center gap-2.5"
-                >
-                  <input
-                    type="checkbox"
-                    checked={
-                      isChecked
-                    }
-                    onChange={() =>
-                      handleFilterToggle(
-                        filter.id,
-                      )
-                    }
-                    className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
-                  />
-
-                  <span
-                    className={`font-label-sm text-label-sm transition-colors ${
-                      isChecked
-                        ? "text-primary"
-                        : "text-on-surface-variant group-hover:text-on-surface"
-                    }`}
-                  >
-                    {filter.label}
-
-                    <span className="ml-1 opacity-60">
-                      (
-                      {filterCounts[
-                        filter.id
-                      ] ?? 0}
-                      )
-                    </span>
-                  </span>
-                </label>
-              );
-            },
-          )}
-        </div>
-
-        <div className="flex flex-col items-start gap-2 lg:items-end">
-          {dateLocksError && (
-            <p className="font-label-sm text-label-sm text-error">
-              Status kunci tanggal gagal dimuat.
-            </p>
-          )}
-
-          <button
-            type="button"
-            className="flex items-center gap-2 font-label-md text-label-md uppercase tracking-widest text-primary hover:underline"
+      {!selectionMode && (
+        <footer className="flex flex-col gap-4 border-t border-outline-variant bg-surface-container-low p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            className="flex flex-wrap items-center gap-x-6 gap-y-3"
+            aria-label="Calendar display filters"
           >
-            Export Calendar
+            {FILTER_OPTIONS.map(
+              (filter) => {
+                const isChecked =
+                  activeFilter ===
+                    filter.id;
 
-            <AppIcon
-              name="download"
-              size={18}
-            />
-          </button>
-        </div>
-      </footer>
+                return (
+                  <label
+                    key={filter.id}
+                    className="group inline-flex cursor-pointer items-center gap-2.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={
+                        isChecked
+                      }
+                      onChange={() =>
+                        handleFilterToggle(
+                          filter.id,
+                        )
+                      }
+                      className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary"
+                    />
+
+                    <span
+                      className={`font-label-sm text-label-sm transition-colors ${
+                        isChecked
+                          ? "text-primary"
+                          : "text-on-surface-variant group-hover:text-on-surface"
+                      }`}
+                    >
+                      {filter.label}
+
+                      <span className="ml-1 opacity-60">
+                        (
+                        {filterCounts[
+                          filter.id
+                        ] ?? 0}
+                        )
+                      </span>
+                    </span>
+                  </label>
+                );
+              },
+            )}
+          </div>
+
+          <div className="flex flex-col items-start gap-2 lg:items-end">
+            {dateLocksError && (
+              <p className="font-label-sm text-label-sm text-error">
+                Status kunci tanggal gagal dimuat.
+              </p>
+            )}
+
+            <button
+              type="button"
+              className="flex items-center gap-2 font-label-md text-label-md uppercase tracking-widest text-primary hover:underline"
+            >
+              Export Calendar
+
+              <AppIcon
+                name="download"
+                size={18}
+              />
+            </button>
+          </div>
+        </footer>
+      )}
+
+      {selectionMode &&
+        dateLocksError && (
+          <p className="border-t border-outline-variant bg-error-container/20 px-4 py-3 font-label-sm text-label-sm text-error">
+            Status ketersediaan tanggal gagal dimuat.
+          </p>
+        )}
     </section>
   );
 }

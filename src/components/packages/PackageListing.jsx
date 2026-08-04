@@ -5,6 +5,8 @@ import AppIcon from "@/components/global/AppIcon";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
 
+import { useRouter } from "next/navigation";
+
 const COLLECTIONS = {
   packages: "Packages",
   categories: "PackageCategories",
@@ -117,6 +119,7 @@ export default function PackageListing() {
   const { colRef } = useDb();
   const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
   const [selectedPackage, setSelectedPackage] = useState(null);
+  const router = useRouter();
 
   const {
     rows: categoryRows,
@@ -453,6 +456,10 @@ export default function PackageListing() {
                 <button
                   type="button"
                   className="rounded-lg bg-primary px-10 py-4 font-label-md text-on-primary"
+                  onClick={() => {
+                    // Handle reservation action here
+                    router.push(`/booking?packageId=${selectedPackage.id}`);
+                  }}
                 >
                   Reservasi Tanggal Anda
                 </button>
