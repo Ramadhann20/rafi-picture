@@ -1,6 +1,11 @@
+"use client"
+
 import Image from "next/image"
+import  {useRouter } from "next/navigation"
 
 export default function HeroSection() {
+  const router = useRouter();
+
   return (
     <section className="relative h-[921px] min-h-[600px] flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
@@ -23,12 +28,12 @@ export default function HeroSection() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="#packages" className="bg-white text-primary px-8 py-4 rounded-lg font-label-md hover:bg-secondary-container transition-all">
+            <button onClick={() => router.push("/packages")} className="bg-white text-primary px-8 py-4 rounded-lg font-label-md hover:bg-secondary-container transition-all">
               View Packages
-            </a>
-            <a href="#booking" className="border border-white text-white px-8 py-4 rounded-lg font-label-md hover:bg-white/10 transition-all backdrop-blur-sm">
+            </button>
+            <button onClick={() => router.push("/booking")} className="border border-white text-white px-8 py-4 rounded-lg font-label-md hover:bg-white/10 transition-all backdrop-blur-sm">
               Book Now
-            </a>
+            </button>
           </div>
         </div>
       </div>
