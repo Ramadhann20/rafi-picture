@@ -6,7 +6,7 @@ export default function HeroSection() {
       <div className="absolute inset-0 z-0">
         <Image
           className="w-full h-full object-cover"
-          src={"/PW.png"}
+          src={"/FG.png"}
           alt="A cinematic wide-angle wedding photograph capturing a couple in a sun-drenched meadow during golden hour."
         width={200}
         height={150}
