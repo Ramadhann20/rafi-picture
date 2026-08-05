@@ -13,8 +13,8 @@ export default function HeroSection() {
           className="w-full h-full object-cover"
           src={"/FG.jpeg"}
           alt="A cinematic wide-angle wedding photograph capturing a couple in a sun-drenched meadow during golden hour."
-        width={200}
-        height={150}
+        width={900}
+        height={800}
         />
       </div>
 
