@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 const ALLOWED_FILE_TYPES = new Set([
   "image/png",
@@ -381,7 +381,7 @@ export default function BookingPaymentPage({
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setFormError("Ukuran file maksimal 5 MB.");
+      setFormError("Ukuran file maksimal 4 MB.");
       return;
     }
 

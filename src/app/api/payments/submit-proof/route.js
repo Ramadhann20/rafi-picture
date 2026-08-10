@@ -24,7 +24,7 @@ export const runtime =
   "nodejs";
 
 const MAX_FILE_SIZE =
-  5 * 1024 * 1024;
+  4 * 1024 * 1024;
 
 const ALLOWED_TYPES =
   new Set([
@@ -285,7 +285,7 @@ export async function POST(
       MAX_FILE_SIZE
     ) {
       return jsonError(
-        "Ukuran bukti pembayaran maksimal 5 MB.",
+        "Ukuran bukti pembayaran maksimal 4 MB.",
       );
     }
 
