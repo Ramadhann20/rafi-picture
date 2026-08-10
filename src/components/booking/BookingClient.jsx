@@ -78,20 +78,27 @@ function toTimestampValue(value) {
     : date.getTime();
 }
 
-function getLatestDepositInvoice(invoices) {
-  return (
-    [...invoices]
-      .filter(
-        (invoice) =>
-          invoice.type === "deposit" &&
-          invoice.status !== "void",
-      )
-      .sort((first, second) => {
+function sortLatestInvoice(
+  invoices,
+) {
+  return [...invoices]
+    .sort(
+      (
+        first,
+        second,
+      ) => {
         const revisionDifference =
-          (Number(second.revision) || 1) -
-          (Number(first.revision) || 1);
+          (Number(
+            second.revision,
+          ) || 1) -
+          (Number(
+            first.revision,
+          ) || 1);
 
-        if (revisionDifference !== 0) {
+        if (
+          revisionDifference !==
+          0
+        ) {
           return revisionDifference;
         }
 
@@ -105,7 +112,63 @@ function getLatestDepositInvoice(invoices) {
               first.createdAt,
           )
         );
-      })[0] ?? null
+      },
+    );
+}
+
+function getLatestInvoiceByType(
+  invoices,
+  type,
+) {
+  return (
+    sortLatestInvoice(
+      invoices.filter(
+        (invoice) =>
+          invoice.type ===
+            type &&
+          invoice.status !==
+            "void",
+      ),
+    )[0] ?? null
+  );
+}
+
+function getLatestDepositInvoice(
+  invoices,
+) {
+  return getLatestInvoiceByType(
+    invoices,
+    "deposit",
+  );
+}
+
+function getLatestFinalInvoice(
+  invoices,
+) {
+  return getLatestInvoiceByType(
+    invoices,
+    "final",
+  );
+}
+
+function isInvoicePayable(
+  invoice,
+) {
+  return Boolean(
+    invoice?.id &&
+      [
+        "issued",
+        "overdue",
+      ].includes(
+        String(
+          invoice.status ||
+            "",
+        ).toLowerCase(),
+      ) &&
+      Number(
+        invoice.amountDue ??
+          invoice.amount,
+      ) > 0,
   );
 }
 
@@ -276,29 +339,22 @@ export default function BookingClient({ packageId = null }) {
       bookingRecord?.status,
     );
 
-  /*
-   * Flow tampilan dibuat langsung berdasarkan status:
-   *
-   * pending  -> BookingStatus
-   * approved -> BookingPaymentPage
-   *
-   * Status selain approved tetap memakai BookingStatus.
-   */
-  const showPaymentPage =
-    normalizedBookingStatus === "approved";
-
   /* =========================================================
-     INVOICE AND PAYMENT DATA
+     INVOICE / PAYMENT / RECEIPT DATA
   ========================================================= */
 
   /*
-   * Invoice tetap dibaca setelah booking approved agar file invoice
-   * masih dapat ditampilkan pada BookingStatus setelah client
-   * mengirim bukti pembayaran dan status berubah menjadi confirmed.
+   * Financial data tetap realtime setelah booking keluar dari pending.
+   * Ini dibutuhkan untuk:
+   * - DP invoice
+   * - invoice pelunasan
+   * - proof pending verification
+   * - receipt setelah lunas
    */
-  const shouldLoadInvoice =
+  const shouldLoadFinancials =
     Boolean(bookingId) &&
-    normalizedBookingStatus !== "pending";
+    normalizedBookingStatus !==
+      "pending";
 
   const {
     rows: bookingInvoices,
@@ -308,7 +364,7 @@ export default function BookingClient({ packageId = null }) {
     () => {
       if (
         !bookingId ||
-        !shouldLoadInvoice
+        !shouldLoadFinancials
       ) {
         return null;
       }
@@ -324,11 +380,11 @@ export default function BookingClient({ packageId = null }) {
     },
     [
       bookingId,
-      shouldLoadInvoice,
+      shouldLoadFinancials,
     ],
     {
       enabled:
-        shouldLoadInvoice,
+        shouldLoadFinancials,
     },
   );
 
@@ -340,7 +396,7 @@ export default function BookingClient({ packageId = null }) {
     () => {
       if (
         !bookingId ||
-        !showPaymentPage
+        !shouldLoadFinancials
       ) {
         return null;
       }
@@ -356,20 +412,108 @@ export default function BookingClient({ packageId = null }) {
     },
     [
       bookingId,
-      showPaymentPage,
+      shouldLoadFinancials,
     ],
     {
       enabled:
-        Boolean(bookingId) &&
-        showPaymentPage,
+        shouldLoadFinancials,
     },
   );
 
-  const depositInvoice = useMemo(() => {
-    return getLatestDepositInvoice(
-      bookingInvoices,
+  const depositInvoice =
+    useMemo(
+      () =>
+        getLatestDepositInvoice(
+          bookingInvoices,
+        ),
+      [bookingInvoices],
     );
-  }, [bookingInvoices]);
+
+  const finalInvoice =
+    useMemo(
+      () =>
+        getLatestFinalInvoice(
+          bookingInvoices,
+        ),
+      [bookingInvoices],
+    );
+
+  const receipt =
+    bookingRecord?.receipt ??
+    null;
+
+  /*
+   * Pelunasan selalu diprioritaskan jika sudah diterbitkan.
+   * Kalau belum ada, gunakan invoice DP.
+   */
+  const payableInvoice =
+    useMemo(
+      () => {
+        if (
+          isInvoicePayable(
+            finalInvoice,
+          )
+        ) {
+          return finalInvoice;
+        }
+
+        if (
+          isInvoicePayable(
+            depositInvoice,
+          )
+        ) {
+          return depositInvoice;
+        }
+
+        return null;
+      },
+      [
+        finalInvoice,
+        depositInvoice,
+      ],
+    );
+
+  const activePaymentForInvoice =
+    useMemo(
+      () => {
+        if (
+          !payableInvoice?.id
+        ) {
+          return null;
+        }
+
+        return (
+          bookingPayments.find(
+            (payment) =>
+              payment.invoiceId ===
+                payableInvoice.id &&
+              ACTIVE_PAYMENT_STATUSES.has(
+                normalizePaymentStatus(
+                  payment.status,
+                ),
+              ),
+          ) ?? null
+        );
+      },
+      [
+        bookingPayments,
+        payableInvoice?.id,
+      ],
+    );
+
+  /*
+   * Payment page tampil ketika ada invoice issued/overdue yang
+   * masih harus dibayar dan belum ada proof aktif untuk invoice itu.
+   *
+   * Dengan ini:
+   * approved + DP issued -> payment page
+   * in_progress + final issued -> payment page
+   */
+  const showPaymentPage =
+    Boolean(
+      payableInvoice &&
+        !activePaymentForInvoice,
+    );
 
   /* =========================================================
      CREATE BOOKING
@@ -429,6 +573,20 @@ export default function BookingClient({ packageId = null }) {
       event: {
         preferredDate:
           formData.event.eventDate,
+
+        startTime:
+          formData.event.startTime ||
+          null,
+
+        endTime:
+          formData.event.endTime ||
+          null,
+
+        endTimeDayOffset:
+          Number(
+            formData.event.endTimeDayOffset ||
+            0,
+          ) || 0,
 
         location: normalizeEventLocation(
           formData.event.location,
@@ -537,6 +695,64 @@ export default function BookingClient({ packageId = null }) {
 
       setCreatedBooking(newBooking);
       setSubmitStatus("success");
+
+      /*
+       * Booking tetap dianggap sukses walaupun email/notifikasi admin
+       * sedang bermasalah. Endpoint memakai event key deterministic,
+       * jadi retry tidak mengirim email duplicate.
+       */
+      void (async () => {
+        try {
+          const idToken =
+            await user.getIdToken();
+
+          const response =
+            await fetch(
+              "/api/notifications/admin/booking-created",
+              {
+                method:
+                  "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+
+                  Authorization:
+                    `Bearer ${idToken}`,
+                },
+
+                body:
+                  JSON.stringify({
+                    bookingId:
+                      documentReference.id,
+                  }),
+
+                keepalive:
+                  true,
+              },
+            );
+
+          if (!response.ok) {
+            const result =
+              await response
+                .json()
+                .catch(
+                  () => null,
+                );
+
+            console.error(
+              "BOOKING ADMIN NOTIFICATION FAILED:",
+              result?.message ||
+                response.status,
+            );
+          }
+        } catch (notificationError) {
+          console.error(
+            "BOOKING ADMIN NOTIFICATION ERROR:",
+            notificationError,
+          );
+        }
+      })();
     } catch (error) {
       console.error(
         "CREATE BOOKING ERROR:",
@@ -579,20 +795,33 @@ export default function BookingClient({ packageId = null }) {
     }
 
     if (
-      normalizedBookingStatus !==
-      "approved"
+      !payableInvoice?.id ||
+      invoiceId !==
+        payableInvoice.id
     ) {
       throw new Error(
-        "Bukti pembayaran hanya dapat dikirim saat booking berstatus approved.",
+        "Invoice pembayaran tidak sesuai atau sudah tidak aktif.",
       );
     }
 
-    if (
-      !depositInvoice?.id ||
-      invoiceId !== depositInvoice.id
-    ) {
+    const invoiceType =
+      String(
+        payableInvoice.type ||
+          "deposit",
+      ).toLowerCase();
+
+    const statusAllowed =
+      invoiceType === "final"
+        ? normalizedBookingStatus ===
+          "in_progress"
+        : normalizedBookingStatus ===
+          "approved";
+
+    if (!statusAllowed) {
       throw new Error(
-        "Invoice deposit tidak sesuai atau belum tersedia.",
+        invoiceType === "final"
+          ? "Pelunasan belum dapat dikirim pada status booking saat ini."
+          : "DP belum dapat dikirim pada status booking saat ini.",
       );
     }
 
@@ -726,41 +955,44 @@ export default function BookingClient({ packageId = null }) {
     );
   }
 
-  /*
-   * Status approved langsung menampilkan
-   * BookingPaymentPage.
-   */
+  if (
+    bookingRecord &&
+    shouldLoadFinancials &&
+    (
+      invoicesLoading ||
+      paymentsLoading
+    )
+  ) {
+    return (
+      <PageState>
+        Memuat data pembayaran...
+      </PageState>
+    );
+  }
+
+  if (
+    bookingRecord &&
+    (
+      invoicesError ||
+      paymentsError
+    )
+  ) {
+    return (
+      <PageState error>
+        Gagal mengambil data invoice atau
+        pembayaran.
+      </PageState>
+    );
+  }
+
   if (
     bookingRecord &&
     showPaymentPage
   ) {
-    if (
-      invoicesLoading ||
-      paymentsLoading
-    ) {
-      return (
-        <PageState>
-          Memuat data pembayaran...
-        </PageState>
-      );
-    }
-
-    if (
-      invoicesError ||
-      paymentsError
-    ) {
-      return (
-        <PageState error>
-          Gagal mengambil invoice atau
-          riwayat pembayaran.
-        </PageState>
-      );
-    }
-
     return (
       <BookingPaymentPage
         booking={bookingRecord}
-        invoice={depositInvoice}
+        invoice={payableInvoice}
         payments={bookingPayments}
         onSubmitPayment={
           handleSubmitPayment
@@ -769,15 +1001,15 @@ export default function BookingClient({ packageId = null }) {
     );
   }
 
-  /*
-   * Pending dan semua status selain approved
-   * menampilkan BookingStatus.
-   */
   if (bookingRecord) {
     return (
       <BookingStatus
         booking={bookingRecord}
-        invoice={depositInvoice}
+        invoice={
+          finalInvoice ??
+          depositInvoice
+        }
+        receipt={receipt}
       />
     );
   }

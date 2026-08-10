@@ -1,27 +1,83 @@
-const statusStyle = {
+const STATUS_STYLE = {
   pending:
     "border-secondary-container bg-secondary-container text-on-secondary-container",
-  confirmed: "border-primary bg-primary text-on-primary",
-  rejected: "border-red-200 bg-red-50 text-red-700",
+
+  draft:
+    "border-outline-variant bg-surface-container-low text-on-surface-variant",
+
+  booked:
+    "border-primary/25 bg-primary-container text-on-primary-container",
+
+  confirmed:
+    "border-primary/25 bg-primary-container text-on-primary-container",
+
+  in_progress:
+    "border-primary/25 bg-primary-container text-on-primary-container",
+
+  conflict:
+    "border-error/25 bg-error-container text-error",
+
+  rejected:
+    "border-error/25 bg-error-container text-error",
+
+  cancelled:
+    "border-outline-variant bg-surface-container text-on-surface-variant opacity-60",
 };
 
-export function EventPill({ event, onClick }) {
+function getSourceLabel(
+  source,
+) {
+  return source ===
+    "schedule"
+    ? "SCHEDULE"
+    : "REQUEST";
+}
+
+export function EventPill({
+  event,
+  onClick,
+}) {
   const className =
-    statusStyle[event.status] ||
+    STATUS_STYLE[
+      event.status
+    ] ||
     "border-outline-variant bg-surface text-on-surface";
+
+  const sourceLabel =
+    getSourceLabel(
+      event.source,
+    );
 
   return (
     <button
       type="button"
-      onClick={() => onClick?.(event)}
+      onClick={() =>
+        onClick?.(
+          event,
+        )
+      }
       className={`w-full rounded-lg border px-3 py-2 text-left transition-all hover:opacity-80 ${className}`}
     >
-      <p className="truncate font-label-md text-label-md">
-        REQUEST • {event.title}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate font-label-md text-label-md">
+          {sourceLabel} •{" "}
+          {event.title}
+        </p>
 
-      <p className="truncate font-label-sm text-label-sm opacity-80">
-        {event.subtitle}
+        {event.timeLabel && (
+          <span className="shrink-0 font-label-sm text-[10px] opacity-75">
+            {
+              event.timeLabel
+            }
+          </span>
+        )}
+      </div>
+
+      <p className="mt-0.5 truncate font-label-sm text-label-sm opacity-80">
+        {
+          event.locationLabel ||
+          event.subtitle
+        }
       </p>
     </button>
   );

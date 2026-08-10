@@ -6,12 +6,20 @@ import {
   useState,
 } from "react";
 
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+} from "next/navigation";
 
 import AppIcon from "@/components/global/AppIcon";
 
-import { useAuth } from "@/context/AuthContext";
-import { useDb } from "@/context/DbContext";
+import {
+  useAuth,
+} from "@/context/AuthContext";
+
+import {
+  useDb,
+} from "@/context/DbContext";
+
 import {
   useOverlay,
 } from "@/context/ui/OverlayContext";
@@ -26,24 +34,41 @@ const DATE_LOCKS_COLLECTION =
 const ORDERS_ROUTE =
   "/admin/orders";
 
+function normalizeStatus(
+  value,
+) {
+  return String(
+    value ?? "",
+  )
+    .trim()
+    .toLowerCase();
+}
+
 function parseDateValue(
   date,
   dateKey,
 ) {
-  if (date instanceof Date) {
+  if (
+    date instanceof
+    Date
+  ) {
     return date;
   }
 
   if (
-    typeof dateKey === "string" &&
+    typeof dateKey ===
+      "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(
       dateKey,
     )
   ) {
-    const [year, month, day] =
-      dateKey
-        .split("-")
-        .map(Number);
+    const [
+      year,
+      month,
+      day,
+    ] = dateKey
+      .split("-")
+      .map(Number);
 
     return new Date(
       year,
@@ -53,7 +78,10 @@ function parseDateValue(
   }
 
   const parsedDate =
-    new Date(date ?? dateKey);
+    new Date(
+      date ??
+        dateKey,
+    );
 
   return Number.isNaN(
     parsedDate.getTime(),
@@ -73,18 +101,27 @@ function formatFullDate(
     );
 
   if (!parsedDate) {
-    return dateKey || "Tanggal";
+    return (
+      dateKey ||
+      "Tanggal"
+    );
   }
 
   return new Intl.DateTimeFormat(
     "id-ID",
     {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
+      weekday:
+        "long",
+      day:
+        "2-digit",
+      month:
+        "long",
+      year:
+        "numeric",
     },
-  ).format(parsedDate);
+  ).format(
+    parsedDate,
+  );
 }
 
 function sortEvents(events) {
@@ -93,8 +130,13 @@ function sortEvents(events) {
     schedule: 1,
   };
 
-  return [...events].sort(
-    (first, second) => {
+  return [
+    ...events,
+  ].sort(
+    (
+      first,
+      second,
+    ) => {
       const sourceDifference =
         (sourceOrder[
           first.source
@@ -104,16 +146,37 @@ function sortEvents(events) {
         ] ?? 9);
 
       if (
-        sourceDifference !== 0
+        sourceDifference !==
+        0
       ) {
         return sourceDifference;
       }
 
+      const timeDifference =
+        String(
+          first.timeLabel ??
+            "",
+        ).localeCompare(
+          String(
+            second.timeLabel ??
+              "",
+          ),
+        );
+
+      if (
+        timeDifference !==
+        0
+      ) {
+        return timeDifference;
+      }
+
       return String(
-        first.title ?? "",
+        first.title ??
+          "",
       ).localeCompare(
         String(
-          second.title ?? "",
+          second.title ??
+            "",
         ),
       );
     },
@@ -125,8 +188,11 @@ export default function EventListDate({
   dateKey,
   events = [],
 }) {
-  const db = useDb();
-  const router = useRouter();
+  const db =
+    useDb();
+
+  const router =
+    useRouter();
 
   const {
     user,
@@ -159,18 +225,49 @@ export default function EventListDate({
   const sortedEvents =
     useMemo(
       () =>
-        sortEvents(events),
-      [events],
+        sortEvents(
+          events,
+        ),
+      [
+        events,
+      ],
     );
 
-  const isLocked =
+  /*
+   * Schedule terbaru tidak perlu membuat DateLocks tambahan.
+   * Adanya schedule `booked` / `conflict` sendiri sudah menjadi
+   * source-of-truth bahwa tanggal tidak boleh dibuka manual.
+   */
+  const hasActiveSchedule =
+    useMemo(
+      () =>
+        sortedEvents.some(
+          (event) =>
+            event.source ===
+              "schedule" &&
+            [
+              "booked",
+              "confirmed",
+              "in_progress",
+              "conflict",
+            ].includes(
+              normalizeStatus(
+                event.status,
+              ),
+            ),
+        ),
+      [
+        sortedEvents,
+      ],
+    );
+
+  const isManualLocked =
     dateLock?.status ===
     "locked";
 
-  const isScheduleLock =
-    isLocked &&
-    dateLock?.source ===
-      "schedule";
+  const isEffectiveLocked =
+    isManualLocked ||
+    hasActiveSchedule;
 
   const fullDate =
     formatFullDate(
@@ -184,13 +281,21 @@ export default function EventListDate({
 
   useEffect(() => {
     if (!dateKey) {
-      setDateLock(null);
-      setLockLoading(false);
+      setDateLock(
+        null,
+      );
+      setLockLoading(
+        false,
+      );
       return undefined;
     }
 
-    setLockLoading(true);
-    setLockError(null);
+    setLockLoading(
+      true,
+    );
+    setLockError(
+      null,
+    );
 
     const unsubscribe =
       db.listenDoc(
@@ -207,7 +312,9 @@ export default function EventListDate({
               : null,
           );
 
-          setLockLoading(false);
+          setLockLoading(
+            false,
+          );
         },
         (error) => {
           console.error(
@@ -219,7 +326,9 @@ export default function EventListDate({
             "Status kunci tanggal gagal dimuat.",
           );
 
-          setLockLoading(false);
+          setLockLoading(
+            false,
+          );
         },
       );
 
@@ -240,16 +349,22 @@ export default function EventListDate({
         !dateKey ||
         lockLoading ||
         lockProcessing ||
-        isScheduleLock
+        hasActiveSchedule
       ) {
         return;
       }
 
-      setLockProcessing(true);
-      setLockError(null);
+      setLockProcessing(
+        true,
+      );
+      setLockError(
+        null,
+      );
 
       try {
-        if (isLocked) {
+        if (
+          isManualLocked
+        ) {
           await db.deleteDoc(
             DATE_LOCKS_COLLECTION,
             dateKey,
@@ -265,18 +380,24 @@ export default function EventListDate({
           DATE_LOCKS_COLLECTION,
           dateKey,
           {
-            date: dateKey,
-            status: "locked",
-            source: "manual",
+            date:
+              dateKey,
+            status:
+              "locked",
+            source:
+              "manual",
 
             reason:
               "Tanggal dikunci melalui kalender admin.",
 
-            bookingId: null,
-            scheduleId: null,
+            bookingId:
+              null,
+            scheduleId:
+              null,
 
             lockedBy:
-              user?.uid ?? null,
+              user?.uid ??
+              null,
 
             createdAt:
               timestamp,
@@ -296,7 +417,9 @@ export default function EventListDate({
             "Tanggal gagal diperbarui.",
         );
       } finally {
-        setLockProcessing(false);
+        setLockProcessing(
+          false,
+        );
       }
     };
 
@@ -306,7 +429,10 @@ export default function EventListDate({
 
   const handleEventClick =
     (event) => {
-      if (!event?.bookingId) {
+      if (
+        !event
+          ?.bookingId
+      ) {
         setLockError(
           "Event ini tidak memiliki bookingId.",
         );
@@ -325,10 +451,6 @@ export default function EventListDate({
 
   return (
     <section className="flex max-h-[88dvh] w-[min(720px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-2xl">
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
       <header className="shrink-0 border-b border-outline-variant/20 bg-surface-container-lowest/95 px-5 py-5 backdrop-blur-xl sm:px-7">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
@@ -337,7 +459,9 @@ export default function EventListDate({
             </p>
 
             <h2 className="mt-2 font-headline-md text-headline-md text-on-surface">
-              {fullDate}
+              {
+                fullDate
+              }
             </h2>
           </div>
 
@@ -356,10 +480,9 @@ export default function EventListDate({
           </button>
         </div>
 
-        {/* Lock control */}
         <div
           className={`mt-5 rounded-xl border p-4 transition-colors ${
-            isLocked
+            isEffectiveLocked
               ? "border-error/20 bg-error-container/35"
               : "border-outline-variant/25 bg-surface-container-low"
           }`}
@@ -368,22 +491,24 @@ export default function EventListDate({
             <div className="min-w-0">
               <p
                 className={`font-label-md text-label-md ${
-                  isLocked
+                  isEffectiveLocked
                     ? "text-error"
                     : "text-on-surface"
                 }`}
               >
-                {isScheduleLock
-                  ? "Terkunci Otomatis"
+                {hasActiveSchedule
+                  ? "Terkunci oleh Schedule"
                   : "Kunci Tanggal"}
               </p>
 
               <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
                 {lockLoading
                   ? "Memuat status tanggal..."
-                  : isLocked
-                    ? "Tanggal Terkunci, client tidak bisa melakukan booking di tanggal ini."
-                    : "Tanggal tersedia, client masih dapat melakukan booking di tanggal ini."}
+                  : hasActiveSchedule
+                    ? "Tanggal sudah memiliki schedule aktif. Client tidak dapat melakukan booking baru di tanggal ini."
+                    : isManualLocked
+                      ? "Tanggal dikunci manual. Client tidak dapat melakukan booking di tanggal ini."
+                      : "Tanggal tersedia. Client masih dapat melakukan booking di tanggal ini."}
               </p>
             </div>
 
@@ -391,26 +516,26 @@ export default function EventListDate({
               type="button"
               role="switch"
               aria-checked={
-                isLocked
+                isEffectiveLocked
               }
               aria-label="Kunci tanggal"
               disabled={
                 lockLoading ||
                 lockProcessing ||
-                isScheduleLock
+                hasActiveSchedule
               }
               onClick={
                 handleToggleLock
               }
               className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-                isLocked
+                isEffectiveLocked
                   ? "bg-error"
                   : "bg-outline-variant"
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
               <span
                 className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-                  isLocked
+                  isEffectiveLocked
                     ? "translate-x-6"
                     : "translate-x-1"
                 }`}
@@ -418,9 +543,9 @@ export default function EventListDate({
             </button>
           </div>
 
-          {isScheduleLock && (
+          {hasActiveSchedule && (
             <p className="mt-3 border-t border-error/15 pt-3 font-label-sm text-label-sm text-error">
-              Tanggal ini dikunci oleh schedule aktif dan tidak dapat dibuka secara manual.
+              Kunci schedule bersifat otomatis dan tidak dapat dibuka secara manual selama schedule masih aktif.
             </p>
           )}
 
@@ -429,15 +554,13 @@ export default function EventListDate({
               role="alert"
               className="mt-3 border-t border-error/15 pt-3 font-label-sm text-label-sm text-error"
             >
-              {lockError}
+              {
+                lockError
+              }
             </p>
           )}
         </div>
       </header>
-
-      {/* =====================================================
-          ALL EVENTS — FILTER KALENDER TIDAK BERLAKU
-      ===================================================== */}
 
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
         <div className="mb-4 flex items-center justify-between gap-4">
@@ -447,16 +570,20 @@ export default function EventListDate({
             </p>
 
             <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
-              Menampilkan pesanan dan schedule pada tanggal ini tanpa mengikuti filter kalender.
+              Pesanan pending dan schedule aktif pada tanggal ini.
             </p>
           </div>
 
           <span className="inline-flex shrink-0 rounded-full bg-surface-container-high px-3 py-1.5 font-label-sm text-label-sm text-on-surface-variant">
-            {sortedEvents.length} event
+            {
+              sortedEvents.length
+            }{" "}
+            event
           </span>
         </div>
 
-        {sortedEvents.length > 0 ? (
+        {sortedEvents.length >
+        0 ? (
           <div className="space-y-3">
             {sortedEvents.map(
               (event) => (
@@ -467,19 +594,32 @@ export default function EventListDate({
                   className="rounded-xl border border-outline-variant/25 bg-surface-bright/70 p-3 transition-colors hover:border-outline-variant/60 hover:bg-surface-bright"
                 >
                   <EventPill
-                    event={event}
+                    event={
+                      event
+                    }
                     onClick={
                       handleEventClick
                     }
                   />
 
-                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-outline-variant/20 pt-3">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      {event.source ===
-                      "schedule"
-                        ? "Terjadwal"
-                        : "Pesanan"}
-                    </span>
+                  <div className="mt-3 grid gap-2 border-t border-outline-variant/20 pt-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <div className="min-w-0 space-y-1">
+                      {event.bookingCode && (
+                        <p className="truncate font-label-sm text-label-sm text-on-surface-variant">
+                          {
+                            event.bookingCode
+                          }
+                        </p>
+                      )}
+
+                      {event.packageName && (
+                        <p className="truncate font-label-sm text-label-sm text-on-surface">
+                          {
+                            event.packageName
+                          }
+                        </p>
+                      )}
+                    </div>
 
                     <span className="inline-flex items-center gap-1.5 font-label-sm text-label-sm text-primary">
                       Buka pesanan

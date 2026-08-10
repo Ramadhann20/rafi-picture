@@ -16,6 +16,10 @@ import {
   uploadImageBuffer,
 } from "@/lib/cloudinary";
 
+import {
+  notifyAdmins,
+} from "@/lib/adminNotifications";
+
 export const runtime =
   "nodejs";
 
@@ -167,6 +171,25 @@ function getFileSignature(
   return null;
 }
 
+function formatCurrency(
+  value,
+  currency = "IDR",
+) {
+  return new Intl.NumberFormat(
+    "id-ID",
+    {
+      style:
+        "currency",
+      currency,
+      maximumFractionDigits:
+        0,
+    },
+  ).format(
+    Number(value) ||
+      0,
+  );
+}
+
 export async function POST(
   request,
 ) {
@@ -302,7 +325,7 @@ export async function POST(
       !invoiceSnapshot.exists
     ) {
       return jsonError(
-        "Invoice deposit tidak ditemukan.",
+        "Invoice pembayaran tidak ditemukan.",
         404,
       );
     }
@@ -323,13 +346,32 @@ export async function POST(
       );
     }
 
-    if (
+    const bookingStatus =
       normalizeBookingStatus(
         booking?.status,
-      ) !== "approved"
+      );
+
+    const invoiceType =
+      String(
+        invoice?.type || "",
+      ).toLowerCase();
+
+    const allowedBookingStatus =
+      invoiceType === "deposit"
+        ? bookingStatus ===
+          "approved"
+        : invoiceType === "final"
+          ? bookingStatus ===
+            "in_progress"
+          : false;
+
+    if (
+      !allowedBookingStatus
     ) {
       return jsonError(
-        "Bukti pembayaran hanya dapat dikirim saat booking berstatus approved.",
+        invoiceType === "final"
+          ? "Bukti pelunasan hanya dapat dikirim setelah invoice pelunasan diterbitkan."
+          : "Bukti DP hanya dapat dikirim saat booking menunggu pembayaran DP.",
         409,
       );
     }
@@ -337,13 +379,34 @@ export async function POST(
     if (
       invoice?.bookingId !==
         bookingId ||
-      invoice?.type !==
-        "deposit" ||
+      ![
+        "deposit",
+        "final",
+      ].includes(
+        invoiceType,
+      ) ||
       invoice?.status ===
         "void"
     ) {
       return jsonError(
-        "Invoice deposit tidak sesuai dengan booking.",
+        "Invoice pembayaran tidak sesuai dengan booking.",
+        409,
+      );
+    }
+
+    if (
+      ![
+        "issued",
+        "overdue",
+      ].includes(
+        String(
+          invoice?.status ||
+            "",
+        ).toLowerCase(),
+      )
+    ) {
+      return jsonError(
+        "Invoice ini sudah tidak menerima pembayaran baru.",
         409,
       );
     }
@@ -443,6 +506,7 @@ export async function POST(
           false,
         tags: [
           "bank-transfer",
+          invoiceType,
           bookingId,
           invoiceId,
         ],
@@ -457,6 +521,8 @@ export async function POST(
           invoice_number:
             invoice?.invoiceNumber ||
             "",
+          invoice_type:
+            invoiceType,
           client_uid:
             decodedToken.uid,
           payment_reference:
@@ -487,6 +553,12 @@ export async function POST(
     const paymentPayload = {
       bookingId,
       invoiceId,
+      invoiceType,
+      paymentStage:
+        invoiceType ===
+          "final"
+          ? "settlement"
+          : "deposit",
       clientId:
         decodedToken.uid,
 
@@ -567,19 +639,40 @@ export async function POST(
 
     batch.update(
       bookingSnapshot.ref,
-      {
-        status:
-          "confirmed",
+      invoiceType ===
+        "final"
+        ? {
+            status:
+              "in_progress",
 
-        latestPaymentId:
-          paymentRef.id,
+            paymentStatus:
+              "final_pending_verification",
 
-        paymentProofSubmittedAt:
-          serverTimestamp,
+            latestPaymentId:
+              paymentRef.id,
 
-        updatedAt:
-          serverTimestamp,
-      },
+            finalPaymentProofSubmittedAt:
+              serverTimestamp,
+
+            updatedAt:
+              serverTimestamp,
+          }
+        : {
+            status:
+              "confirmed",
+
+            paymentStatus:
+              "deposit_pending_verification",
+
+            latestPaymentId:
+              paymentRef.id,
+
+            paymentProofSubmittedAt:
+              serverTimestamp,
+
+            updatedAt:
+              serverTimestamp,
+          },
     );
 
     try {
@@ -604,6 +697,90 @@ export async function POST(
       throw error;
     }
 
+    /*
+     * Notifikasi admin tidak membatalkan payment submission jika
+     * Gmail gagal. Firestore notification tetap menjadi audit log.
+     */
+    try {
+      const isFinal =
+        invoiceType ===
+        "final";
+
+      const bookingCode =
+        booking?.bookingCode ||
+        bookingId;
+
+      const clientName =
+        booking?.client
+          ?.fullName ||
+        "Client";
+
+      const paymentLabel =
+        isFinal
+          ? "Pelunasan"
+          : "DP";
+
+      const title =
+        `Bukti ${paymentLabel} Baru ${bookingCode}`;
+
+      const message =
+`${clientName} mengirim bukti pembayaran ${paymentLabel}.
+
+Booking: ${bookingCode}
+Invoice: ${invoice?.invoiceNumber || invoiceId}
+Reference: ${referenceNumber}
+Nominal: ${formatCurrency(amount, currency)}`;
+
+      await notifyAdmins({
+        eventKey:
+          `payment-submitted-${paymentRef.id}`,
+
+        type:
+          isFinal
+            ? "final_payment_submitted"
+            : "deposit_payment_submitted",
+
+        title,
+        message,
+
+        bookingId,
+        bookingCode,
+
+        paymentId:
+          paymentRef.id,
+
+        invoiceId,
+
+        invoiceType,
+
+        route:
+          `/admin/payments?paymentId=${encodeURIComponent(
+            paymentRef.id,
+          )}`,
+
+        metadata: {
+          paymentStage:
+            isFinal
+              ? "settlement"
+              : "deposit",
+          amount,
+          currency,
+          referenceNumber,
+          clientName,
+          invoiceNumber:
+            invoice?.invoiceNumber ||
+            null,
+        },
+      });
+    } catch (
+      notificationError
+    ) {
+      console.error(
+        "PAYMENT ADMIN NOTIFICATION ERROR:",
+        notificationError,
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       message:
@@ -614,6 +791,7 @@ export async function POST(
         referenceNumber,
         status:
           "pending_verification",
+        invoiceType,
         proof: {
           url:
             uploadedProof.secureUrl,

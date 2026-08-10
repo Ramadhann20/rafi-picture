@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase-config";
 import Review from "./sections/Review";
 import CrewAssignment from "./sections/CrewAssignment";
 import BillingPayment from "./sections/BillingPayment";
+import FinalSettlement from "./sections/FinalSettlement";
 
 const REQUIRED_CREW_COUNT = 3;
 
@@ -710,7 +711,7 @@ export default function ScheduleOrder({
             <p className="mt-3 max-w-2xl font-body-md text-body-md text-on-surface-variant">
               {isPreparationMode
                 ? "Review the booking, confirm the production crew, then prepare billing. Firestore is updated only after Final Confirmation."
-                : "View the booking snapshot, assigned crew, invoices, and payment activity."}
+                : "View the booking snapshot, assigned crew, invoices, payment activity, and prepare the final settlement invoice after DP verification."}
             </p>
           </div>
 
@@ -849,6 +850,18 @@ export default function ScheduleOrder({
             />
           )}
         </StepContainer>
+
+        {!isPreparationMode && (
+          <>
+            <SectionDivider />
+
+            <FinalSettlement
+              booking={booking}
+              invoices={invoices}
+              payments={payments}
+            />
+          </>
+        )}
 
         {isPreparationMode && (
           <SubmitBookingPanel

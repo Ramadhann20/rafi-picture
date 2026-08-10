@@ -1,9 +1,14 @@
 function hashToPositiveInteger(value) {
   let hash = 2166136261;
 
-  const input = String(value ?? "");
+  const input =
+    String(value ?? "");
 
-  for (let index = 0; index < input.length; index += 1) {
+  for (
+    let index = 0;
+    index < input.length;
+    index += 1
+  ) {
     hash ^= input.charCodeAt(index);
 
     hash = Math.imul(
@@ -86,6 +91,31 @@ export function buildInvoiceSequence(
   );
 }
 
+function buildPdfFileName(
+  documentNumber,
+  fallback,
+) {
+  const safe =
+    String(
+      documentNumber ||
+        fallback,
+    )
+      .replace(
+        /[^a-zA-Z0-9_-]+/g,
+        "-",
+      )
+      .replace(
+        /-+/g,
+        "-",
+      )
+      .replace(
+        /^-|-$/g,
+        "",
+      );
+
+  return `${safe || fallback}.pdf`;
+}
+
 export function buildDepositInvoiceNumber(
   booking,
 ) {
@@ -103,23 +133,62 @@ export function buildDepositInvoiceNumber(
 export function buildDepositInvoiceFileName(
   invoiceNumber,
 ) {
-  const safe =
-    String(
-      invoiceNumber ||
-        "INV-DP",
-    )
-      .replace(
-        /[^a-zA-Z0-9_-]+/g,
-        "-",
-      )
-      .replace(
-        /-+/g,
-        "-",
-      )
-      .replace(
-        /^-|-$/g,
-        "",
-      );
+  return buildPdfFileName(
+    invoiceNumber,
+    "INV-DP",
+  );
+}
 
-  return `${safe || "INV-DP"}.pdf`;
+/**
+ * Main invoice / invoice pelunasan.
+ * Dibuat setelah DP sudah verified.
+ */
+export function buildMainInvoiceNumber(
+  booking,
+) {
+  const year =
+    getInvoiceYear(booking);
+
+  const sequence =
+    buildInvoiceSequence(
+      booking,
+    );
+
+  return `INV/${year}/${sequence}`;
+}
+
+export function buildMainInvoiceFileName(
+  invoiceNumber,
+) {
+  return buildPdfFileName(
+    invoiceNumber,
+    "INV",
+  );
+}
+
+/**
+ * Kuitansi full payment.
+ * Nomor mengikuti family booking yang sama agar mudah ditelusuri.
+ */
+export function buildPaymentReceiptNumber(
+  booking,
+) {
+  const year =
+    getInvoiceYear(booking);
+
+  const sequence =
+    buildInvoiceSequence(
+      booking,
+    );
+
+  return `PYI/${year}/${sequence}`;
+}
+
+export function buildPaymentReceiptFileName(
+  receiptNumber,
+) {
+  return buildPdfFileName(
+    receiptNumber,
+    "PYI",
+  );
 }

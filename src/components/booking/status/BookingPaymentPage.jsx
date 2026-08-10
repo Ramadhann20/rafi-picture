@@ -271,8 +271,48 @@ export default function BookingPaymentPage({
     BOOKING_PAYMENT_STATUS[bookingStatus] ??
     BOOKING_PAYMENT_STATUS.approved;
 
-  const canUpload = bookingStatus === "approved";
-  const underReview = bookingStatus === "confirmed";
+  const invoiceType =
+    String(
+      invoice?.type ||
+        "deposit",
+    ).toLowerCase();
+
+  const isFinalPayment =
+    invoiceType === "final";
+
+  const canUpload =
+    Boolean(invoice?.id) &&
+    [
+      "issued",
+      "overdue",
+    ].includes(
+      String(
+        invoice?.status ||
+          "",
+      ).toLowerCase(),
+    );
+
+  const underReview =
+    !canUpload &&
+    (
+      bookingStatus ===
+        "confirmed" ||
+      booking?.paymentStatus ===
+        "final_pending_verification" ||
+      booking?.paymentStatus ===
+        "deposit_pending_verification"
+    );
+
+  const displayStatusConfig =
+    isFinalPayment &&
+    canUpload
+      ? {
+          label:
+            "Menunggu Pelunasan",
+          badgeClass:
+            "bg-secondary-container text-on-secondary-container",
+        }
+      : statusConfig;
 
   const currency =
     invoice?.currency ??
@@ -291,8 +331,20 @@ export default function BookingPaymentPage({
         invoiceItems.reduce((sum, item) => sum + item.amount, 0),
     ) || 0;
 
-  const depositAmount =
-    Number(invoice?.amount) || packageTotal * 0.3;
+  const invoiceAmount =
+    Number(
+      invoice?.amountDue ??
+        invoice?.amount,
+    ) ||
+    (
+      isFinalPayment
+        ? Math.max(
+            0,
+            packageTotal * 0.7,
+          )
+        : packageTotal *
+          0.3
+    );
 
   const verifiedPayments = useMemo(
     () =>
@@ -386,7 +438,11 @@ export default function BookingPaymentPage({
     setFormError(null);
 
     if (!invoice?.id) {
-      setFormError("Invoice deposit belum tersedia.");
+      setFormError(
+        isFinalPayment
+          ? "Invoice pelunasan belum tersedia."
+          : "Invoice DP belum tersedia.",
+      );
       return;
     }
 
@@ -406,7 +462,7 @@ export default function BookingPaymentPage({
       await onSubmitPayment({
         bookingId: booking.id,
         invoiceId: invoice.id,
-        amount: depositAmount,
+        amount: invoiceAmount,
         currency,
         proofFile,
       });
@@ -446,13 +502,17 @@ export default function BookingPaymentPage({
           </h1>
 
           <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-            {getClientDisplayName(booking.client)}, selesaikan pembayaran
-            deposit dan unggah bukti transfer untuk melanjutkan booking.
+            {getClientDisplayName(
+              booking.client,
+            )},{" "}
+            {isFinalPayment
+              ? "selesaikan pembayaran pelunasan dan unggah bukti transfer untuk menyelesaikan kewajiban pembayaran booking."
+              : "selesaikan pembayaran DP dan unggah bukti transfer untuk melanjutkan booking."}
           </p>
         </div>
 
         <div
-          className={`inline-flex w-fit items-center gap-2 rounded-lg px-4 py-2 ${statusConfig.badgeClass}`}
+          className={`inline-flex w-fit items-center gap-2 rounded-lg px-4 py-2 ${displayStatusConfig.badgeClass}`}
         >
           <AppIcon
             name={underReview ? "verified" : "payments"}
@@ -460,7 +520,7 @@ export default function BookingPaymentPage({
           />
 
           <span className="font-label-md text-label-md">
-            Status: {statusConfig.label}
+            Status: {displayStatusConfig.label}
           </span>
         </div>
       </header>
@@ -472,7 +532,8 @@ export default function BookingPaymentPage({
             invoice={invoice}
             invoiceItems={invoiceItems}
             packageTotal={packageTotal}
-            depositAmount={depositAmount}
+            invoiceAmount={invoiceAmount}
+            invoiceType={invoiceType}
             currency={currency}
           />
 
@@ -497,6 +558,11 @@ export default function BookingPaymentPage({
             dragActive={dragActive}
             formError={formError}
             submitting={submitting}
+            paymentLabel={
+              isFinalPayment
+                ? "Pelunasan"
+                : "DP"
+            }
             inputRef={inputRef}
             onFileChange={handleInputChange}
             onChooseFile={() => inputRef.current?.click()}
@@ -518,7 +584,8 @@ function InvoiceCard({
   invoice,
   invoiceItems,
   packageTotal,
-  depositAmount,
+  invoiceAmount,
+  invoiceType,
   currency,
 }) {
   const invoicePdf =
@@ -582,11 +649,17 @@ function InvoiceCard({
 
         <div className="flex items-center justify-between gap-5 text-error">
           <span className="font-label-md text-label-md">
-            DP yang Harus Dibayar
+            {invoiceType ===
+            "final"
+              ? "Pelunasan yang Harus Dibayar"
+              : "DP yang Harus Dibayar"}
           </span>
 
           <span className="font-label-md text-label-md">
-            {formatCurrency(depositAmount, currency)}
+            {formatCurrency(
+              invoiceAmount,
+              currency,
+            )}
           </span>
         </div>
       </div>
@@ -621,7 +694,10 @@ function InvoiceCard({
                   invoicePdf.bytes,
                 )}
                 {" • "}
-                Invoice Down Payment
+                {invoiceType ===
+                "final"
+                  ? "Invoice Pelunasan"
+                  : "Invoice Down Payment"}
               </p>
             </div>
 
@@ -646,8 +722,10 @@ function InvoiceCard({
         />
 
         <p className="font-label-sm text-label-sm text-on-surface-variant">
-          Booking akan diamankan setelah pembayaran deposit diverifikasi
-          oleh admin. Simpan bukti transfer sampai proses verifikasi selesai.
+          {invoiceType ===
+          "final"
+            ? "Setelah pelunasan diverifikasi, sistem akan menerbitkan kuitansi pembayaran 100% dan mengirimkannya melalui email."
+            : "Booking akan diamankan setelah pembayaran DP diverifikasi oleh admin. Simpan bukti transfer sampai proses verifikasi selesai."}
         </p>
       </div>
     </article>
@@ -835,6 +913,7 @@ function PaymentUploadCard({
   dragActive,
   formError,
   submitting,
+  paymentLabel = "DP",
   inputRef,
   onFileChange,
   onChooseFile,

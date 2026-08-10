@@ -234,6 +234,27 @@ function getInvoiceLabel(invoice) {
   );
 }
 
+function getInvoiceTypeLabel(invoice) {
+  return invoice?.type === "final"
+    ? "Invoice Pelunasan"
+    : "Invoice Down Payment";
+}
+
+function getReceiptUrl(payment) {
+  return (
+    payment?.receipt?.url ??
+    payment?.receiptUrl ??
+    null
+  );
+}
+
+function getReceiptFileName(payment) {
+  return (
+    payment?.receipt?.fileName ??
+    `${payment?.receiptNumber ?? "receipt"}.pdf`
+  );
+}
+
 
 function getLocationLabel(location) {
   if (
@@ -398,6 +419,11 @@ export default function Payments() {
   const [
     actionError,
     setActionError,
+  ] = useState(null);
+
+  const [
+    reviewNotice,
+    setReviewNotice,
   ] = useState(null);
 
   /* =========================================================
@@ -745,12 +771,14 @@ export default function Payments() {
       setActiveFilter(filterId);
       setSelectedPaymentId(null);
       setActionError(null);
+      setReviewNotice(null);
     };
 
   const handleCloseDetail =
     () => {
       setSelectedPaymentId(null);
       setActionError(null);
+      setReviewNotice(null);
 
       if (
         typeof window !==
@@ -780,6 +808,7 @@ export default function Payments() {
       );
 
       setActionError(null);
+      setReviewNotice(null);
     };
 
   const handleOpenProof =
@@ -870,8 +899,17 @@ export default function Payments() {
       setActionError(null);
 
       try {
-        await submitPaymentReview(
-          "approve",
+        const result =
+          await submitPaymentReview(
+            "approve",
+          );
+
+        setReviewNotice(
+          result?.invoiceType === "final"
+            ? result?.email?.sent === false
+              ? "Pelunasan terverifikasi dan kuitansi 100% sudah dibuat, tetapi email kuitansi belum terkirim."
+              : "Pelunasan terverifikasi. Kuitansi pembayaran 100% sudah dibuat dan dikirim ke client."
+            : "DP terverifikasi. Booking masuk tahap in progress dan invoice pelunasan sekarang dapat dibuat dari Booking Detail.",
         );
       } catch (error) {
         console.error(
@@ -906,8 +944,15 @@ export default function Payments() {
       setActionError(null);
 
       try {
-        await submitPaymentReview(
-          "reject",
+        const result =
+          await submitPaymentReview(
+            "reject",
+          );
+
+        setReviewNotice(
+          result?.invoiceType === "final"
+            ? "Bukti pelunasan ditolak. Client dapat upload bukti pelunasan baru."
+            : "Bukti DP ditolak. Client dapat upload bukti DP baru.",
         );
       } catch (error) {
         console.error(
@@ -968,8 +1013,7 @@ export default function Payments() {
         </h1>
 
         <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          Review payment proofs submitted by clients and
-          continue approved bookings into production.
+          Review bukti pembayaran DP dan pelunasan. ACC DP membuka tahap invoice pelunasan, sedangkan ACC pelunasan otomatis membuat kuitansi 100%.
         </p>
       </header>
 
@@ -1448,6 +1492,16 @@ export default function Payments() {
                         />
 
                         <DetailRow
+                          label="Payment Stage"
+                          value={
+                            selectedInvoice?.type ===
+                            "final"
+                              ? "Pelunasan"
+                              : "Down Payment"
+                          }
+                        />
+
+                        <DetailRow
                           label="Payment Method"
                           value={
                             getPaymentMethodLabel(
@@ -1524,7 +1578,9 @@ export default function Payments() {
                             </p>
 
                             <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
-                              Invoice Down Payment
+                              {getInvoiceTypeLabel(
+                                selectedInvoice,
+                              )}
                             </p>
                           </div>
 
@@ -1534,6 +1590,53 @@ export default function Payments() {
                             className="shrink-0 text-secondary"
                           />
                         </a>
+                      )}
+
+                      {getReceiptUrl(
+                        selectedPayment,
+                      ) && (
+                        <a
+                          href={getReceiptUrl(
+                            selectedPayment,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 transition-colors hover:border-primary/50"
+                        >
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary">
+                            <AppIcon
+                              name="verified"
+                              size={20}
+                            />
+                          </div>
+
+                          <div className="min-w-0 grow">
+                            <p className="truncate font-label-md text-label-md text-on-surface">
+                              {getReceiptFileName(
+                                selectedPayment,
+                              )}
+                            </p>
+
+                            <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
+                              Kuitansi Pembayaran 100%
+                            </p>
+                          </div>
+
+                          <AppIcon
+                            name="visibility"
+                            size={19}
+                            className="shrink-0 text-primary"
+                          />
+                        </a>
+                      )}
+
+                      {reviewNotice && (
+                        <div
+                          role="status"
+                          className="rounded-xl border border-primary/20 bg-primary/5 p-4 font-body-md text-body-md text-primary"
+                        >
+                          {reviewNotice}
+                        </div>
                       )}
 
                       {actionError && (
@@ -1567,7 +1670,10 @@ export default function Payments() {
                             {processingAction ===
                             "approve"
                               ? "Processing..."
-                              : "Terima Pembayaran"}
+                              : selectedInvoice?.type ===
+                                  "final"
+                                ? "ACC Pelunasan"
+                                : "ACC DP"}
                           </button>
 
                           <button
@@ -1598,8 +1704,18 @@ export default function Payments() {
                         "verified" && (
                         <ReviewResult
                           icon="verified"
-                          title="Payment accepted"
-                          description="Payment verified, deposit invoice marked paid, booking moved to production, and the event date is now booked in the schedule."
+                          title={
+                            selectedInvoice?.type ===
+                            "final"
+                              ? "Pelunasan diterima"
+                              : "DP diterima"
+                          }
+                          description={
+                            selectedInvoice?.type ===
+                            "final"
+                              ? "Seluruh pembayaran sudah lunas. Sistem membuat kuitansi sebesar 100% booking total dan mengirimkannya ke client."
+                              : "DP sudah terverifikasi. Booking masuk tahap in progress dan admin dapat membuat invoice pelunasan dari Booking Detail."
+                          }
                         />
                       )}
 
@@ -1608,7 +1724,12 @@ export default function Payments() {
                         <ReviewResult
                           icon="cancel"
                           title="Payment rejected"
-                          description="The booking has been returned to approved so the client can upload a new proof."
+                          description={
+                            selectedInvoice?.type ===
+                            "final"
+                              ? "Invoice pelunasan kembali issued dan client dapat upload bukti pelunasan baru."
+                              : "Booking kembali menunggu DP dan client dapat upload bukti DP baru."
+                          }
                           error
                         />
                       )}
