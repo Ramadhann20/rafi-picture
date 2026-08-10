@@ -9,69 +9,95 @@ const PAYMENTS_ROUTE = "/admin/payments";
 const INVOICE_STATUS = {
   draft: {
     label: "Draft",
-    badgeClass: "bg-surface-container-high text-on-surface-variant",
+    badgeClass:
+      "bg-surface-container-high text-on-surface-variant",
   },
 
   issued: {
     label: "Issued",
-    badgeClass: "bg-primary-container text-on-primary-container",
+    badgeClass:
+      "bg-primary-container text-on-primary-container",
   },
 
   paid: {
     label: "Paid",
-    badgeClass: "bg-primary text-on-primary",
+    badgeClass:
+      "bg-primary text-on-primary",
   },
 
   overdue: {
     label: "Overdue",
-    badgeClass: "bg-error-container text-error",
+    badgeClass:
+      "bg-error-container text-error",
   },
 
   void: {
     label: "Void",
-    badgeClass: "bg-error-container text-error",
+    badgeClass:
+      "bg-error-container text-error",
   },
 };
 
 const PAYMENT_STATUS = {
   unpaid: {
     label: "Unpaid",
-    badgeClass: "bg-surface-container-high text-on-surface-variant",
+    badgeClass:
+      "bg-surface-container-high text-on-surface-variant",
   },
 
   pending: {
     label: "Pending Verification",
-    badgeClass: "bg-secondary-container text-on-secondary-container",
+    badgeClass:
+      "bg-secondary-container text-on-secondary-container",
   },
 
   pending_verification: {
     label: "Pending Verification",
-    badgeClass: "bg-secondary-container text-on-secondary-container",
+    badgeClass:
+      "bg-secondary-container text-on-secondary-container",
   },
 
   paid: {
     label: "Paid",
-    badgeClass: "bg-primary text-on-primary",
+    badgeClass:
+      "bg-primary text-on-primary",
   },
 
   verified: {
     label: "Paid",
-    badgeClass: "bg-primary text-on-primary",
+    badgeClass:
+      "bg-primary text-on-primary",
   },
 
   rejected: {
     label: "Rejected",
-    badgeClass: "bg-error-container text-error",
+    badgeClass:
+      "bg-error-container text-error",
   },
 
   refunded: {
     label: "Refunded",
-    badgeClass: "bg-surface-container-highest text-on-surface",
+    badgeClass:
+      "bg-surface-container-highest text-on-surface",
   },
 };
 
 function toDate(value) {
   if (!value) return null;
+
+  if (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value)
+  ) {
+    const [year, month, day] =
+      value.split("-").map(Number);
+
+    return new Date(
+      year,
+      month - 1,
+      day,
+    );
+  }
 
   const date =
     typeof value?.toDate === "function"
@@ -84,21 +110,9 @@ function toDate(value) {
 }
 
 function formatDate(value) {
-  if (!value) return "-";
-
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [year, month, day] = value.split("-").map(Number);
-
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(year, month - 1, day));
-  }
-
   const date = toDate(value);
 
-  if (!date) return String(value);
+  if (!date) return "-";
 
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -135,35 +149,129 @@ function formatCurrency(value, currency = "IDR") {
   }).format(amount);
 }
 
+function formatFileSize(value) {
+  const bytes = Number(value) || 0;
+
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getDefaultDueDate() {
   const date = new Date();
   date.setDate(date.getDate() + 3);
 
   const year = date.getFullYear();
-
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-
-  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(
+    date.getMonth() + 1,
+  ).padStart(2, "0");
+  const day = String(
+    date.getDate(),
+  ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
-function createDepositDraft(booking) {
-  const packageTotal = Number(booking?.package?.price) || 0;
+function getBookingAmounts(booking) {
+  const packageAmount =
+    Math.max(
+      Number(booking?.package?.price) || 0,
+      0,
+    );
+
+  const travelCharge =
+    Math.max(
+      Number(
+        booking?.event?.location?.distanceCharge?.amount,
+      ) || 0,
+      0,
+    );
 
   return {
-    id: `local_${booking.id}_deposit`,
+    packageAmount,
+    travelCharge,
+    bookingTotal:
+      packageAmount + travelCharge,
+  };
+}
+
+function createInvoiceItems(booking) {
+  const {
+    packageAmount,
+    travelCharge,
+  } = getBookingAmounts(booking);
+
+  const items = [
+    {
+      id: "package-service",
+      label:
+        booking?.package?.name ??
+        "Package Service",
+      amount: packageAmount,
+    },
+  ];
+
+  if (travelCharge > 0) {
+    items.push({
+      id: "travel-charge",
+      label: "Travel Charge",
+      amount: travelCharge,
+    });
+  }
+
+  return items;
+}
+
+function createDepositDraft(booking) {
+  const {
+    packageAmount,
+    travelCharge,
+    bookingTotal,
+  } = getBookingAmounts(booking);
+
+  return {
+    id:
+      `local_${booking.id}_deposit`,
     bookingId: booking.id,
-    clientId: booking.client?.uid ?? null,
+    clientId:
+      booking.client?.uid ?? null,
+
     type: "deposit",
     revision: 1,
     invoiceNumber: null,
-    packageTotal,
-    amount: packageTotal * 0.3,
-    currency: booking.package?.currency ?? "IDR",
-    dueAt: getDefaultDueDate(),
+
+    /*
+     * packageTotal tetap diisi bookingTotal untuk compatibility
+     * dengan client payment page yang lama.
+     * Field eksplisit di bawah adalah source of truth baru.
+     */
+    packageTotal: bookingTotal,
+    packageAmount,
+    travelCharge,
+    bookingTotal,
+
+    items:
+      createInvoiceItems(booking),
+
+    amount:
+      Math.round(bookingTotal * 0.3),
+
+    currency:
+      booking.package?.currency ??
+      "IDR",
+
+    dueAt:
+      getDefaultDueDate(),
+
     status: "draft",
-    note: "30% booking deposit",
+    note:
+      "30% booking deposit",
     pdfUrl: null,
     issuedAt: null,
     isLocalDraft: true,
@@ -191,78 +299,156 @@ export default function BillingPayment({
   invoiceDraft = null,
   readOnly = false,
 
+  pdfPreview = null,
+  pdfReviewed = false,
+  pdfReviewOpen = false,
+  pdfGenerating = false,
+
+  onReviewPdfPreview,
   onInvoiceDraftChange,
 }) {
   const router = useRouter();
 
-  const currency = booking?.package?.currency ?? "IDR";
+  const currency =
+    booking?.package?.currency ??
+    "IDR";
 
-  const packageTotal = Number(booking?.package?.price) || 0;
+  const {
+    packageAmount,
+    travelCharge,
+    bookingTotal,
+  } = getBookingAmounts(booking);
 
   if (preparationMode) {
     return (
       <BillingPreparation
         booking={booking}
         currency={currency}
-        packageTotal={packageTotal}
+        packageAmount={packageAmount}
+        travelCharge={travelCharge}
+        bookingTotal={bookingTotal}
         invoiceDraft={invoiceDraft}
         readOnly={readOnly}
-        onInvoiceDraftChange={onInvoiceDraftChange}
+        pdfPreview={pdfPreview}
+        pdfReviewed={pdfReviewed}
+        pdfReviewOpen={pdfReviewOpen}
+        pdfGenerating={pdfGenerating}
+        onReviewPdfPreview={onReviewPdfPreview}
+        onInvoiceDraftChange={
+          onInvoiceDraftChange
+        }
       />
     );
   }
 
-  const activeInvoices = invoices.filter(
-    (invoice) => invoice.status !== "void",
-  );
-
-  const totalInvoiced = activeInvoices.reduce(
-    (total, invoice) => total + (Number(invoice.amount) || 0),
-    0,
-  );
-
-  const totalPaid = payments
-    .filter((payment) => ["paid", "verified"].includes(payment.status))
-    .reduce((total, payment) => total + (Number(payment.amount) || 0), 0);
-
-  const remainingBalance = Math.max(0, packageTotal - totalPaid);
-
-  const handleOpenPayment = (payment) => {
-    if (!payment?.id) return;
-
-    router.push(
-      `${PAYMENTS_ROUTE}?paymentId=${encodeURIComponent(payment.id)}`,
+  const activeInvoices =
+    invoices.filter(
+      (invoice) =>
+        invoice.status !== "void",
     );
-  };
+
+  const totalInvoiced =
+    activeInvoices.reduce(
+      (total, invoice) =>
+        total +
+        (Number(invoice.amount) || 0),
+      0,
+    );
+
+  const totalPaid =
+    payments
+      .filter((payment) =>
+        [
+          "paid",
+          "verified",
+        ].includes(
+          String(
+            payment.status ?? "",
+          ).toLowerCase(),
+        ),
+      )
+      .reduce(
+        (total, payment) =>
+          total +
+          (Number(payment.amount) || 0),
+        0,
+      );
+
+  const remainingBalance =
+    Math.max(
+      0,
+      bookingTotal -
+        totalPaid,
+    );
+
+  const handleOpenPayment =
+    (payment) => {
+      if (!payment?.id) return;
+
+      router.push(
+        `${PAYMENTS_ROUTE}?paymentId=${encodeURIComponent(
+          payment.id,
+        )}`,
+      );
+    };
 
   return (
     <section aria-labelledby="billing-payment-title">
       <SectionHeader
         title="Billing & Payment"
-        description="View invoices and client payment activity for this booking."
+        description="Review the latest booking total, issued invoices, and client payment activity."
       />
 
-      <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
-          label="Package Total"
-          value={formatCurrency(packageTotal, currency)}
+          label="Package"
+          value={formatCurrency(
+            packageAmount,
+            currency,
+          )}
         />
 
         <SummaryCard
-          label="Total Invoiced"
-          value={formatCurrency(totalInvoiced, currency)}
+          label="Travel Charge"
+          value={formatCurrency(
+            travelCharge,
+            currency,
+          )}
+        />
+
+        <SummaryCard
+          label="Booking Total"
+          value={formatCurrency(
+            bookingTotal,
+            currency,
+          )}
+          accent
         />
 
         <SummaryCard
           label="Total Paid"
-          value={formatCurrency(totalPaid, currency)}
+          value={formatCurrency(
+            totalPaid,
+            currency,
+          )}
         />
 
         <SummaryCard
-          label="Remaining Balance"
-          value={formatCurrency(remainingBalance, currency)}
+          label="Remaining"
+          value={formatCurrency(
+            remainingBalance,
+            currency,
+          )}
         />
       </div>
+
+      <p className="-mt-2 mb-gutter font-label-sm text-label-sm text-on-surface-variant/70">
+        Total invoiced:{" "}
+        {formatCurrency(
+          totalInvoiced,
+          currency,
+        )}
+      </p>
 
       <div className="grid grid-cols-1 gap-gutter xl:grid-cols-2">
         {invoices.length > 0 ? (
@@ -270,7 +456,10 @@ export default function BillingPayment({
             <InvoiceReadOnlyCard
               key={invoice.id}
               invoice={invoice}
-              currency={invoice.currency ?? currency}
+              currency={
+                invoice.currency ??
+                currency
+              }
             />
           ))
         ) : (
@@ -285,7 +474,11 @@ export default function BillingPayment({
       <div className="glass-panel mt-gutter rounded-xl p-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5">
-            <AppIcon name="payments" size={20} className="text-primary" />
+            <AppIcon
+              name="payments"
+              size={20}
+              className="text-primary"
+            />
           </div>
 
           <div>
@@ -308,8 +501,12 @@ export default function BillingPayment({
                 key={payment.id}
                 payment={payment}
                 invoices={invoices}
-                defaultCurrency={currency}
-                onOpenPayment={handleOpenPayment}
+                defaultCurrency={
+                  currency
+                }
+                onOpenPayment={
+                  handleOpenPayment
+                }
               />
             ))}
           </div>
@@ -340,59 +537,117 @@ export default function BillingPayment({
 function BillingPreparation({
   booking,
   currency,
-  packageTotal,
+  packageAmount,
+  travelCharge,
+  bookingTotal,
   invoiceDraft,
   readOnly,
+  pdfPreview,
+  pdfReviewed,
+  pdfReviewOpen,
+  pdfGenerating,
+  onReviewPdfPreview,
   onInvoiceDraftChange,
 }) {
-  const suggestedDeposit = packageTotal * 0.3;
+  const suggestedDeposit =
+    Math.round(bookingTotal * 0.3);
 
-  const updateDraft = (changes) => {
-    if (readOnly || !invoiceDraft) return;
+  const updateDraft =
+    (changes) => {
+      if (
+        readOnly ||
+        !invoiceDraft
+      ) {
+        return;
+      }
 
-    onInvoiceDraftChange?.({
-      ...invoiceDraft,
-      ...changes,
-    });
-  };
+      onInvoiceDraftChange?.({
+        ...invoiceDraft,
+        ...changes,
 
-  const handleCreateDraft = () => {
-    if (readOnly) return;
+        // Keep the latest booking snapshot attached to the draft.
+        packageTotal:
+          bookingTotal,
+        packageAmount,
+        travelCharge,
+        bookingTotal,
+        items:
+          createInvoiceItems(
+            booking,
+          ),
+      });
+    };
 
-    onInvoiceDraftChange?.(createDepositDraft(booking));
-  };
+  const handleCreateDraft =
+    () => {
+      if (readOnly) return;
 
-  const handleRemoveDraft = () => {
-    if (readOnly) return;
+      onInvoiceDraftChange?.(
+        createDepositDraft(
+          booking,
+        ),
+      );
+    };
 
-    onInvoiceDraftChange?.(null);
-  };
+  const handleRemoveDraft =
+    () => {
+      if (readOnly) return;
+
+      onInvoiceDraftChange?.(
+        null,
+      );
+    };
 
   return (
     <section aria-labelledby="billing-payment-title">
       <SectionHeader
         title="Billing Preparation"
-        description="Prepare the deposit invoice locally. It will only be saved and issued after Final Confirmation."
+        description="Prepare the deposit invoice from the latest package and travel-charge snapshot. Confirm Billing generates a server-side PDF preview first; nothing is saved until Finalize & Approve."
       />
 
-      <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-3">
+      <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          label="Package Total"
-          value={formatCurrency(packageTotal, currency)}
+          label="Package"
+          value={formatCurrency(
+            packageAmount,
+            currency,
+          )}
         />
 
         <SummaryCard
-          label="Suggested Deposit"
-          value={formatCurrency(suggestedDeposit, currency)}
+          label="Travel Charge"
+          value={formatCurrency(
+            travelCharge,
+            currency,
+          )}
         />
 
-        <SummaryCard label="Deposit Rate" value="30%" />
+        <SummaryCard
+          label="Booking Total"
+          value={formatCurrency(
+            bookingTotal,
+            currency,
+          )}
+          accent
+        />
+
+        <SummaryCard
+          label="Suggested DP · 30%"
+          value={formatCurrency(
+            suggestedDeposit,
+            currency,
+          )}
+        />
       </div>
 
       {!invoiceDraft ? (
         <article className="glass-panel flex min-h-80 flex-col items-center justify-center rounded-xl p-8 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/5">
-            <AppIcon name="receipt" size={27} className="text-primary" />
+            <AppIcon
+              name="receipt"
+              size={27}
+              className="text-primary"
+            />
           </div>
 
           <h3 className="mt-5 font-headline-md text-headline-md text-primary">
@@ -400,17 +655,21 @@ function BillingPreparation({
           </h3>
 
           <p className="mt-2 max-w-md font-body-md text-body-md text-on-surface-variant">
-            Create a local draft to confirm the billing step. This action does
-            not write anything to Firestore.
+            Create a local deposit draft based on the current booking total. This does not write anything to Firestore.
           </p>
 
           <button
             type="button"
             disabled={readOnly}
-            onClick={handleCreateDraft}
+            onClick={
+              handleCreateDraft
+            }
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <AppIcon name="add" size={19} />
+            <AppIcon
+              name="add"
+              size={19}
+            />
             Create Deposit Draft
           </button>
         </article>
@@ -427,7 +686,7 @@ function BillingPreparation({
               </h3>
 
               <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                This draft has not been saved to the database.
+                Suggested DP is 30% of the full booking total, including travel charge.
               </p>
             </div>
 
@@ -449,11 +708,18 @@ function BillingPreparation({
                 id="deposit-amount"
                 type="number"
                 min="0"
-                value={invoiceDraft.amount ?? ""}
+                max={bookingTotal}
+                value={
+                  invoiceDraft.amount ??
+                  ""
+                }
                 disabled={readOnly}
                 onChange={(event) =>
                   updateDraft({
-                    amount: Number(event.target.value) || 0,
+                    amount:
+                      Number(
+                        event.target.value,
+                      ) || 0,
                   })
                 }
                 className="mt-2 w-full rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
@@ -462,7 +728,8 @@ function BillingPreparation({
               <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
                 {formatCurrency(
                   invoiceDraft.amount,
-                  invoiceDraft.currency ?? currency,
+                  invoiceDraft.currency ??
+                    currency,
                 )}
               </p>
             </div>
@@ -478,11 +745,15 @@ function BillingPreparation({
               <input
                 id="deposit-due-date"
                 type="date"
-                value={invoiceDraft.dueAt ?? ""}
+                value={
+                  invoiceDraft.dueAt ??
+                  ""
+                }
                 disabled={readOnly}
                 onChange={(event) =>
                   updateDraft({
-                    dueAt: event.target.value,
+                    dueAt:
+                      event.target.value,
                   })
                 }
                 className="mt-2 w-full rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
@@ -500,11 +771,15 @@ function BillingPreparation({
               <textarea
                 id="deposit-note"
                 rows={3}
-                value={invoiceDraft.note ?? ""}
+                value={
+                  invoiceDraft.note ??
+                  ""
+                }
                 disabled={readOnly}
                 onChange={(event) =>
                   updateDraft({
-                    note: event.target.value,
+                    note:
+                      event.target.value,
                   })
                 }
                 className="mt-2 w-full resize-none rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
@@ -515,28 +790,177 @@ function BillingPreparation({
           <div className="mt-6 flex flex-col gap-3 border-t border-outline-variant/30 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-label-sm text-label-sm text-on-surface-variant">
               {readOnly
-                ? "Billing draft confirmed locally."
-                : "Changes remain local until Final Confirmation."}
+                ? pdfPreview
+                  ? "Billing confirmed. Review the generated PDF before Finalize & Approve."
+                  : "Billing is being prepared."
+                : "Changes remain local. Editing this draft invalidates the previous PDF preview."}
             </p>
 
             {!readOnly && (
               <button
                 type="button"
-                onClick={handleRemoveDraft}
+                onClick={
+                  handleRemoveDraft
+                }
                 className="inline-flex w-fit items-center gap-2 rounded-lg border border-error/30 px-4 py-2.5 font-label-sm text-label-sm text-error transition-colors hover:bg-error-container/40"
               >
-                <AppIcon name="delete" size={17} />
+                <AppIcon
+                  name="delete"
+                  size={17}
+                />
                 Remove Draft
               </button>
             )}
           </div>
         </article>
       )}
+
+      {(pdfGenerating || pdfPreview) && (
+        <article className="mt-gutter overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-container-lowest">
+          <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/5 text-primary">
+                <AppIcon
+                  name="receipt"
+                  size={24}
+                />
+              </div>
+
+              <div className="min-w-0">
+                <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
+                  Generated Document
+                </p>
+
+                <h3 className="mt-1 font-headline-md text-headline-md text-primary">
+                  Invoice DP Preview
+                </h3>
+
+                {pdfGenerating ? (
+                  <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                    Generating PDF from the latest billing draft...
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-1 break-all font-label-md text-label-md text-on-surface">
+                      {pdfPreview?.invoiceNumber ?? "Deposit Invoice"}
+                    </p>
+
+                    <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
+                      {pdfPreview?.fileName ?? "invoice-dp-preview.pdf"}
+                      {pdfPreview?.size
+                        ? ` · ${formatFileSize(pdfPreview.size)}`
+                        : ""}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {!pdfGenerating && pdfPreview?.url && (
+              <button
+                type="button"
+                onClick={onReviewPdfPreview}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary transition-all hover:opacity-90 active:scale-[0.98]"
+              >
+                <AppIcon
+                  name="visibility"
+                  size={18}
+                />
+                {pdfReviewOpen
+                  ? "Hide Preview"
+                  : pdfReviewed
+                    ? "Review Again"
+                    : "Review PDF"}
+              </button>
+            )}
+          </div>
+
+          {!pdfGenerating &&
+            pdfPreview?.url &&
+            pdfReviewOpen && (
+              <div className="border-t border-outline-variant/30 bg-surface-container-lowest p-4 md:p-6">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
+                      PDF Review
+                    </p>
+
+                    <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
+                      Review nominal, due date, client data, dan layout sebelum Finalize & Approve.
+                    </p>
+                  </div>
+
+                  <a
+                    href={pdfPreview.url}
+                    download={pdfPreview.fileName || "invoice-dp-preview.pdf"}
+                    className="inline-flex items-center gap-2 font-label-sm text-label-sm text-secondary transition-colors hover:text-primary"
+                  >
+                    <AppIcon
+                      name="download"
+                      size={17}
+                    />
+                    Download PDF
+                  </a>
+                </div>
+
+                <div className="overflow-hidden rounded-lg border border-outline-variant/40 bg-white">
+                  <object
+                    data={pdfPreview.url}
+                    type="application/pdf"
+                    className="h-[70vh] min-h-[620px] w-full"
+                    aria-label="Deposit invoice PDF preview"
+                  >
+                    <div className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
+                      <AppIcon
+                        name="receipt"
+                        size={28}
+                        className="text-primary"
+                      />
+
+                      <p className="mt-4 font-label-md text-label-md text-on-surface">
+                        Browser tidak dapat menampilkan PDF secara inline.
+                      </p>
+
+                      <p className="mt-1 max-w-md font-body-sm text-body-sm text-on-surface-variant">
+                        File PDF tetap valid. Gunakan Download PDF untuk membukanya dengan PDF viewer.
+                      </p>
+                    </div>
+                  </object>
+                </div>
+              </div>
+            )}
+
+          {!pdfGenerating && pdfPreview?.url && (
+            <div className="border-t border-outline-variant/30 bg-surface-container-low px-6 py-4">
+              <div className="flex items-center gap-2">
+                <AppIcon
+                  name={pdfReviewed ? "check" : "info_outline"}
+                  size={17}
+                  className={
+                    pdfReviewed
+                      ? "text-primary"
+                      : "text-on-surface-variant"
+                  }
+                />
+
+                <p className="font-label-sm text-label-sm text-on-surface-variant">
+                  {pdfReviewed
+                    ? "PDF has been opened for review. Finalize & Approve is now available when all preparation requirements are complete."
+                    : "Open this PDF and review the client, amount, due date, and document layout before final approval."}
+                </p>
+              </div>
+            </div>
+          )}
+        </article>
+      )}
     </section>
   );
 }
 
-function SectionHeader({ title, description }) {
+function SectionHeader({
+  title,
+  description,
+}) {
   return (
     <div className="mb-stack-md">
       <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
@@ -557,22 +981,38 @@ function SectionHeader({ title, description }) {
   );
 }
 
-function SummaryCard({ label, value }) {
+function SummaryCard({
+  label,
+  value,
+  accent = false,
+}) {
   return (
     <article className="glass-panel rounded-xl p-6">
       <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
         {label}
       </p>
 
-      <p className="mt-2 font-headline-md text-headline-md text-primary">
+      <p
+        className={`mt-2 font-headline-md text-headline-md ${
+          accent
+            ? "text-secondary"
+            : "text-primary"
+        }`}
+      >
         {value}
       </p>
     </article>
   );
 }
 
-function InvoiceReadOnlyCard({ invoice, currency }) {
-  const statusConfig = INVOICE_STATUS[invoice.status] ?? INVOICE_STATUS.draft;
+function InvoiceReadOnlyCard({
+  invoice,
+  currency,
+}) {
+  const statusConfig =
+    INVOICE_STATUS[
+      invoice.status
+    ] ?? INVOICE_STATUS.draft;
 
   return (
     <article className="glass-panel rounded-xl p-6">
@@ -587,11 +1027,14 @@ function InvoiceReadOnlyCard({ invoice, currency }) {
           </p>
 
           <h3 className="mt-2 font-headline-md text-headline-md text-primary">
-            {getInvoiceLabel(invoice.type)}
+            {getInvoiceLabel(
+              invoice.type,
+            )}
           </h3>
 
           <p className="mt-1 break-all font-label-sm text-label-sm text-on-surface-variant">
-            {invoice.invoiceNumber ?? invoice.id}
+            {invoice.invoiceNumber ??
+              invoice.id}
           </p>
         </div>
 
@@ -607,19 +1050,49 @@ function InvoiceReadOnlyCard({ invoice, currency }) {
       <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <InfoItem
           label="Amount"
-          value={formatCurrency(invoice.amount, currency)}
+          value={formatCurrency(
+            invoice.amount,
+            currency,
+          )}
         />
 
-        <InfoItem label="Due Date" value={formatDate(invoice.dueAt)} />
+        <InfoItem
+          label="Booking Total"
+          value={formatCurrency(
+            invoice.bookingTotal ??
+              invoice.packageTotal,
+            currency,
+          )}
+        />
 
-        <InfoItem label="Issued At" value={formatDateTime(invoice.issuedAt)} />
+        <InfoItem
+          label="Due Date"
+          value={formatDate(
+            invoice.dueAt,
+          )}
+        />
+
+        <InfoItem
+          label="Issued At"
+          value={formatDateTime(
+            invoice.issuedAt,
+          )}
+        />
 
         <InfoItem
           label="Revision"
-          value={`v${Number(invoice.revision) || 1}`}
+          value={`v${
+            Number(
+              invoice.revision,
+            ) || 1
+          }`}
         />
 
-        <InfoItem label="Note" value={invoice.note} fullWidth />
+        <InfoItem
+          label="Note"
+          value={invoice.note}
+          fullWidth
+        />
       </dl>
 
       {invoice.pdfUrl && (
@@ -629,7 +1102,10 @@ function InvoiceReadOnlyCard({ invoice, currency }) {
           rel="noreferrer"
           className="mt-6 inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2.5 font-label-sm text-label-sm text-primary transition-colors hover:bg-surface-container-low"
         >
-          <AppIcon name="download" size={17} />
+          <AppIcon
+            name="download"
+            size={17}
+          />
           Open Invoice
         </a>
       )}
@@ -643,21 +1119,32 @@ function PaymentRow({
   defaultCurrency,
   onOpenPayment,
 }) {
+  const normalizedStatus =
+    String(
+      payment.status ??
+        "unpaid",
+    ).toLowerCase();
+
   const statusConfig =
-    PAYMENT_STATUS[payment.status] ??
+    PAYMENT_STATUS[
+      normalizedStatus
+    ] ??
     PAYMENT_STATUS.unpaid;
 
   const relatedInvoice =
     invoices.find(
       (invoice) =>
-        invoice.id === payment.invoiceId,
+        invoice.id ===
+        payment.invoiceId,
     ) ?? null;
 
   return (
     <button
       type="button"
       onClick={() =>
-        onOpenPayment?.(payment)
+        onOpenPayment?.(
+          payment,
+        )
       }
       className="group flex w-full flex-col gap-4 py-5 text-left transition-colors first:pt-0 last:pb-0 lg:flex-row lg:items-center lg:justify-between"
     >
@@ -665,8 +1152,11 @@ function PaymentRow({
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container-high transition-colors group-hover:bg-secondary-container">
           <AppIcon
             name={
-              ["paid", "verified"].includes(
-                payment.status,
+              [
+                "paid",
+                "verified",
+              ].includes(
+                normalizedStatus,
               )
                 ? "verified"
                 : "payments"
@@ -725,9 +1215,19 @@ function PaymentRow({
   );
 }
 
-function InfoItem({ label, value, fullWidth = false }) {
+function InfoItem({
+  label,
+  value,
+  fullWidth = false,
+}) {
   return (
-    <div className={fullWidth ? "sm:col-span-2" : ""}>
+    <div
+      className={
+        fullWidth
+          ? "sm:col-span-2"
+          : ""
+      }
+    >
       <dt className="font-label-sm text-label-sm text-on-surface-variant">
         {label}
       </dt>
@@ -739,11 +1239,19 @@ function InfoItem({ label, value, fullWidth = false }) {
   );
 }
 
-function EmptyCard({ icon, title, description }) {
+function EmptyCard({
+  icon,
+  title,
+  description,
+}) {
   return (
     <article className="glass-panel flex min-h-64 flex-col items-center justify-center rounded-xl p-8 text-center xl:col-span-2">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high">
-        <AppIcon name={icon} size={26} className="text-on-surface-variant" />
+        <AppIcon
+          name={icon}
+          size={26}
+          className="text-on-surface-variant"
+        />
       </div>
 
       <p className="mt-4 font-label-md text-label-md text-on-surface">

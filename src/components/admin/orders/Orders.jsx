@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { auth } from "@/lib/firebase-config";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
 
@@ -22,13 +23,13 @@ const BOOKING_STATUS = {
   },
 
   approved: {
-    label: "Approved",
+    label: "Approved · Awaiting Payment",
     badgeClass:
       "bg-primary-container text-on-primary-container",
   },
 
   confirmed: {
-    label: "Confirmed",
+    label: "Payment Under Review",
     badgeClass:
       "bg-primary text-on-primary",
   },
@@ -114,6 +115,112 @@ function formatBookingDate(value) {
   }).format(date);
 }
 
+function formatCurrency(
+  value,
+  currency = "IDR"
+) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function getEventLocationLabel(location) {
+  if (typeof location === "string") {
+    return (
+      location.trim() ||
+      "Location not provided"
+    );
+  }
+
+  return (
+    String(
+      location?.venueName ??
+        location?.addressLabel ??
+        ""
+    ).trim() ||
+    "Location not provided"
+  );
+}
+
+function getEventTimeLabel(event) {
+  if (!event?.startTime) {
+    return null;
+  }
+
+  if (!event?.endTime) {
+    return event.startTime;
+  }
+
+  return `${event.startTime} - ${event.endTime}${
+    Number(
+      event.endTimeDayOffset || 0
+    ) > 0
+      ? " (+1 day)"
+      : ""
+  }`;
+}
+
+function getBookingAmounts(booking) {
+  const packageAmount = Math.max(
+    Number(
+      booking?.package?.price
+    ) || 0,
+    0
+  );
+
+  const travelCharge = Math.max(
+    Number(
+      booking?.event?.location
+        ?.distanceCharge?.amount
+    ) || 0,
+    0
+  );
+
+  return {
+    packageAmount,
+    travelCharge,
+    bookingTotal:
+      packageAmount + travelCharge,
+  };
+}
+
+function createInvoiceItemsFromBooking(
+  booking
+) {
+  const {
+    packageAmount,
+    travelCharge,
+  } = getBookingAmounts(booking);
+
+  const items = [
+    {
+      id: "package-service",
+      label:
+        booking?.package?.name ??
+        "Package Service",
+      amount: packageAmount,
+    },
+  ];
+
+  if (travelCharge > 0) {
+    items.push({
+      id: "travel-charge",
+      label: "Travel Charge",
+      amount: travelCharge,
+    });
+  }
+
+  return items;
+}
+
 function getPaginationItems(
   currentPage,
   totalPages
@@ -187,11 +294,10 @@ function normalizePaymentStatus(status) {
 }
 
 /*
- * Adapter sementara untuk membaca struktur Payments lama.
- * Setelah data lama dimigrasikan, query dapat langsung
- * memakai field bookingId dan adapter ini dapat dihapus.
+ * Normalisasi payment terbaru dengan fallback field lama
+ * agar data historis tetap dapat dibaca.
  */
-function normalizeLegacyPayment(payment) {
+function normalizePaymentRecord(payment) {
   return {
     ...payment,
 
@@ -495,13 +601,12 @@ export default function Orders() {
   );
 
   /*
-   * Payments masih memakai struktur lama.
-   * Sementara baca koleksi ketika detail terbuka,
-   * normalisasi field, lalu filter berdasarkan
-   * bookingId.
+   * Struktur Payments terbaru sudah menyimpan bookingId
+   * secara langsung, jadi hanya payment milik booking
+   * yang sedang dibuka yang perlu dibaca.
    */
   const {
-    rows: legacyPayments,
+    rows: paymentRows,
     loading: paymentsLoading,
     error: paymentsError,
   } = useCollection(
@@ -509,7 +614,12 @@ export default function Orders() {
       if (!selectedBookingId) return null;
 
       return db.query(
-        db.colRef("Payments")
+        db.colRef("Payments"),
+        db.where(
+          "bookingId",
+          "==",
+          selectedBookingId
+        )
       );
     },
     [selectedBookingId],
@@ -552,15 +662,15 @@ export default function Orders() {
   const bookingPayments = useMemo(() => {
     if (!selectedBookingId) return [];
 
-    return legacyPayments
-      .map(normalizeLegacyPayment)
+    return paymentRows
+      .map(normalizePaymentRecord)
       .filter(
         (payment) =>
           payment.bookingId ===
           selectedBookingId
       );
   }, [
-    legacyPayments,
+    paymentRows,
     selectedBookingId,
   ]);
 
@@ -617,14 +727,22 @@ export default function Orders() {
     return bookings.filter((booking) => {
       const searchableText = [
         booking.id,
+        booking.bookingCode,
         booking.client?.fullName,
         booking.client?.partnerName,
         booking.client?.phone,
         booking.client?.email,
         booking.client?.instagram,
-        booking.event?.location,
+        getEventLocationLabel(
+          booking.event?.location
+        ),
+        booking.event?.preferredDate,
+        booking.event?.startTime,
+        booking.event?.endTime,
         booking.event?.vision,
         booking.package?.name,
+        booking.package?.packageCode,
+        booking.package?.bookingSubjectType,
         booking.package?.priceLabel,
         booking.status,
       ]
@@ -817,12 +935,14 @@ export default function Orders() {
    *
    * Dengan begitu, booking tidak akan berstatus approved
    * sebelum assignment dan invoice siap dilihat client.
+   * Email notification dipisahkan dari proses finalisasi ini.
    */
-  const handleSubmitAndSend = async ({
+  const handleFinalizeBooking = async ({
     booking,
     crewAssignment,
     depositInvoice,
     preparation,
+    pdfReviewed,
   }) => {
     const currentBooking =
       selectedBooking?.id === booking?.id
@@ -831,283 +951,144 @@ export default function Orders() {
 
     if (!currentBooking?.id) {
       throw new Error(
-        "Booking tidak ditemukan."
+        "Booking tidak ditemukan.",
+      );
+    }
+
+    const currentUser =
+      auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error(
+        "Sesi admin tidak tersedia.",
       );
     }
 
     if (
-      currentBooking.status !== "pending"
+      currentBooking.status !==
+      "pending"
     ) {
       throw new Error(
-        "Booking ini sudah pernah dikirim kepada client."
+        "Booking ini sudah tidak berada pada status pending.",
       );
     }
 
-    /*
-     * Di preparation mode, ScheduleOrder mengirim crewAssignment
-     * sebagai draft lokal. Draft ini memang belum memiliki id
-     * karena Firestore baru ditulis saat Final Confirmation.
-     */
     const currentAssignment =
-      crewAssignment ?? selectedAssignment;
+      crewAssignment ??
+      selectedAssignment;
 
     if (
       !Array.isArray(
-        currentAssignment?.crewIds
+        currentAssignment?.crewIds,
       ) ||
       currentAssignment.crewIds.length <
         REQUIRED_CREW_COUNT
     ) {
       throw new Error(
-        "Crew assignment belum lengkap."
+        "Crew assignment belum lengkap.",
       );
     }
-
-    const existingDepositInvoice =
-      bookingInvoices.find(
-        (invoice) =>
-          invoice.type === "deposit" &&
-          invoice.status !== "void"
-      );
-
-    /*
-     * Sama seperti crew assignment, BillingPayment dapat mengirim
-     * depositInvoice sebagai draft lokal tanpa id. Jika belum ada
-     * di Firestore, invoice akan dibuat saat final submit.
-     */
-    const currentDepositInvoice =
-      depositInvoice ?? existingDepositInvoice;
 
     if (
-      !currentDepositInvoice ||
-      Number(currentDepositInvoice.amount) <= 0
+      !depositInvoice ||
+      Number(
+        depositInvoice.amount,
+      ) <= 0
     ) {
       throw new Error(
-        "Deposit invoice belum dibuat."
+        "Deposit invoice belum dibuat.",
       );
     }
-
-    const depositInvoiceStatus =
-      currentDepositInvoice.status ?? "draft";
 
     if (
-      !["draft", "issued"].includes(
-        depositInvoiceStatus
-      )
+      preparation?.reviewCompleted !== true ||
+      preparation?.crewCompleted !== true ||
+      preparation?.billingCompleted !== true
     ) {
       throw new Error(
-        "Deposit invoice tidak dapat diterbitkan."
+        "Semua preparation step harus dikonfirmasi.",
       );
     }
 
-    const allStepsCompleted =
-      preparation?.reviewCompleted === true &&
-      preparation?.crewCompleted === true &&
-      preparation?.billingCompleted === true;
-
-    if (!allStepsCompleted) {
+    if (
+      pdfReviewed !== true
+    ) {
       throw new Error(
-        "Semua preparation step harus dikonfirmasi."
+        "Review PDF invoice DP sebelum Finalize & Approve.",
       );
     }
 
-    const rawDepositInvoiceId =
-      currentDepositInvoice.id ?? null;
-
-    const isLocalDepositInvoice =
-      !existingDepositInvoice?.id &&
-      (!rawDepositInvoiceId ||
-        String(rawDepositInvoiceId).startsWith(
-          "local_"
-        ));
-
-    const fallbackInvoiceId =
+    const processingId =
       `${currentBooking.id}_deposit_v1`;
 
-    const depositInvoiceId =
-      existingDepositInvoice?.id ??
-      (isLocalDepositInvoice
-        ? fallbackInvoiceId
-        : rawDepositInvoiceId);
-
     setProcessingBillingId(
-      depositInvoiceId
+      processingId,
     );
 
     try {
-      let assignmentId =
-        currentAssignment.id ??
-        selectedAssignment?.id ??
-        `${currentBooking.id}_crew_assignment`;
+      const idToken =
+        await currentUser.getIdToken(
+          true,
+        );
 
-      const assignmentPayload = {
-        ...currentAssignment,
-        bookingId: currentBooking.id,
-        crewIds: [
-          ...currentAssignment.crewIds,
-        ],
-        status: "published",
-        publishedAt:
-          db.serverTimestamp(),
-        updatedAt:
-          db.serverTimestamp(),
-      };
-
-      /*
-       * Publish assignment terlebih dahulu.
-       * Jika assignment masih draft lokal, buat dokumen baru.
-       */
-      if (!currentAssignment.id) {
-        await db.setDoc(
-          "CrewAssignments",
-          assignmentId,
+      const response =
+        await fetch(
+          "/api/admin/bookings/finalize",
           {
-            ...assignmentPayload,
-            createdAt:
-              db.serverTimestamp(),
-          }
-        );
-      } else if (
-        currentAssignment.status !==
-        "published"
-      ) {
-        await db.updateDoc(
-          "CrewAssignments",
-          assignmentId,
-          assignmentPayload
-        );
-      }
+            method:
+              "POST",
 
-      const packageTotal =
-        Number(
-          currentBooking.package?.price
-        ) || 0;
+            headers: {
+              "Content-Type":
+                "application/json",
 
-      const {
-        id: _ignoredDepositInvoiceId,
-        ...depositInvoiceData
-      } = currentDepositInvoice;
+              Authorization:
+                `Bearer ${idToken}`,
+            },
 
-      const invoicePayload = {
-        ...depositInvoiceData,
-        bookingId: currentBooking.id,
-        clientId:
-          currentBooking.client?.uid ??
-          null,
-        type: "deposit",
-        revision:
-          currentDepositInvoice.revision ??
-          existingDepositInvoice?.revision ??
-          1,
-        packageTotal:
-          currentDepositInvoice.packageTotal ??
-          packageTotal,
-        amount:
-          Number(
-            currentDepositInvoice.amount
-          ) ||
-          packageTotal * 0.3,
-        currency:
-          currentDepositInvoice.currency ??
-          currentBooking.package?.currency ??
-          "IDR",
-        dueAt:
-          currentDepositInvoice.dueAt ??
-          getDefaultInvoiceDueDate(
-            "deposit",
-            currentBooking.event
-              ?.preferredDate
-          ),
-        status: "issued",
-        invoiceNumber:
-          currentDepositInvoice.invoiceNumber ??
-          createInvoiceNumber({
-            ...currentDepositInvoice,
-            id: depositInvoiceId,
-            type: "deposit",
-          }),
-        note:
-          currentDepositInvoice.note ??
-          "30% booking deposit",
-        pdfUrl:
-          currentDepositInvoice.pdfUrl ??
-          null,
-        issuedAt:
-          db.serverTimestamp(),
-        updatedAt:
-          db.serverTimestamp(),
-      };
+            body:
+              JSON.stringify({
+                bookingId:
+                  currentBooking.id,
 
-      /*
-       * Invoice deposit baru diterbitkan pada final submit.
-       * Jika invoice masih draft lokal, buat dokumen baru.
-       */
-      if (
-        isLocalDepositInvoice ||
-        !existingDepositInvoice?.id
-      ) {
-        await db.setDoc(
-          "Invoices",
-          depositInvoiceId,
-          {
-            ...invoicePayload,
-            createdAt:
-              db.serverTimestamp(),
-          }
-        );
-      } else if (
-        depositInvoiceStatus !== "issued"
-      ) {
-        await db.updateDoc(
-          "Invoices",
-          depositInvoiceId,
-          invoicePayload
-        );
-      }
+                crewAssignment:
+                  currentAssignment,
 
-      /*
-       * Booking diubah terakhir agar status approved selalu
-       * berarti crew dan invoice sudah tersedia.
-       */
-      await db.updateDoc(
-        "Bookings",
-        currentBooking.id,
-        {
-          status: "approved",
+                depositInvoice,
 
-          preparation: {
-            reviewCompleted: true,
-            crewCompleted: true,
-            billingCompleted: true,
-            completedAt:
-              db.serverTimestamp(),
+                preparation,
+
+                pdfReviewed:
+                  true,
+              }),
           },
+        );
 
-          approvedAt:
-            db.serverTimestamp(),
+      const result =
+        await response.json();
 
-          sentToClientAt:
-            db.serverTimestamp(),
-
-          updatedAt:
-            db.serverTimestamp(),
-        }
-      );
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            "Booking gagal difinalisasi.",
+        );
+      }
 
       /*
-       * Pengiriman email/notifikasi client sebaiknya
-       * dilakukan melalui Cloud Function atau backend.
+       * Firestore listener pada halaman ini akan menerima
+       * booking/invoice/assignment terbaru secara realtime.
+       *
+       * API response tetap dikembalikan ke ScheduleOrder agar
+       * UI dapat memberi feedback khusus jika email gagal.
        */
-      console.log(
-        "BOOKING READY TO SEND:",
-        {
-          bookingId: currentBooking.id,
-          assignmentId,
-          invoiceId: depositInvoiceId,
-        }
+      return (
+        result?.data ??
+        null
       );
     } finally {
-      setProcessingBillingId(null);
+      setProcessingBillingId(
+        null,
+      );
     }
   };
 
@@ -1141,10 +1122,18 @@ export default function Orders() {
       return existingInvoice;
     }
 
-    const packageTotal =
-      Number(
-        selectedBooking.package?.price
-      ) || 0;
+    const {
+      packageAmount,
+      travelCharge,
+      bookingTotal,
+    } = getBookingAmounts(
+      selectedBooking
+    );
+
+    const invoiceItems =
+      createInvoiceItemsFromBooking(
+        selectedBooking
+      );
 
     const totalPaid =
       calculateTotalPaid(
@@ -1153,10 +1142,10 @@ export default function Orders() {
 
     const amount =
       type === "deposit"
-        ? packageTotal * 0.3
+        ? Math.round(bookingTotal * 0.3)
         : Math.max(
             0,
-            packageTotal - totalPaid
+            bookingTotal - totalPaid
           );
 
     let revision =
@@ -1217,7 +1206,16 @@ export default function Orders() {
 
       invoiceNumber: null,
 
-      packageTotal,
+      /*
+       * packageTotal tetap menjadi alias bookingTotal
+       * agar client lama tetap membaca total yang benar.
+       */
+      packageTotal:
+        bookingTotal,
+      packageAmount,
+      travelCharge,
+      bookingTotal,
+      items: invoiceItems,
       amount,
 
       currency:
@@ -1555,8 +1553,8 @@ export default function Orders() {
         onSaveAssignment={
           handleSaveAssignment
         }
-        onSubmitAndSend={
-          handleSubmitAndSend
+        onFinalizeBooking={
+          handleFinalizeBooking
         }
         onCreateInvoice={
           handleCreateInvoice
@@ -1841,10 +1839,16 @@ export default function Orders() {
                                 )}
                               </p>
 
+                              <p className="mt-0.5 truncate font-label-sm text-label-sm text-secondary">
+                                {booking.bookingCode ??
+                                  booking.id}
+                              </p>
+
                               <p className="mt-0.5 truncate font-label-sm text-label-sm text-on-surface-variant">
-                                {booking.event
-                                  ?.location ??
-                                  "Location not provided"}
+                                {getEventLocationLabel(
+                                  booking.event
+                                    ?.location
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1857,21 +1861,35 @@ export default function Orders() {
                               "Package not found"}
                           </p>
 
-                          {booking.package
-                            ?.priceLabel && (
-                            <p className="mt-0.5 font-label-sm text-label-sm text-on-surface-variant">
-                              {
+                          <p className="mt-0.5 font-label-sm text-label-sm text-on-surface-variant">
+                            {booking.package
+                              ?.priceLabel ??
+                              formatCurrency(
                                 booking.package
-                                  .priceLabel
-                              }
-                            </p>
-                          )}
+                                  ?.price,
+                                booking.package
+                                  ?.currency ??
+                                  "IDR"
+                              )}
+                          </p>
                         </td>
 
-                        <td className="px-6 py-4 font-body-md text-body-md text-on-surface-variant">
-                          {formatBookingDate(
+                        <td className="px-6 py-4">
+                          <p className="font-body-md text-body-md text-on-surface">
+                            {formatBookingDate(
+                              booking.event
+                                ?.preferredDate
+                            )}
+                          </p>
+
+                          {getEventTimeLabel(
                             booking.event
-                              ?.preferredDate
+                          ) && (
+                            <p className="mt-0.5 font-label-sm text-label-sm text-on-surface-variant">
+                              {getEventTimeLabel(
+                                booking.event
+                              )}
+                            </p>
                           )}
                         </td>
 

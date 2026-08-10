@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const OverlayContext = createContext(null);
 
@@ -12,11 +18,13 @@ export function OverlayProvider({ children }) {
   const openOverlay = ({
     content,
     closeOnBackdrop = true,
+    closeOnEscape = true,
     className = "",
   }) => {
     setOverlay({
       content,
       closeOnBackdrop,
+      closeOnEscape,
       className,
     });
   };
@@ -26,10 +34,13 @@ export function OverlayProvider({ children }) {
   };
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
+      if (
+        event.key === "Escape" &&
+        overlay?.closeOnEscape !== false
+      ) {
         closeOverlay();
       }
     };
@@ -41,7 +52,7 @@ export function OverlayProvider({ children }) {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, overlay?.closeOnEscape]);
 
   const value = useMemo(
     () => ({
@@ -63,7 +74,12 @@ export function OverlayProvider({ children }) {
           <button
             type="button"
             aria-label="Close overlay"
-            onClick={overlay.closeOnBackdrop ? closeOverlay : undefined}
+            tabIndex={overlay.closeOnBackdrop ? 0 : -1}
+            onClick={
+              overlay.closeOnBackdrop
+                ? closeOverlay
+                : undefined
+            }
             className="absolute inset-0 bg-on-surface/40 backdrop-blur-sm"
           />
 
@@ -83,7 +99,9 @@ export function useOverlay() {
   const context = useContext(OverlayContext);
 
   if (!context) {
-    throw new Error("useOverlay must be used inside OverlayProvider.");
+    throw new Error(
+      "useOverlay must be used inside OverlayProvider."
+    );
   }
 
   return context;

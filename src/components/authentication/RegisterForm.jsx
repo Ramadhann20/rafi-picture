@@ -1,97 +1,147 @@
+"use client";
+
 import { useState } from "react";
 
-export default function RegisterForm({handleRegister}) {
-
+export default function RegisterForm({
+  handleRegister,
+  loading = false,
+}) {
   const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState(""); 
-
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (loading) return;
+
+    await handleRegister(
+      email,
+      password,
+      confirmPassword,
+      firstName,
+      lastName
+    );
+  };
+
   return (
-    <form className="space-y-stack-md">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+    <form className="space-y-3" onSubmit={handleSubmit}>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label
+            className="block font-label-sm text-label-sm text-on-surface-variant"
+            htmlFor="register-first-name"
+          >
             First Name
           </label>
 
           <input
-            className="w-full auth-input font-body-md py-2"
+            id="register-first-name"
+            className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
             placeholder="Alex"
             type="text"
+            autoComplete="given-name"
+            required
+            disabled={loading}
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(event) => setFirstName(event.target.value)}
           />
         </div>
 
-        <div>
-          <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+        <div className="space-y-1.5">
+          <label
+            className="block font-label-sm text-label-sm text-on-surface-variant"
+            htmlFor="register-last-name"
+          >
             Last Name
           </label>
 
           <input
-            className="w-full auth-input font-body-md py-2"
+            id="register-last-name"
+            className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
             placeholder="Sterling"
             type="text"
+            autoComplete="family-name"
+            required
+            disabled={loading}
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(event) => setLastName(event.target.value)}
           />
         </div>
       </div>
 
-      <div>
-        <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+      <div className="space-y-1.5">
+        <label
+          className="block font-label-sm text-label-sm text-on-surface-variant"
+          htmlFor="register-email"
+        >
           Email Address
         </label>
 
         <input
-          className="w-full auth-input font-body-md py-2"
+          id="register-email"
+          className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
           placeholder="name@example.com"
           type="email"
+          autoComplete="email"
+          required
+          disabled={loading}
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
         />
       </div>
 
-      <div>
-        <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+      <div className="space-y-1.5">
+        <label
+          className="block font-label-sm text-label-sm text-on-surface-variant"
+          htmlFor="register-password"
+        >
           Create Password
         </label>
 
         <input
-          className="w-full auth-input font-body-md py-2"
+          id="register-password"
+          className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
           placeholder="Min. 8 characters"
           type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          disabled={loading}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(event) => setPassword(event.target.value)}
         />
       </div>
 
-      <div>
-        <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+      <div className="space-y-1.5">
+        <label
+          className="block font-label-sm text-label-sm text-on-surface-variant"
+          htmlFor="register-confirm-password"
+        >
           Confirm Password
         </label>
 
         <input
-          className="w-full auth-input font-body-md py-2"
-          placeholder="Min. 8 characters"
+          id="register-confirm-password"
+          className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
+          placeholder="Repeat password"
           type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          disabled={loading}
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={(event) => setConfirmPassword(event.target.value)}
         />
       </div>
 
       <button
-        className="w-full bg-primary text-on-primary py-4 rounded-lg font-label-md text-label-md tracking-wider hover:bg-tertiary transition-all duration-300 active:scale-[0.98]"
+        className="flex h-10 w-full items-center justify-center rounded-xl bg-primary px-4 font-label-md text-label-md font-semibold tracking-wide text-on-primary transition-all duration-200 hover:bg-tertiary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         type="submit"
-        onClick={(e) => {
-          e.preventDefault();
-          handleRegister(email, password, confirmPassword, firstName, lastName);
-        }}
+        disabled={loading}
       >
-        REGISTER ACCOUNT
+        {loading ? "Sending Verification Code..." : "Create Account"}
       </button>
     </form>
   );

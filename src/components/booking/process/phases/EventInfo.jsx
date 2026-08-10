@@ -6,28 +6,33 @@ import {
   useState,
 } from "react";
 
-// Sesuaikan path ini jika lokasi CalendarSchedules berbeda di project Anda.
 import CalendarSchedule from "@/components/admin/schedules/calendar/CalendarSchedules";
 
 import { useDb } from "@/context/DbContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 import { useCollection } from "@/hooks/useCollection";
 
+import {
+  AGENCY_LOCATION,
+  DISTANCE_CHARGE_POLICY,
+  createEventLocation,
+  formatDistanceKm,
+  isValidCoordinates,
+  normalizeEventLocation,
+} from "@/lib/location";
+
+import EventLocationMap from "./EventLocationMap";
+
 function parseDateKey(dateKey) {
   if (!dateKey) {
     return new Date();
   }
 
-  const [year, month, day] =
-    dateKey
-      .split("-")
-      .map(Number);
+  const [year, month, day] = dateKey
+    .split("-")
+    .map(Number);
 
-  if (
-    !year ||
-    !month ||
-    !day
-  ) {
+  if (!year || !month || !day) {
     return new Date();
   }
 
@@ -39,9 +44,7 @@ function parseDateKey(dateKey) {
 }
 
 function formatSelectedDate(dateKey) {
-  if (!dateKey) {
-    return "";
-  }
+  if (!dateKey) return "";
 
   return new Intl.DateTimeFormat(
     "id-ID",
@@ -51,14 +54,122 @@ function formatSelectedDate(dateKey) {
       month: "long",
       year: "numeric",
     },
-  ).format(
-    parseDateKey(dateKey),
+  ).format(parseDateKey(dateKey));
+}
+
+function formatCurrency(
+  value,
+  currency = "IDR",
+) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat(
+    "id-ID",
+    {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    },
+  ).format(amount);
+}
+
+function calculateEndTime(
+  startTime,
+  durationHours,
+) {
+  if (
+    !/^\d{2}:\d{2}$/.test(
+      String(startTime || ""),
+    )
+  ) {
+    return {
+      endTime: "",
+      dayOffset: 0,
+    };
+  }
+
+  const duration =
+    Number(durationHours);
+
+  if (
+    !Number.isFinite(duration) ||
+    duration <= 0
+  ) {
+    return {
+      endTime: "",
+      dayOffset: 0,
+    };
+  }
+
+  const [hours, minutes] =
+    startTime.split(":").map(Number);
+
+  const startMinutes =
+    hours * 60 + minutes;
+
+  const durationMinutes =
+    Math.round(duration * 60);
+
+  const totalMinutes =
+    startMinutes + durationMinutes;
+
+  const minutesInDay =
+    24 * 60;
+
+  const dayOffset =
+    Math.floor(
+      totalMinutes / minutesInDay,
+    );
+
+  const normalizedMinutes =
+    totalMinutes % minutesInDay;
+
+  const endHours =
+    Math.floor(
+      normalizedMinutes / 60,
+    );
+
+  const endMinutes =
+    normalizedMinutes % 60;
+
+  return {
+    endTime: `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`,
+    dayOffset,
+  };
+}
+
+function SubsectionHeading({
+  eyebrow,
+  title,
+  description,
+}) {
+  return (
+    <div className="mb-5">
+      <p className="font-label-sm text-[10px] uppercase tracking-[0.22em] text-secondary">
+        {eyebrow}
+      </p>
+
+      <h3 className="mt-1 font-headline-md text-headline-md text-on-surface">
+        {title}
+      </h3>
+
+      {description && (
+        <p className="mt-1.5 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
+          {description}
+        </p>
+      )}
+    </div>
   );
 }
 
 export default function EventInfo({
   data,
   errors = {},
+  selectedPackage = null,
   onChange,
 }) {
   const db = useDb();
@@ -84,12 +195,73 @@ export default function EventInfo({
       : "idle",
   );
 
+  const [
+    geolocationStatus,
+    setGeolocationStatus,
+  ] = useState("idle");
+
+  const [
+    geolocationError,
+    setGeolocationError,
+  ] = useState("");
+
+  const [
+    locationSearchStatus,
+    setLocationSearchStatus,
+  ] = useState("idle");
+
+  const [
+    locationSearchError,
+    setLocationSearchError,
+  ] = useState("");
+
+  const durationHours =
+    Number(selectedPackage?.durationHours) || 0;
+
+  const eventLocation = useMemo(
+    () =>
+      normalizeEventLocation(
+        data.location,
+      ),
+    [data.location],
+  );
+
+  const agencyConfigured =
+    isValidCoordinates(
+      AGENCY_LOCATION.coordinates,
+    );
+
+  const distanceLabel =
+    formatDistanceKm(
+      eventLocation.distance
+        ?.straightLineKm,
+    );
+
+  const distanceCharge =
+    eventLocation.distanceCharge ??
+    null;
+
+  const distanceChargeAmount =
+    Number(
+      distanceCharge?.amount,
+    ) || 0;
+
+  const distanceChargeLabel =
+    distanceLabel
+      ? distanceChargeAmount > 0
+        ? `+${formatCurrency(
+            distanceChargeAmount,
+            distanceCharge?.currency ||
+              "IDR",
+          )}`
+        : "Tanpa biaya tambahan"
+      : "-";
+
   const {
     rows: schedules,
     error: schedulesError,
   } = useCollection(
-    () =>
-      db.colRef("Schedules"),
+    () => db.colRef("Schedules"),
     [],
   );
 
@@ -97,9 +269,7 @@ export default function EventInfo({
     const nextDate =
       data.eventDate || "";
 
-    setSelectedDate(
-      nextDate,
-    );
+    setSelectedDate(nextDate);
 
     setAvailabilityStatus(
       nextDate
@@ -107,6 +277,43 @@ export default function EventInfo({
         : "idle",
     );
   }, [data.eventDate]);
+
+  /*
+   * Jika durasi paket berubah dan start time sudah dipilih,
+   * time out dihitung ulang otomatis.
+   */
+  useEffect(() => {
+    if (!data.startTime) return;
+
+    const {
+      endTime,
+      dayOffset,
+    } = calculateEndTime(
+      data.startTime,
+      durationHours,
+    );
+
+    if (
+      data.endTime === endTime &&
+      Number(
+        data.endTimeDayOffset || 0,
+      ) === dayOffset
+    ) {
+      return;
+    }
+
+    onChange?.({
+      endTime,
+      endTimeDayOffset:
+        dayOffset,
+    });
+  }, [
+    data.startTime,
+    data.endTime,
+    data.endTimeDayOffset,
+    durationHours,
+    onChange,
+  ]);
 
   const blockedDateKeys =
     useMemo(
@@ -165,7 +372,7 @@ export default function EventInfo({
                 </h3>
 
                 <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-                  Klik tanggal yang masih tersedia. Tanggal yang terkunci atau sudah terjadwal tidak dapat dipilih.
+                  Pilih tanggal yang masih tersedia. Tanggal yang sudah terjadwal tidak dapat dipilih.
                 </p>
               </div>
 
@@ -203,43 +410,292 @@ export default function EventInfo({
       });
     };
 
+  const handleStartTimeChange =
+    (event) => {
+      const startTime =
+        event.target.value;
+
+      const {
+        endTime,
+        dayOffset,
+      } = calculateEndTime(
+        startTime,
+        durationHours,
+      );
+
+      onChange?.({
+        startTime,
+        endTime,
+        endTimeDayOffset:
+          dayOffset,
+      });
+    };
+
+  const updateEventLocation = ({
+    venueName =
+      eventLocation.venueName,
+    coordinates =
+      eventLocation.coordinates,
+  } = {}) => {
+    onChange?.({
+      location:
+        createEventLocation({
+          venueName,
+          coordinates,
+        }),
+    });
+
+    setGeolocationError("");
+  };
+
+  const handleLocationInputChange =
+    (event) => {
+      const venueName =
+        event.target.value;
+
+      /*
+       * Nama venue / alamat hanyalah label lokasi.
+       * Koordinat yang sudah dipilih dari map tetap dipertahankan.
+       *
+       * Dengan begitu user bisa:
+       * 1. klik titik di map lalu isi nama venue bebas, atau
+       * 2. isi nama/alamat lalu pakai "Cari Lokasi" sebagai bantuan.
+       */
+      updateEventLocation({
+        venueName,
+      });
+
+      setLocationSearchStatus(
+        "idle",
+      );
+      setLocationSearchError("");
+    };
+
+  const handleLocationSearch =
+    async () => {
+      const query =
+        String(
+          eventLocation.venueName ||
+            "",
+        ).trim();
+
+      if (
+        locationSearchStatus ===
+        "loading"
+      ) {
+        return;
+      }
+
+      if (query.length < 3) {
+        setLocationSearchStatus(
+          "error",
+        );
+        setLocationSearchError(
+          "Masukkan nama venue atau alamat minimal 3 karakter.",
+        );
+        return;
+      }
+
+      setLocationSearchStatus(
+        "loading",
+      );
+      setLocationSearchError("");
+
+      try {
+        const response =
+          await fetch(
+            `/api/location/search?q=${encodeURIComponent(query)}`,
+            {
+              method: "GET",
+              headers: {
+                Accept:
+                  "application/json",
+              },
+            },
+          );
+
+        const payload =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.message ||
+              "Lokasi tidak dapat dicari.",
+          );
+        }
+
+        const result =
+          payload?.result;
+
+        const lat =
+          Number(result?.lat);
+        const lng =
+          Number(result?.lng);
+
+        if (
+          !result ||
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lng)
+        ) {
+          throw new Error(
+            "Lokasi tidak ditemukan. Coba tulis alamat yang lebih lengkap.",
+          );
+        }
+
+        updateEventLocation({
+          venueName:
+            String(
+              result.displayName ||
+                query,
+            ).trim(),
+          coordinates: {
+            lat,
+            lng,
+          },
+        });
+
+        setLocationSearchStatus(
+          "success",
+        );
+      } catch (error) {
+        console.error(
+          "LOCATION SEARCH ERROR:",
+          error,
+        );
+
+        setLocationSearchStatus(
+          "error",
+        );
+        setLocationSearchError(
+          error?.message ||
+            "Lokasi tidak dapat dicari. Silakan coba lagi.",
+        );
+      }
+    };
+
+  const handleLocationInputKeyDown =
+    (event) => {
+      if (
+        event.key !== "Enter"
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      handleLocationSearch();
+    };
+
+  const handleUseCurrentLocation =
+    () => {
+      if (
+        !navigator.geolocation
+      ) {
+        setGeolocationError(
+          "Browser ini tidak mendukung akses lokasi.",
+        );
+        return;
+      }
+
+      setGeolocationStatus(
+        "loading",
+      );
+      setGeolocationError("");
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          updateEventLocation({
+            coordinates: {
+              lat:
+                position.coords
+                  .latitude,
+              lng:
+                position.coords
+                  .longitude,
+            },
+          });
+
+          setGeolocationStatus(
+            "success",
+          );
+        },
+        (error) => {
+          setGeolocationStatus(
+            "error",
+          );
+
+          if (
+            error.code ===
+            error.PERMISSION_DENIED
+          ) {
+            setGeolocationError(
+              "Izin lokasi ditolak. Cari alamat atau pilih titik pada peta.",
+            );
+            return;
+          }
+
+          setGeolocationError(
+            "Lokasi perangkat tidak dapat diperoleh. Cari alamat atau pilih titik pada peta.",
+          );
+        },
+        {
+          enableHighAccuracy:
+            true,
+          timeout: 10000,
+          maximumAge: 60000,
+        },
+      );
+    };
+
   return (
     <div>
-      <h2 className="mb-stack-md font-headline-md text-headline-md">
-        Event Details
-      </h2>
+      <header className="mb-8">
+        <p className="font-label-sm text-[10px] uppercase tracking-[0.24em] text-secondary">
+          Event Information
+        </p>
 
-      <div className="grid grid-cols-1 gap-stack-md md:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <label className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-            Preferred Date
-          </label>
+       
+      </header>
 
-          <div className="flex min-h-12 items-center justify-between gap-4 border-b border-outline py-3">
-            {selectedDate ? (
-              <div>
-                <p className="font-label-sm text-label-sm text-secondary">
-                  {formatSelectedDate(
-                    selectedDate,
-                  )}
-                </p>
+      {/* DATE & TIME */}
+      <section>
+        <SubsectionHeading
+          eyebrow="Schedule"
+          title="Tanggal & Waktu"
+          description="Pilih tanggal acara terlebih dahulu. Setelah tanggal dipilih, tentukan jam mulai acara."
+        />
 
-                <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-                  {selectedDate}
-                </p>
-              </div>
-            ) : (
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Belum dipilih
+        <div className="max-w-2xl">
+          <div className="flex min-h-14 items-center justify-between gap-5 border-b border-outline py-3">
+            <div className="min-w-0">
+              <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                Tanggal Acara
               </p>
-            )}
+
+              {selectedDate ? (
+                <>
+                  <p className="mt-1 font-label-md text-label-md text-on-surface">
+                    {formatSelectedDate(
+                      selectedDate,
+                    )}
+                  </p>
+
+                  <p className="mt-0.5 font-body-sm text-body-sm text-on-surface-variant/70">
+                    {selectedDate}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                  Belum dipilih
+                </p>
+              )}
+            </div>
 
             <button
               type="button"
               onClick={
                 openDatePicker
               }
-              className="shrink-0 font-label-sm text-label-sm text-secondary transition-colors hover:underline"
+              className="shrink-0 font-label-sm text-label-sm font-semibold text-secondary transition-colors hover:text-primary"
             >
               {selectedDate
                 ? "Ubah Tanggal"
@@ -248,73 +704,318 @@ export default function EventInfo({
           </div>
 
           {errors.eventDate && (
-            <p className="font-label-sm text-label-sm text-error">
+            <p className="mt-2 font-label-sm text-label-sm text-error">
               {errors.eventDate}
             </p>
           )}
 
           {availabilityStatus ===
             "selected" && (
-            <p className="font-label-sm text-label-sm text-secondary">
+            <p className="mt-2 font-label-sm text-label-sm text-secondary">
               Tanggal tersedia dan sudah dipilih.
             </p>
           )}
 
           {schedulesError && (
-            <p className="font-label-sm text-label-sm text-error">
+            <p className="mt-2 font-label-sm text-label-sm text-error">
               Data jadwal gagal dimuat. Silakan coba kembali.
             </p>
           )}
-        </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-            Event Location
+          {selectedDate && (
+            <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="event-start-time"
+                  className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant"
+                >
+                  Jam Mulai
+                </label>
+
+                <div className="mt-2 flex w-full min-w-0 border-b border-outline py-3 focus-within:border-primary">
+                  <input
+                    id="event-start-time"
+                    type="time"
+                    value={
+                      data.startTime ||
+                      ""
+                    }
+                    onChange={
+                      handleStartTimeChange
+                    }
+                    className="block w-full min-w-0 border-0 bg-transparent p-0 font-body-md text-body-md text-on-surface outline-none"
+                  />
+                </div>
+
+                {errors.startTime && (
+                  <p className="mt-2 font-label-sm text-label-sm text-error">
+                    {errors.startTime}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Selesai
+                </p>
+
+                <div className="mt-2 min-h-12 border-b border-outline py-3">
+                  <p
+                    className={`font-body-md text-body-md ${
+                      data.endTime
+                        ? "text-on-surface"
+                        : "text-on-surface-variant"
+                    }`}
+                  >
+                    {data.endTime
+                      ? `${data.endTime}${
+                          Number(
+                            data.endTimeDayOffset ||
+                              0,
+                          ) > 0
+                            ? " · hari berikutnya"
+                            : ""
+                        }`
+                      : durationHours > 0
+                        ? "Pilih jam mulai"
+                        : "Durasi paket belum tersedia"}
+                  </p>
+                </div>
+
+                <p className="mt-2 font-body-sm text-body-sm text-on-surface-variant/70">
+                  {durationHours > 0
+                    ? `Durasi paket ${durationHours} jam.`
+                    : "Jam selesai akan dihitung setelah durasi paket tersedia."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div className="my-9 h-px w-full bg-outline-variant/35" />
+
+      {/* LOCATION */}
+      <section>
+        <SubsectionHeading
+          eyebrow="Venue"
+          title="Lokasi Acara"
+          description="Isi nama venue atau alamat. Tombol Cari Lokasi bersifat opsional, kamu juga bisa memilih titik langsung pada peta."
+        />
+
+        <div className="max-w-3xl">
+          <label
+            htmlFor="event-location-search"
+            className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant"
+          >
+            Nama Venue / Alamat
           </label>
 
-          <input
-            className="border-x-0 border-b border-t-0 border-outline bg-surface-bright px-0 py-3 font-body-md text-body-md transition-colors focus:border-primary"
-            placeholder="City, State or Venue Name"
-            type="text"
-            value={
-              data.location ?? ""
-            }
-            onChange={(event) =>
-              onChange?.({
-                location:
-                  event.target.value,
-              })
-            }
-          />
+          <div className="mt-2 flex items-end gap-3 border-b border-outline focus-within:border-primary">
+            <input
+              id="event-location-search"
+              className="min-w-0 flex-1 border-0 bg-transparent px-0 py-3 font-body-md text-body-md text-on-surface outline-none"
+              placeholder="Contoh: Hotel Savoy Homann Bandung"
+              type="search"
+              autoComplete="street-address"
+              value={
+                eventLocation.venueName
+              }
+              onChange={
+                handleLocationInputChange
+              }
+              onKeyDown={
+                handleLocationInputKeyDown
+              }
+            />
 
-          {errors.location && (
-            <p className="font-label-sm text-label-sm text-error">
-              {errors.location}
+            <button
+              type="button"
+              onClick={
+                handleLocationSearch
+              }
+              disabled={
+                locationSearchStatus ===
+                  "loading" ||
+                !String(
+                  eventLocation.venueName ||
+                    "",
+                ).trim()
+              }
+              className="mb-3 shrink-0 font-label-sm text-label-sm font-semibold text-secondary transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {locationSearchStatus ===
+              "loading"
+                ? "Mencari..."
+                : "Cari Lokasi"}
+            </button>
+          </div>
+
+          <p className="mt-2 font-body-sm text-body-sm text-on-surface-variant/70">
+            Nama venue boleh berupa nama bebas. Yang wajib adalah nama lokasi terisi dan titik pada peta sudah dipilih.
+          </p>
+
+          {locationSearchStatus ===
+            "success" &&
+            isValidCoordinates(
+              eventLocation.coordinates,
+            ) && (
+              <p className="mt-2 font-label-sm text-label-sm text-secondary">
+                Lokasi ditemukan. Titik peta sudah disesuaikan.
+              </p>
+            )}
+
+          {locationSearchError && (
+            <p
+              role="alert"
+              className="mt-2 font-label-sm text-label-sm text-error"
+            >
+              {locationSearchError}
             </p>
           )}
         </div>
 
-        <div className="flex flex-col gap-2 md:col-span-2">
-          <label className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-            Tell us about your vision
-          </label>
+        <div className="mt-7">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                Titik Peta
+              </p>
 
-          <textarea
-            className="resize-none border-x-0 border-b border-t-0 border-outline bg-surface-bright px-0 py-3 font-body-md text-body-md transition-colors focus:border-primary"
-            placeholder="Briefly describe what you're looking for..."
-            rows={4}
+        
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={
+                  handleUseCurrentLocation
+                }
+                disabled={
+                  geolocationStatus ===
+                  "loading"
+                }
+                className="font-label-sm text-label-sm font-semibold text-secondary transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {geolocationStatus ===
+                "loading"
+                  ? "Mencari lokasi..."
+                  : "Gunakan lokasi saya"}
+              </button>
+
+              {isValidCoordinates(
+                eventLocation.coordinates,
+              ) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateEventLocation({
+                      coordinates: null,
+                    })
+                  }
+                  className="font-label-sm text-label-sm text-on-surface-variant transition-colors hover:text-error"
+                >
+                  Hapus titik
+                </button>
+              )}
+            </div>
+          </div>
+
+          <EventLocationMap
             value={
-              data.vision ?? ""
+              eventLocation.coordinates
             }
-            onChange={(event) =>
-              onChange?.({
-                vision:
-                  event.target.value,
-              })
+            onChange={
+              (coordinates) =>
+                updateEventLocation({
+                  coordinates,
+                })
             }
           />
+
+          {/* Clean travel summary without boxed cards */}
+          <div className="mt-5 flex flex-col gap-4 border-b border-outline-variant/35 pb-5 sm:flex-row sm:items-start sm:gap-10">
+            <div>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                Jarak dari {AGENCY_LOCATION.name}
+              </p>
+
+              <p className="mt-1 font-label-md text-label-md text-on-surface">
+                {distanceLabel
+                  ? `${distanceLabel} km`
+                  : agencyConfigured
+                    ? "Menunggu lokasi"
+                    : "Agency belum dikonfigurasi"}
+              </p>
+            </div>
+
+            <div className="hidden h-10 w-px bg-outline-variant/40 sm:block" />
+
+            <div>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                Biaya Perjalanan
+              </p>
+
+              <p
+                className={`mt-1 font-label-md text-label-md ${
+                  distanceChargeAmount >
+                  0
+                    ? "text-secondary"
+                    : "text-on-surface"
+                }`}
+              >
+                {distanceChargeLabel}
+              </p>
+            </div>
+          </div>
+
+          {distanceLabel && (
+            <p className="mt-3 max-w-3xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant/75">
+              Gratis hingga{" "}
+              <span className="font-medium text-on-surface">
+                {DISTANCE_CHARGE_POLICY.freeDistanceKm} km
+              </span>
+              . Setelah itu dikenakan{" "}
+              <span className="font-medium text-on-surface">
+                {formatCurrency(
+                  DISTANCE_CHARGE_POLICY.chargePerStep,
+                  DISTANCE_CHARGE_POLICY.currency,
+                )}
+              </span>{" "}
+              dan bertambah{" "}
+              <span className="font-medium text-on-surface">
+                {formatCurrency(
+                  DISTANCE_CHARGE_POLICY.chargePerStep,
+                  DISTANCE_CHARGE_POLICY.currency,
+                )}
+              </span>{" "}
+              untuk setiap kelipatan{" "}
+              <span className="font-medium text-on-surface">
+                {DISTANCE_CHARGE_POLICY.stepKm} km
+              </span>{" "}
+              berikutnya. Jarak dihitung secara garis lurus.
+            </p>
+          )}
+
+          {errors.location && (
+            <p className="mt-3 font-label-sm text-label-sm text-error">
+              {errors.location}
+            </p>
+          )}
+
+          {geolocationError && (
+            <p className="mt-3 font-label-sm text-label-sm text-error">
+              {geolocationError}
+            </p>
+          )}
+
+          {!agencyConfigured && (
+            <p className="mt-3 font-label-sm text-label-sm text-on-surface-variant">
+              Lokasi agency belum dikonfigurasi. Isi NEXT_PUBLIC_AGENCY_LAT dan NEXT_PUBLIC_AGENCY_LNG untuk mengaktifkan perhitungan jarak.
+            </p>
+          )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

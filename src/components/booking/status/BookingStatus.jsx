@@ -1,383 +1,865 @@
 "use client";
 
+import AppIcon from "@/components/global/AppIcon";
+
 const STATUS_CONFIG = {
   pending: {
-    status : "pending",
-    label: "Pending Review",
-    title: "Thank You for Registering",
+    label: "Menunggu Review",
+    title: "Inquiry Berhasil Dikirim",
     description:
-      "Your booking request has been submitted. Our team will review your details and contact you shortly.",
+      "Permintaan booking Anda sudah diterima. Tim Rafi Picture akan meninjau jadwal, lokasi, paket, dan kebutuhan acara terlebih dahulu.",
     icon: "hourglass_top",
-    iconClass:
-      "bg-yellow-100 text-yellow-700 border-yellow-200",
-    badgeClass:
-      "bg-yellow-100 text-yellow-800 border-yellow-200",
+    accentClass: "text-secondary",
   },
 
   approved: {
-    status : "approved",
-    label: "Approved by Admin",
-    title: "Your Booking Has Been Approved",
+    label: "Disetujui",
+    title: "Booking Disetujui",
     description:
-      "Your booking request has been approved. Please proceed with the deposit Payment.",
+      "Permintaan booking Anda sudah disetujui. Silakan lanjutkan ke tahap pembayaran deposit.",
     icon: "verified",
-    iconClass:
-      "bg-blue-100 text-blue-700 border-blue-200",
-    badgeClass:
-      "bg-blue-100 text-blue-800 border-blue-200",
+    accentClass: "text-primary",
   },
 
   confirmed: {
-    status : "confirmed",
-    label: "Booking Confirmed",
-    title: "Admin is Reviewing your payment",
+    label: "Pembayaran Dikirim",
+    title: "Pembayaran Sedang Ditinjau",
     description:
-      "Your booking has been officially confirmed and the admin is reviewing your payment. Please review your booking information below.",
+      "Bukti pembayaran sudah diterima dan sedang diverifikasi oleh admin Rafi Picture.",
     icon: "check_circle",
-    iconClass:
-      "bg-green-100 text-green-700 border-green-200",
-    badgeClass:
-      "bg-green-100 text-green-800 border-green-200",
+    accentClass: "text-primary",
   },
 
   in_progress: {
-    label: "In Progress",
-    title: "Your Booking Is in Progress",
+    label: "Dalam Proses",
+    title: "Booking Sedang Berjalan",
     description:
-      "Our team is currently handling your booking and preparing the selected service.",
+      "Booking Anda sudah aktif dan tim sedang mempersiapkan layanan sesuai detail acara.",
     icon: "pending_actions",
-    iconClass:
-      "bg-purple-100 text-purple-700 border-purple-200",
-    badgeClass:
-      "bg-purple-100 text-purple-800 border-purple-200",
+    accentClass: "text-secondary",
   },
 
   completed: {
-    label: "Completed",
-    title: "Booking Completed",
+    label: "Selesai",
+    title: "Booking Selesai",
     description:
-      "Your booking has been completed. Thank you for choosing our services.",
+      "Seluruh proses booking telah selesai. Terima kasih telah menggunakan layanan Rafi Picture.",
     icon: "task_alt",
-    iconClass:
-      "bg-green-100 text-green-700 border-green-200",
-    badgeClass:
-      "bg-green-100 text-green-800 border-green-200",
+    accentClass: "text-primary",
   },
 
   cancelled: {
-    label: "Cancelled",
-    title: "Booking Cancelled",
+    label: "Dibatalkan",
+    title: "Booking Dibatalkan",
     description:
-      "This booking has been cancelled. Please contact our team if you need additional information.",
+      "Booking ini telah dibatalkan. Hubungi tim Rafi Picture jika Anda membutuhkan informasi lebih lanjut.",
     icon: "cancel",
-    iconClass:
-      "bg-red-100 text-red-700 border-red-200",
-    badgeClass:
-      "bg-red-100 text-red-800 border-red-200",
+    accentClass: "text-error",
   },
 };
 
-function formatDate(value) {
-  if (!value) return "-";
+const EMPTY_VALUE = "-";
 
-  // Mencegah YYYY-MM-DD berubah hari karena timezone.
+function toDate(value) {
+  if (!value) return null;
+
   if (
     typeof value === "string" &&
     /^\d{4}-\d{2}-\d{2}$/.test(value)
   ) {
-    const [year, month, day] = value.split("-").map(Number);
+    const [year, month, day] =
+      value.split("-").map(Number);
 
-    return new Intl.DateTimeFormat("en-US", {
+    return new Date(
+      year,
+      month - 1,
+      day,
+    );
+  }
+
+  const date =
+    typeof value?.toDate === "function"
+      ? value.toDate()
+      : value instanceof Date
+        ? value
+        : new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? null
+    : date;
+}
+
+function formatDate(value) {
+  const date = toDate(value);
+
+  if (!date) return EMPTY_VALUE;
+
+  return new Intl.DateTimeFormat(
+    "id-ID",
+    {
+      weekday: "long",
       day: "2-digit",
       month: "long",
       year: "numeric",
-    }).format(new Date(year, month - 1, day));
-  }
-
-  const date =
-    typeof value?.toDate === "function"
-      ? value.toDate()
-      : value instanceof Date
-        ? value
-        : new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(date);
+    },
+  ).format(date);
 }
 
 function formatDateTime(value) {
-  if (!value) return "-";
+  const date = toDate(value);
 
-  const date =
-    typeof value?.toDate === "function"
-      ? value.toDate()
-      : value instanceof Date
-        ? value
-        : new Date(value);
+  if (!date) return EMPTY_VALUE;
 
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    "id-ID",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  ).format(date);
 }
 
-export default function BookingStatus({ booking }) {
+function formatCurrency(
+  value,
+  currency = "IDR",
+) {
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return EMPTY_VALUE;
+  }
+
+  return new Intl.NumberFormat(
+    "id-ID",
+    {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    },
+  ).format(amount);
+}
+
+function formatRupiah(value) {
+  const amount = Number(value);
+
+  return `Rp ${new Intl.NumberFormat(
+    "id-ID",
+    {
+      maximumFractionDigits: 0,
+    },
+  ).format(
+    Number.isFinite(amount)
+      ? amount
+      : 0,
+  )}`;
+}
+
+function normalizeInstagram(value) {
+  const instagram =
+    String(value ?? "").trim();
+
+  if (!instagram) {
+    return EMPTY_VALUE;
+  }
+
+  return instagram.startsWith("@")
+    ? instagram
+    : `@${instagram}`;
+}
+
+function getLocationLabel(location) {
+  if (typeof location === "string") {
+    return (
+      location.trim() ||
+      EMPTY_VALUE
+    );
+  }
+
+  return (
+    String(
+      location?.venueName || "",
+    ).trim() ||
+    EMPTY_VALUE
+  );
+}
+
+function getEventTimeLabel(event) {
+  if (!event?.startTime) {
+    return EMPTY_VALUE;
+  }
+
+  if (!event?.endTime) {
+    return event.startTime;
+  }
+
+  return `${event.startTime} - ${event.endTime}${
+    Number(
+      event.endTimeDayOffset || 0,
+    ) > 0
+      ? " (hari berikutnya)"
+      : ""
+  }`;
+}
+
+function getTravelCharge(location) {
+  return Math.max(
+    Number(
+      location?.distanceCharge?.amount,
+    ) || 0,
+    0,
+  );
+}
+
+function getPackageFeatures(packageItem) {
+  const features =
+    packageItem?.features ??
+    packageItem?.serviceHighlights ??
+    [];
+
+  return Array.isArray(features)
+    ? features
+        .map((item) =>
+          String(item).trim(),
+        )
+        .filter(Boolean)
+    : [];
+}
+
+function getInvoicePdf(invoice) {
+  const url =
+    invoice?.pdf?.url ??
+    invoice?.pdf?.secureUrl ??
+    invoice?.pdfUrl ??
+    null;
+
+  if (!url) {
+    return null;
+  }
+
+  return {
+    url,
+    fileName:
+      invoice?.pdf?.fileName ??
+      `${invoice?.invoiceNumber ?? "invoice-dp"}.pdf`,
+    bytes:
+      Number(
+        invoice?.pdf?.bytes,
+      ) || null,
+  };
+}
+
+function formatFileSize(bytes) {
+  const value =
+    Number(bytes);
+
+  if (
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return "PDF";
+  }
+
+  if (
+    value <
+    1024 * 1024
+  ) {
+    return `${(
+      value / 1024
+    ).toFixed(1)} KB`;
+  }
+
+  return `${(
+    value /
+    (1024 * 1024)
+  ).toFixed(1)} MB`;
+}
+
+function getPackagePriceLabel(packageItem) {
+  const numericPrice =
+    Number(packageItem?.price);
+
+  if (
+    Number.isFinite(numericPrice)
+  ) {
+    return formatCurrency(
+      numericPrice,
+      packageItem?.currency ||
+        "IDR",
+    );
+  }
+
+  return (
+    packageItem?.priceLabel ||
+    EMPTY_VALUE
+  );
+}
+
+function SectionHeading({
+  icon,
+  title,
+  description,
+}) {
+  return (
+    <div className="mb-5 flex items-start gap-3">
+      <AppIcon
+        name={icon}
+        size={21}
+        className="mt-0.5 shrink-0 text-secondary"
+      />
+
+      <div>
+        <h2 className="font-headline-sm text-headline-sm text-on-surface">
+          {title}
+        </h2>
+
+        {description && (
+          <p className="mt-1 font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
+            {description}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetailItem({
+  label,
+  value,
+  fullWidth = false,
+  optional = false,
+  accent = false,
+  multiline = false,
+}) {
+  const displayValue =
+    value === undefined ||
+    value === null ||
+    String(value).trim() === ""
+      ? EMPTY_VALUE
+      : value;
+
+  return (
+    <div
+      className={`py-3.5 ${
+        fullWidth
+          ? "sm:col-span-2"
+          : ""
+      }`}
+    >
+      <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+        {label}
+
+        {optional && (
+          <span className="ml-2 normal-case tracking-normal text-on-surface-variant/50">
+            Optional
+          </span>
+        )}
+      </p>
+
+      <p
+        className={`mt-1.5 break-words font-body-md text-body-md ${
+          multiline
+            ? "max-w-3xl whitespace-pre-wrap leading-relaxed"
+            : ""
+        } ${
+          accent
+            ? "font-medium text-secondary"
+            : displayValue === EMPTY_VALUE
+              ? "text-on-surface-variant/55"
+              : "text-on-surface"
+        }`}
+      >
+        {displayValue}
+      </p>
+    </div>
+  );
+}
+
+export default function BookingStatus({
+  booking,
+  invoice = null,
+}) {
   if (!booking) {
     return (
-      <section className="flex min-h-100 items-center justify-center">
-        <p className="text-on-surface-variant">
-          Booking data is not available.
+      <section className="flex min-h-100 items-center justify-center px-margin-mobile">
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          Data booking tidak tersedia.
         </p>
       </section>
     );
   }
 
+  const normalizedStatus =
+    String(
+      booking.status || "pending",
+    ).toLowerCase();
+
   const statusConfig =
-    STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending;
+    STATUS_CONFIG[
+      normalizedStatus
+    ] ?? STATUS_CONFIG.pending;
 
-  const client = booking.client ?? {};
-  const event = booking.event ?? {};
-  const selectedPackage = booking.package ?? {};
+  const client =
+    booking.client ?? {};
+  const event =
+    booking.event ?? {};
+  const selectedPackage =
+    booking.package ?? {};
 
-  const packageFeatures = Array.isArray(
-    selectedPackage.features
-  )
-    ? selectedPackage.features
-    : [];
+  const eventLocation =
+    typeof event.location ===
+    "object"
+      ? event.location
+      : {
+          venueName:
+            event.location || "",
+        };
+
+  const travelCharge =
+    getTravelCharge(
+      eventLocation,
+    );
+
+  const packagePrice =
+    Math.max(
+      Number(
+        selectedPackage.price,
+      ) || 0,
+      0,
+    );
+
+  const estimatedTotal =
+    packagePrice +
+    travelCharge;
+
+  const packageFeatures =
+    getPackageFeatures(
+      selectedPackage,
+    );
+
+  const showPartnerName =
+    selectedPackage
+      .bookingSubjectType ===
+    "couple";
+
+  const bookingReference =
+    booking.bookingCode ||
+    booking.id ||
+    EMPTY_VALUE;
+
+  const invoicePdf =
+    getInvoicePdf(invoice);
 
   return (
-    <section className="relative min-h-160 flex items-center justify-center overflow-hidden py-stack-lg">
-      <div className="absolute inset-0 z-0">
-        <div className="w-full h-full opacity-40 mix-blend-overlay">
-          <div
-            className="w-full h-full bg-cover bg-center"
-            style={{
-              backgroundImage:
-                'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBgmqxHsjBiJTfnB_R8i4kz3MqFAQIQuT2jRUrJHwOXa8X6LREmI9OaT8EVrlPES7epYZ1wHJXEttBKNZcGIN26hJQOGBDj2W5wO2VI6pacEvR-Vx4uf0R-ED1r2R_Km6Y-4XegXRdJHjFHe3IgdVvL2PziWzsGIAqjsfk7s2MA4gZaUJ2qpPgKTmUNCE9G1-MlUUi2qYAN4Gz_qKfAVNs_C2yRDeDIBhSF98R2HzMZaFwPdpyZDOJg1CrV-juCSMy-knTianN-5y74")',
-            }}
+    <section className="mx-auto w-full max-w-4xl px-margin-mobile py-stack-lg md:px-0">
+      {/* STATUS HEADER */}
+      <header className="mb-9 text-center">
+        <div
+          className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center ${statusConfig.accentClass}`}
+        >
+          <AppIcon
+            name={
+              statusConfig.icon
+            }
+            size={38}
           />
         </div>
 
-        <div className="absolute inset-0 bg-linear-to-b from-background/40 via-background/80 to-background" />
-      </div>
+        <p
+          className={`font-label-sm text-label-sm uppercase tracking-[0.2em] ${statusConfig.accentClass}`}
+        >
+          {statusConfig.label}
+        </p>
 
-      <div className="relative z-10 w-full max-w-200 px-margin-mobile md:px-0 text-center fade-in-up">
-        <div className="mb-stack-md flex justify-center">
-          <div
-            className={`w-20 h-20 rounded-full flex items-center justify-center border ${statusConfig.iconClass}`}
-          >
-            <span className="material-symbols-outlined text-[40px]">
-              {statusConfig.icon}
-            </span>
-          </div>
-        </div>
-
-        <div className="mb-4 flex justify-center">
-          <span
-            className={`inline-flex rounded-full border px-4 py-1.5 font-label-sm text-label-sm ${statusConfig.badgeClass}`}
-          >
-            {statusConfig.label}
-          </span>
-        </div>
-
-        <h1 className="font-headline-lg text-headline-lg mb-4 text-primary tracking-tight">
+        <h1 className="mt-2 font-headline-lg text-headline-lg tracking-tight text-on-surface">
           {statusConfig.title}
         </h1>
 
-        <p className="font-body-md text-body-md text-on-surface-variant max-w-135 mx-auto mb-stack-lg leading-relaxed">
+        <p className="mx-auto mt-3 max-w-2xl font-body-md text-body-md leading-relaxed text-on-surface-variant">
           {statusConfig.description}
         </p>
 
-        <div className="glass-panel rounded-xl p-gutter mb-stack-lg text-left max-w-lg mx-auto">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-2 bg-primary/5 rounded-lg">
-              <span className="material-symbols-outlined text-primary">
-                receipt_long
+        <div className="mx-auto mt-6 flex max-w-xl flex-col items-center justify-center gap-2 border-y border-outline-variant/35 py-4 sm:flex-row sm:gap-5">
+          <div className="flex items-center gap-2">
+            <AppIcon
+              name="confirmation_number"
+              size={18}
+              className="text-secondary"
+            />
+
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              Booking Code
+            </span>
+
+            <span className="font-label-md text-label-md text-on-surface">
+              {bookingReference}
+            </span>
+          </div>
+
+          <span className="hidden h-4 w-px bg-outline-variant/50 sm:block" />
+
+          <div className="flex items-center gap-2">
+            <AppIcon
+              name="schedule"
+              size={18}
+              className="text-secondary"
+            />
+
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              Dikirim
+            </span>
+
+            <span className="font-label-md text-label-md text-on-surface">
+              {formatDateTime(
+                booking.submittedAt,
+              )}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* PACKAGE */}
+      <section className="border-b border-outline-variant/35 pb-7">
+        <SectionHeading
+          icon="photo_camera"
+          title="Paket Dokumentasi"
+          description="Ringkasan paket yang dipilih pada saat inquiry dikirim."
+        />
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-headline-md text-headline-md text-on-surface">
+              {selectedPackage.name ||
+                EMPTY_VALUE}
+            </p>
+
+            {selectedPackage.description && (
+              <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
+                {
+                  selectedPackage.description
+                }
+              </p>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
+              {Number(
+                selectedPackage.durationHours,
+              ) > 0 && (
+                <span className="inline-flex items-center gap-2">
+                  <AppIcon
+                    name="schedule"
+                    size={16}
+                    className="text-secondary"
+                  />
+                  {
+                    selectedPackage.durationHours
+                  }{" "}
+                  jam liputan
+                </span>
+              )}
+
+              <span className="inline-flex items-center gap-2">
+                <AppIcon
+                  name={
+                    showPartnerName
+                      ? "groups"
+                      : "person"
+                  }
+                  size={16}
+                  className="text-secondary"
+                />
+                {showPartnerName
+                  ? "Couple / berpasangan"
+                  : "Individual"}
               </span>
-            </div>
-
-            <div>
-              <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
-                Booking Information
-              </p>
-
-              <p className="font-label-md text-label-md text-primary break-all">
-                Booking ID: {booking.id ?? "-"}
-              </p>
             </div>
           </div>
 
-          <div className="h-px w-full bg-outline-variant/30 my-4" />
+          <div className="shrink-0 sm:text-right">
+            <p className="font-label-sm text-label-sm text-on-surface-variant">
+              Harga Paket
+            </p>
 
-          <InfoSection title="Booking Details">
-            <InfoItem
-              label="Status"
-              value={statusConfig.label}
+            <p className="mt-1 font-headline-md text-headline-md text-primary">
+              {getPackagePriceLabel(
+                selectedPackage,
+              )}
+            </p>
+          </div>
+        </div>
+
+        {packageFeatures.length >
+          0 && (
+          <div className="mt-6 border-t border-outline-variant/25 pt-5">
+            <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+              Layanan Termasuk
+            </p>
+
+            <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+              {packageFeatures.map(
+                (
+                  feature,
+                  index,
+                ) => (
+                  <li
+                    key={`${feature}-${index}`}
+                    className="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant"
+                  >
+                    <AppIcon
+                      name="check"
+                      size={17}
+                      className="mt-0.5 shrink-0 text-secondary"
+                    />
+
+                    <span>
+                      {feature}
+                    </span>
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      {/* EVENT */}
+      <section className="border-b border-outline-variant/35 py-7">
+        <SectionHeading
+          icon="event"
+          title="Detail Acara"
+          description="Jadwal, lokasi, dan biaya perjalanan yang tercatat pada booking."
+        />
+
+        <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+          <DetailItem
+            label="Tanggal Acara"
+            value={formatDate(
+              event.preferredDate,
+            )}
+          />
+
+          <DetailItem
+            label="Jam Acara"
+            value={getEventTimeLabel(
+              event,
+            )}
+          />
+
+          <DetailItem
+            label="Lokasi Acara"
+            value={getLocationLabel(
+              eventLocation,
+            )}
+            fullWidth
+          />
+
+          <DetailItem
+            label="Biaya Perjalanan"
+            value={formatRupiah(
+              travelCharge,
+            )}
+            accent={
+              travelCharge > 0
+            }
+            fullWidth
+          />
+        </div>
+      </section>
+
+      {/* CLIENT */}
+      <section className="border-b border-outline-variant/35 py-7">
+        <SectionHeading
+          icon="person"
+          title="Data Pemesan"
+          description="Informasi kontak yang digunakan tim Rafi Picture untuk komunikasi booking."
+        />
+
+        <div className="space-y-1">
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+            <DetailItem
+              label="Nama Lengkap"
+              value={
+                client.fullName
+              }
             />
 
-            <InfoItem
-              label="Submitted At"
-              value={formatDateTime(booking.submittedAt)}
-            />
+            {showPartnerName && (
+              <DetailItem
+                label="Nama Pasangan"
+                value={
+                  client.partnerName
+                }
+                optional
+              />
+            )}
+          </div>
 
-            <InfoItem
-              label="Last Updated"
-              value={formatDateTime(booking.updatedAt)}
-            />
-          </InfoSection>
-
-          <Divider />
-
-          <InfoSection title="Client Details">
-            <InfoItem
-              label="Full Name"
-              value={client.fullName}
-            />
-
-            <InfoItem
-              label="Partner Name"
-              value={client.partnerName}
-            />
-
-            <InfoItem
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+            <DetailItem
               label="Email"
               value={client.email}
             />
 
-            <InfoItem
-              label="Phone"
+            <DetailItem
+              label="Nomor Telepon"
               value={client.phone}
             />
+          </div>
 
-            <InfoItem
+          <div className="grid grid-cols-1 sm:grid-cols-2">
+            <DetailItem
               label="Instagram"
-              value={client.instagram}
+              value={normalizeInstagram(
+                client.instagram,
+              )}
+              optional
             />
-          </InfoSection>
+          </div>
+        </div>
+      </section>
 
-          <Divider />
+      {/* VISION */}
+      <section className="border-b border-outline-variant/35 py-7">
+        <SectionHeading
+          icon="auto_awesome"
+          title="Vision & Catatan"
+          description="Konsep atau kebutuhan tambahan yang disampaikan saat booking."
+        />
 
-          <InfoSection title="Event Details">
-            <InfoItem
-              label="Preferred Date"
-              value={formatDate(event.preferredDate)}
-            />
+        <DetailItem
+          label="Catatan Acara"
+          value={event.vision}
+          optional
+          fullWidth
+          multiline
+        />
+      </section>
 
-            <InfoItem
-              label="Location"
-              value={event.location}
-            />
+      {/* COST SUMMARY */}
+      <section className="py-7">
+        <SectionHeading
+          icon="payments"
+          title="Ringkasan Biaya"
+          description="Ringkasan ini berdasarkan package dan biaya perjalanan pada saat inquiry dikirim."
+        />
 
-            <InfoItem
-              label="Creative Vision"
-              value={event.vision}
-              fullWidth
-            />
-          </InfoSection>
+        <div className="max-w-xl">
+          <div className="flex items-center justify-between gap-5 py-2.5">
+            <span className="font-body-md text-body-md text-on-surface-variant">
+              Harga Paket
+            </span>
 
-          <Divider />
+            <span className="font-label-md text-label-md text-on-surface">
+              {formatCurrency(
+                packagePrice,
+                selectedPackage.currency ||
+                  "IDR",
+              )}
+            </span>
+          </div>
 
-          <InfoSection title="Package Details">
-            <InfoItem
-              label="Package"
-              value={selectedPackage.name}
-            />
+          <div className="flex items-center justify-between gap-5 py-2.5">
+            <span className="font-body-md text-body-md text-on-surface-variant">
+              Biaya Perjalanan
+            </span>
 
-            <InfoItem
-              label="Price"
-              value={
-                selectedPackage.priceLabel ??
-                selectedPackage.price
-              }
-            />
+            <span className="font-label-md text-label-md text-on-surface">
+              {formatRupiah(
+                travelCharge,
+              )}
+            </span>
+          </div>
 
-            <div className="sm:col-span-2">
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Features
+          <div className="mt-2 flex items-center justify-between gap-5 border-t border-outline-variant/40 pt-4">
+            <span className="font-label-md text-label-md text-on-surface">
+              Estimasi Total
+            </span>
+
+            <span className="font-headline-sm text-headline-sm text-primary">
+              {formatCurrency(
+                estimatedTotal,
+                selectedPackage.currency ||
+                  "IDR",
+              )}
+            </span>
+          </div>
+
+          {invoicePdf && (
+            <div className="mt-5 border-t border-outline-variant/30 pt-5">
+              <p className="mb-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                File Invoice
               </p>
 
-              {packageFeatures.length > 0 ? (
-                <ul className="mt-2 space-y-2">
-                  {packageFeatures.map((feature, index) => (
-                    <li
-                      key={`${feature}-${index}`}
-                      className="flex items-start gap-2 font-body-md text-body-md text-on-surface"
-                    >
-                      <span className="text-primary">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="font-body-md text-body-md text-on-surface font-medium">
-                  -
-                </p>
-              )}
-            </div>
-          </InfoSection>
-        </div>
+              <a
+                href={invoicePdf.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-4 rounded-lg border border-outline-variant/30 p-4 transition-colors hover:border-primary/45"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/5">
+                  <AppIcon
+                    name="receipt"
+                    size={20}
+                    className="text-primary"
+                  />
+                </div>
 
-        <div className="flex justify-center">
-          <a
-            className="w-full md:w-auto border border-primary text-primary font-label-md text-label-md px-10 py-3 rounded-lg hover:bg-secondary-container/30 transition-all active:scale-95 text-center"
-            href={`/booking/${booking.id}`}
-          >
-            View My Booking
-          </a>
+                <div className="min-w-0 grow">
+                  <p className="truncate font-label-md text-label-md text-on-surface">
+                    {invoicePdf.fileName}
+                  </p>
+
+                  <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
+                    {formatFileSize(
+                      invoicePdf.bytes,
+                    )}
+                    {" • "}
+                    Invoice Down Payment
+                  </p>
+                </div>
+
+                <AppIcon
+                  name="visibility"
+                  size={19}
+                  className="shrink-0 text-secondary transition-colors group-hover:text-primary"
+                />
+              </a>
+            </div>
+          )}
+
+          {normalizedStatus ===
+            "pending" && (
+            <p className="mt-3 font-body-sm text-body-sm leading-relaxed text-on-surface-variant/70">
+              Nominal final akan mengikuti hasil review admin dan invoice yang diterbitkan setelah booking disetujui.
+            </p>
+          )}
         </div>
+      </section>
+
+      {/* FOOT META */}
+      <div className="flex flex-col gap-4 border-t border-outline-variant/35 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-body-sm text-body-sm text-on-surface-variant/65">
+          Terakhir diperbarui{" "}
+          {formatDateTime(
+            booking.updatedAt,
+          )}
+        </p>
+
+        {booking.id && (
+          <a
+            href={`/booking/${booking.id}`}
+            className="inline-flex items-center gap-2 font-label-md text-label-md text-secondary transition-colors hover:text-primary"
+          >
+            Lihat Detail Booking
+            <AppIcon
+              name="arrow_forward"
+              size={18}
+            />
+          </a>
+        )}
       </div>
     </section>
-  );
-}
-
-function InfoSection({ title, children }) {
-  return (
-    <div>
-      <p className="font-label-sm text-label-sm text-primary uppercase tracking-widest mb-4">
-        {title}
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-4">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function InfoItem({
-  label,
-  value,
-  fullWidth = false,
-}) {
-  return (
-    <div className={fullWidth ? "sm:col-span-2" : ""}>
-      <p className="font-label-sm text-label-sm text-on-surface-variant">
-        {label}
-      </p>
-
-      <p className="font-body-md text-body-md text-on-surface font-medium whitespace-pre-wrap wrap-break-words">
-        {value || "-"}
-      </p>
-    </div>
-  );
-}
-
-function Divider() {
-  return (
-    <div className="h-px w-full bg-outline-variant/30 my-6" />
   );
 }

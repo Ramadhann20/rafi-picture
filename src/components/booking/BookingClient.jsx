@@ -9,10 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
 
-import {
-  deletePaymentProof,
-  savePaymentProof,
-} from "@/lib/paymentProofDb";
+import { CODE_PREFIXES, generateCode } from "@/lib/codefication";
+import { normalizeEventLocation } from "@/lib/location";
 
 import BookingProcess from "./process/BookingProcess";
 import BookingStatus from "./status/BookingStatus";
@@ -111,13 +109,6 @@ function getLatestDepositInvoice(invoices) {
   );
 }
 
-function createPaymentReference() {
-  const timestamp = Date.now()
-    .toString()
-    .slice(-8);
-
-  return `PAY-${timestamp}`;
-}
 
 
 const idrFormatter = new Intl.NumberFormat("id-ID", {
@@ -301,10 +292,14 @@ export default function BookingClient({ packageId = null }) {
   ========================================================= */
 
   /*
-   * Invoice dan payment hanya dibaca saat booking approved.
-   * Ini mengurangi query yang tidak diperlukan ketika status
-   * booking masih pending atau sudah masuk tahap berikutnya.
+   * Invoice tetap dibaca setelah booking approved agar file invoice
+   * masih dapat ditampilkan pada BookingStatus setelah client
+   * mengirim bukti pembayaran dan status berubah menjadi confirmed.
    */
+  const shouldLoadInvoice =
+    Boolean(bookingId) &&
+    normalizedBookingStatus !== "pending";
+
   const {
     rows: bookingInvoices,
     loading: invoicesLoading,
@@ -313,7 +308,7 @@ export default function BookingClient({ packageId = null }) {
     () => {
       if (
         !bookingId ||
-        !showPaymentPage
+        !shouldLoadInvoice
       ) {
         return null;
       }
@@ -329,12 +324,11 @@ export default function BookingClient({ packageId = null }) {
     },
     [
       bookingId,
-      showPaymentPage,
+      shouldLoadInvoice,
     ],
     {
       enabled:
-        Boolean(bookingId) &&
-        showPaymentPage,
+        shouldLoadInvoice,
     },
   );
 
@@ -415,8 +409,9 @@ export default function BookingClient({ packageId = null }) {
           formData.personal.fullName.trim(),
 
         partnerName:
-          formData.personal.partnerName?.trim() ||
-          null,
+          selectedPackage.bookingSubjectType === "individual"
+            ? null
+            : formData.personal.partnerName?.trim() || null,
 
         email:
           formData.personal.email
@@ -435,8 +430,9 @@ export default function BookingClient({ packageId = null }) {
         preferredDate:
           formData.event.eventDate,
 
-        location:
-          formData.event.location.trim(),
+        location: normalizeEventLocation(
+          formData.event.location,
+        ),
 
         vision:
           formData.event.vision?.trim() ||
@@ -445,8 +441,11 @@ export default function BookingClient({ packageId = null }) {
 
       package: {
         id: selectedPackage.id,
+        packageCode: selectedPackage.packageCode ?? null,
         packageCategoryId:
           selectedPackage.packageCategoryId ?? null,
+        bookingSubjectType:
+          selectedPackage.bookingSubjectType ?? null,
         name: selectedPackage.name,
         description:
           selectedPackage.description ?? null,
@@ -507,9 +506,16 @@ export default function BookingClient({ packageId = null }) {
           bookingDraft,
         );
 
+      const bookingCode = generateCode({
+        prefix: CODE_PREFIXES.booking,
+        categoryId:
+          bookingPayload.package.packageCategoryId || "",
+      });
+
       const documentReference =
         await db.addDoc("Bookings", {
           ...bookingPayload,
+          bookingCode,
 
           submittedAt:
             db.serverTimestamp(),
@@ -524,6 +530,7 @@ export default function BookingClient({ packageId = null }) {
       const newBooking = {
         id: documentReference.id,
         ...bookingPayload,
+        bookingCode,
         submittedAt: currentTime,
         updatedAt: currentTime,
       };
@@ -627,126 +634,63 @@ export default function BookingClient({ packageId = null }) {
       );
     }
 
-    const proofStorageKey = [
-      "payment-proof",
-      bookingRecord.id,
-      invoiceId,
-      Date.now(),
-    ].join("-");
-
-    /*
-     * File foto disimpan ke IndexedDB.
-     * Firestore hanya menyimpan metadata dan key file.
-     */
-    await savePaymentProof({
-      key: proofStorageKey,
-      file: proofFile,
-    });
-
-    const referenceNumber =
-      createPaymentReference();
-
-    let paymentDocument;
-
-    try {
-      paymentDocument =
-        await db.addDoc("Payments", {
-        bookingId:
-          bookingRecord.id,
-
-        invoiceId,
-
-        clientId: userId,
-
-        amount:
-          Number(amount) || 0,
-
-        currency:
-          currency ?? "IDR",
-
-        method: "bank_transfer",
-
-        referenceNumber,
-
-        proofStorageType:
-          "indexeddb",
-
-        proofStorageKey,
-
-        proofFileName:
-          proofFile.name,
-
-        proofMimeType:
-          proofFile.type,
-
-        proofFileSize:
-          proofFile.size,
-
-        status:
-          "pending_verification",
-
-        submittedAt:
-          db.serverTimestamp(),
-
-        createdAt:
-          db.serverTimestamp(),
-
-        updatedAt:
-          db.serverTimestamp(),
-      });
-    } catch (error) {
-      /*
-       * Jika dokumen Payments gagal dibuat,
-       * file lokal dihapus agar tidak menjadi orphan.
-       */
-      try {
-        await deletePaymentProof(
-          proofStorageKey,
-        );
-      } catch (cleanupError) {
-        console.error(
-          "DELETE ORPHAN PAYMENT PROOF ERROR:",
-          cleanupError,
-        );
-      }
-
-      throw error;
+    if (!user) {
+      throw new Error(
+        "Sesi pengguna tidak tersedia.",
+      );
     }
 
-    try {
-      /*
-       * approved -> upload bukti -> confirmed
-       *
-       * Setelah realtime listener menerima status
-       * confirmed, BookingClient otomatis kembali
-       * menampilkan BookingStatus.
-       */
-      await db.updateDoc(
-        "Bookings",
-        bookingRecord.id,
+    const idToken =
+      await user.getIdToken(
+        true,
+      );
+
+    const payload =
+      new FormData();
+
+    payload.append(
+      "bookingId",
+      bookingRecord.id,
+    );
+
+    payload.append(
+      "invoiceId",
+      invoiceId,
+    );
+
+    payload.append(
+      "proof",
+      proofFile,
+    );
+
+    const response =
+      await fetch(
+        "/api/payments/submit-proof",
         {
-          status: "confirmed",
-
-          latestPaymentId:
-            paymentDocument.id,
-
-          paymentProofSubmittedAt:
-            db.serverTimestamp(),
-
-          updatedAt:
-            db.serverTimestamp(),
+          method: "POST",
+          headers: {
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+          body: payload,
         },
       );
-    } catch (error) {
-      console.error(
-        "UPDATE BOOKING AFTER PAYMENT ERROR:",
-        error,
-      );
 
+    const result =
+      await response.json();
+
+    if (!response.ok) {
       throw new Error(
-        "Bukti pembayaran tersimpan, tetapi status booking gagal diperbarui.",
+        result?.message ||
+          "Bukti pembayaran gagal dikirim.",
       );
     }
+
+    return (
+      result?.data ??
+      null
+    );
+
   };
 
   /* =========================================================
@@ -833,6 +777,7 @@ export default function BookingClient({ packageId = null }) {
     return (
       <BookingStatus
         booking={bookingRecord}
+        invoice={depositInvoice}
       />
     );
   }

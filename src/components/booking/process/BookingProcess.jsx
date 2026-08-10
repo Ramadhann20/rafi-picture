@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import PersonalDetail from "./phases/PersonalDetail";
 import EventInfo from "./phases/EventInfo";
 import PackageOption from "./phases/PackageOption";
 import BookConfirm from "./phases/BookConfirm";
+import {
+  createEventLocation,
+  isValidCoordinates,
+  normalizeEventLocation,
+} from "@/lib/location";
 
 const phases = [
-  { id: "personal", label: "Personal Details" },
-  { id: "event", label: "Event Info" },
   { id: "package", label: "Packages" },
+  { id: "event", label: "Event Info" },
+  { id: "personal", label: "Personal Details" },
   { id: "confirm", label: "Confirm" },
 ];
 
@@ -33,7 +38,10 @@ function createInitialFormData(initialPackageId) {
     },
     event: {
       eventDate: "",
-      location: "",
+      startTime: "",
+      endTime: "",
+      endTimeDayOffset: 0,
+      location: createEventLocation(),
       vision: "",
     },
     package: {
@@ -66,6 +74,15 @@ export default function BookingProcess({
   );
   const [errors, setErrors] = useState({});
 
+  const [phaseVisible, setPhaseVisible] =
+    useState(true);
+  const [isPhaseTransitioning, setIsPhaseTransitioning] =
+    useState(false);
+
+  const phaseTopRef = useRef(null);
+  const phaseSwitchTimerRef = useRef(null);
+  const phaseFinishTimerRef = useRef(null);
+
   useEffect(() => {
     const nextPackageId = normalizeInitialPackageId(initialPackageId);
 
@@ -84,6 +101,22 @@ export default function BookingProcess({
     });
   }, [initialPackageId]);
 
+  useEffect(() => {
+    return () => {
+      if (phaseSwitchTimerRef.current) {
+        window.clearTimeout(
+          phaseSwitchTimerRef.current,
+        );
+      }
+
+      if (phaseFinishTimerRef.current) {
+        window.clearTimeout(
+          phaseFinishTimerRef.current,
+        );
+      }
+    };
+  }, []);
+
   const isFirstPhase = currentPhase === 0;
   const isLastPhase = currentPhase === phases.length - 1;
   const isSubmitting = submitStatus === "loading";
@@ -99,6 +132,45 @@ export default function BookingProcess({
       ) ?? null
     );
   }, [formData.package.packageId, packageOptions]);
+
+  /*
+   * Backward compatibility:
+   * package lama yang belum memiliki bookingSubjectType tetap
+   * menampilkan Partner Name sebagai field opsional.
+   */
+  const showPartnerName =
+    Boolean(selectedPackage) &&
+    selectedPackage.bookingSubjectType !== "individual";
+
+  useEffect(() => {
+    if (
+      selectedPackage?.bookingSubjectType === "individual" &&
+      formData.personal.partnerName
+    ) {
+      setFormData((previousData) => ({
+        ...previousData,
+        personal: {
+          ...previousData.personal,
+          partnerName: "",
+        },
+      }));
+
+      setErrors((previousErrors) => {
+        const personalErrors = {
+          ...(previousErrors.personal ?? {}),
+        };
+        delete personalErrors.partnerName;
+
+        return {
+          ...previousErrors,
+          personal: personalErrors,
+        };
+      });
+    }
+  }, [
+    selectedPackage?.bookingSubjectType,
+    formData.personal.partnerName,
+  ]);
 
   const updateFormSection = (section, values) => {
     setFormData((previousData) => ({
@@ -171,8 +243,26 @@ export default function BookingProcess({
         "Preferred date cannot be in the past.";
     }
 
-    if (!formData.event.location.trim()) {
-      nextErrors.location = "Event location is required.";
+    if (
+      formData.event.eventDate &&
+      !formData.event.startTime
+    ) {
+      nextErrors.startTime =
+        "Jam mulai acara wajib dipilih.";
+    }
+
+    const eventLocation = normalizeEventLocation(
+      formData.event.location,
+    );
+
+    if (!eventLocation.venueName.trim()) {
+      nextErrors.location =
+        "Venue atau lokasi acara wajib diisi.";
+    } else if (
+      !isValidCoordinates(eventLocation.coordinates)
+    ) {
+      nextErrors.location =
+        "Pilih titik lokasi event pada peta.";
     }
 
     return nextErrors;
@@ -191,13 +281,81 @@ export default function BookingProcess({
     return nextErrors;
   };
 
+  const scrollToPhaseTop = () => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+
+    phaseTopRef.current?.scrollIntoView({
+      behavior:
+        prefersReducedMotion
+          ? "auto"
+          : "smooth",
+      block: "start",
+    });
+  };
+
+  const transitionToPhase = (
+    nextPhase,
+  ) => {
+    const targetPhase =
+      Math.max(
+        0,
+        Math.min(
+          nextPhase,
+          phases.length - 1,
+        ),
+      );
+
+    if (
+      targetPhase === currentPhase ||
+      isPhaseTransitioning
+    ) {
+      return;
+    }
+
+    setIsPhaseTransitioning(true);
+    setPhaseVisible(false);
+
+    if (phaseSwitchTimerRef.current) {
+      window.clearTimeout(
+        phaseSwitchTimerRef.current,
+      );
+    }
+
+    if (phaseFinishTimerRef.current) {
+      window.clearTimeout(
+        phaseFinishTimerRef.current,
+      );
+    }
+
+    phaseSwitchTimerRef.current =
+      window.setTimeout(() => {
+        setCurrentPhase(targetPhase);
+
+        window.requestAnimationFrame(() => {
+          scrollToPhaseTop();
+          setPhaseVisible(true);
+
+          phaseFinishTimerRef.current =
+            window.setTimeout(() => {
+              setIsPhaseTransitioning(
+                false,
+              );
+            }, 280);
+        });
+      }, 140);
+  };
+
   const validateCurrentPhase = () => {
     let section = null;
     let nextErrors = {};
 
     if (currentPhase === 0) {
-      section = "personal";
-      nextErrors = getPersonalErrors();
+      section = "package";
+      nextErrors = getPackageErrors();
     }
 
     if (currentPhase === 1) {
@@ -206,8 +364,8 @@ export default function BookingProcess({
     }
 
     if (currentPhase === 2) {
-      section = "package";
-      nextErrors = getPackageErrors();
+      section = "personal";
+      nextErrors = getPersonalErrors();
     }
 
     if (!section) {
@@ -235,18 +393,18 @@ export default function BookingProcess({
 
     setErrors(allErrors);
 
-    if (Object.keys(personalErrors).length > 0) {
-      setCurrentPhase(0);
+    if (Object.keys(packageErrors).length > 0) {
+      transitionToPhase(0);
       return false;
     }
 
     if (Object.keys(eventErrors).length > 0) {
-      setCurrentPhase(1);
+      transitionToPhase(1);
       return false;
     }
 
-    if (Object.keys(packageErrors).length > 0) {
-      setCurrentPhase(2);
+    if (Object.keys(personalErrors).length > 0) {
+      transitionToPhase(2);
       return false;
     }
 
@@ -254,18 +412,29 @@ export default function BookingProcess({
   };
 
   const goToNextPhase = () => {
-    if (isSubmitting || !validateCurrentPhase()) return;
+    if (
+      isSubmitting ||
+      isPhaseTransitioning ||
+      !validateCurrentPhase()
+    ) {
+      return;
+    }
 
-    setCurrentPhase((previousPhase) =>
-      Math.min(previousPhase + 1, phases.length - 1)
+    transitionToPhase(
+      currentPhase + 1,
     );
   };
 
   const goToPreviousPhase = () => {
-    if (isSubmitting) return;
+    if (
+      isSubmitting ||
+      isPhaseTransitioning
+    ) {
+      return;
+    }
 
-    setCurrentPhase((previousPhase) =>
-      Math.max(previousPhase - 1, 0)
+    transitionToPhase(
+      currentPhase - 1,
     );
   };
 
@@ -281,7 +450,7 @@ export default function BookingProcess({
         },
       }));
 
-      setCurrentPhase(2);
+      transitionToPhase(0);
       return;
     }
 
@@ -299,7 +468,10 @@ export default function BookingProcess({
   };
 
   return (
-    <>
+    <div
+      ref={phaseTopRef}
+      className="scroll-mt-24"
+    >
       <div className="mb-stack-lg">
         <div className="relative flex items-center justify-between">
           <div className="absolute left-0 top-5 -z-10 h-px w-full bg-outline-variant" />
@@ -346,28 +518,14 @@ export default function BookingProcess({
       </div>
 
       <section className="glass-panel flex min-h-125 flex-col rounded-xl p-6 shadow-sm md:p-stack-lg">
-        <div className="grow">
+        <div
+          className={`grow transform-gpu transition-all duration-300 ease-out ${
+            phaseVisible
+              ? "translate-y-0 opacity-100"
+              : "translate-y-2 opacity-0"
+          }`}
+        >
           {currentPhase === 0 && (
-            <PersonalDetail
-              data={formData.personal}
-              errors={errors.personal ?? {}}
-              onChange={(values) =>
-                updateFormSection("personal", values)
-              }
-            />
-          )}
-
-          {currentPhase === 1 && (
-            <EventInfo
-              data={formData.event}
-              errors={errors.event ?? {}}
-              onChange={(values) =>
-                updateFormSection("event", values)
-              }
-            />
-          )}
-
-          {currentPhase === 2 && (
             <PackageOption
               selectedPackageId={formData.package.packageId}
               packageOptions={packageOptions}
@@ -376,6 +534,32 @@ export default function BookingProcess({
               errors={errors.package ?? {}}
               onChange={(packageId) =>
                 updateFormSection("package", { packageId })
+              }
+            />
+          )}
+
+          {currentPhase === 1 && (
+            <EventInfo
+              data={formData.event}
+              errors={errors.event ?? {}}
+              selectedPackage={selectedPackage}
+              onChange={(values) =>
+                updateFormSection("event", values)
+              }
+            />
+          )}
+
+          {currentPhase === 2 && (
+            <PersonalDetail
+              data={formData.personal}
+              errors={errors.personal ?? {}}
+              showPartnerName={showPartnerName}
+              vision={formData.event.vision ?? ""}
+              onChange={(values) =>
+                updateFormSection("personal", values)
+              }
+              onVisionChange={(vision) =>
+                updateFormSection("event", { vision })
               }
             />
           )}
@@ -405,7 +589,10 @@ export default function BookingProcess({
             <button
               type="button"
               onClick={goToPreviousPhase}
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting ||
+                isPhaseTransitioning
+              }
               className="flex items-center gap-2 font-label-md text-label-md text-on-surface-variant transition-all hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               ← Previous
@@ -418,7 +605,12 @@ export default function BookingProcess({
             <button
               type="button"
               onClick={goToNextPhase}
-              disabled={isSubmitting || (currentPhase === 2 && packagesLoading)}
+              disabled={
+                isSubmitting ||
+                isPhaseTransitioning ||
+                (currentPhase === 0 &&
+                  packagesLoading)
+              }
               className="rounded-lg bg-primary px-10 py-3 font-label-md text-label-md text-on-primary transition-all hover:bg-opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Next Step →
@@ -428,7 +620,9 @@ export default function BookingProcess({
               type="button"
               onClick={handleSubmit}
               disabled={
-                isSubmitting || submitStatus === "success"
+                isSubmitting ||
+                isPhaseTransitioning ||
+                submitStatus === "success"
               }
               className="rounded-lg bg-primary px-10 py-3 font-label-md text-label-md text-on-primary transition-all hover:bg-opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -441,6 +635,6 @@ export default function BookingProcess({
           )}
         </div>
       </section>
-    </>
+    </div>
   );
 }

@@ -29,7 +29,7 @@ export function useCollection(buildQuery, deps = [], { enabled = true } = {}) {
     const unsub = listenQuery(
       q,
       (snap) => {
-        setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setRows(snap.docs.map((d) => ({ ...d.data(), id: d.id })));
         setLoading(false);
       },
       (err) => {

@@ -1,34 +1,52 @@
+"use client";
+
 import { useState } from "react";
 
-export default function LoginForm({handleLogin}) {
-
+export default function LoginForm({ handleLogin, loading = false }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (loading) return;
+
+    await handleLogin(email, password);
+  };
+
   return (
-    <form className="space-y-stack-md">
-      <div>
-        <label className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+    <form className="space-y-3.5" onSubmit={handleSubmit}>
+      <div className="space-y-1.5">
+        <label
+          className="block font-label-sm text-label-sm text-on-surface-variant"
+          htmlFor="login-email"
+        >
           Email Address
         </label>
 
         <input
-          className="w-full auth-input font-body-md py-2 focus:placeholder-transparent"
+          id="login-email"
+          className="auth-input h-11 w-full rounded-xl border border-outline-variant/50 bg-surface px-3.5 py-0 font-body-md transition-colors focus:border-primary focus:placeholder-transparent focus:outline-none"
           placeholder="name@example.com"
           type="email"
+          autoComplete="email"
+          required
+          disabled={loading}
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
         />
       </div>
 
-      <div>
-        <div className="flex justify-between items-center mb-1">
-          <label className="block font-label-sm text-label-sm text-on-surface-variant">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label
+            className="block font-label-sm text-label-sm text-on-surface-variant"
+            htmlFor="login-password"
+          >
             Password
           </label>
 
           <a
-            className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors underline underline-offset-4"
+            className="font-label-sm text-label-sm text-primary/80 underline-offset-4 transition-colors hover:text-primary hover:underline"
             href="#"
           >
             Forgot Password?
@@ -36,19 +54,24 @@ export default function LoginForm({handleLogin}) {
         </div>
 
         <input
-          className="w-full auth-input font-body-md py-2"
+          id="login-password"
+          className="auth-input h-11 w-full rounded-xl border border-outline-variant/50 bg-surface px-3.5 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
           placeholder="••••••••"
           type="password"
+          autoComplete="current-password"
+          required
+          disabled={loading}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(event) => setPassword(event.target.value)}
         />
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2">
         <input
-          className="w-4 h-4 rounded-sm border-outline text-primary focus:ring-0"
+          className="h-4 w-4 rounded border-outline text-primary focus:ring-primary/20"
           id="remember"
           type="checkbox"
+          disabled={loading}
         />
 
         <label
@@ -60,14 +83,11 @@ export default function LoginForm({handleLogin}) {
       </div>
 
       <button
-        className="w-full bg-primary text-on-primary py-4 rounded-lg font-label-md text-label-md tracking-wider hover:bg-tertiary transition-all duration-300 active:scale-[0.98]"
+        className="flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 font-label-md text-label-md font-semibold tracking-wide text-on-primary transition-all duration-200 hover:bg-tertiary active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         type="submit"
-        onClick={(e) => {
-          e.preventDefault();
-          handleLogin(email, password);
-        }}
+        disabled={loading}
       >
-      Sign In
+        {loading ? "Signing In..." : "Sign In"}
       </button>
     </form>
   );

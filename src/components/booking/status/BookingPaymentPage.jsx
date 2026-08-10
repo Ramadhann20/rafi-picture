@@ -194,6 +194,56 @@ function getPaymentDate(payment) {
   );
 }
 
+
+function getInvoicePdf(invoice) {
+  const url =
+    invoice?.pdf?.url ??
+    invoice?.pdf?.secureUrl ??
+    invoice?.pdfUrl ??
+    null;
+
+  if (!url) {
+    return null;
+  }
+
+  return {
+    url,
+    fileName:
+      invoice?.pdf?.fileName ??
+      `${invoice?.invoiceNumber ?? "invoice-dp"}.pdf`,
+    bytes:
+      Number(
+        invoice?.pdf?.bytes,
+      ) || null,
+  };
+}
+
+function formatFileSize(bytes) {
+  const value =
+    Number(bytes);
+
+  if (
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return "PDF";
+  }
+
+  if (
+    value <
+    1024 * 1024
+  ) {
+    return `${(
+      value / 1024
+    ).toFixed(1)} KB`;
+  }
+
+  return `${(
+    value /
+    (1024 * 1024)
+  ).toFixed(1)} MB`;
+}
+
 export default function BookingPaymentPage({
   booking,
   invoice = null,
@@ -471,6 +521,9 @@ function InvoiceCard({
   depositAmount,
   currency,
 }) {
+  const invoicePdf =
+    getInvoicePdf(invoice);
+
   return (
     <article className="glass-panel relative overflow-hidden rounded-xl border border-outline-variant/30 p-stack-md">
       <div className="pointer-events-none absolute right-7 top-7 opacity-5">
@@ -537,6 +590,53 @@ function InvoiceCard({
           </span>
         </div>
       </div>
+
+      {invoicePdf && (
+        <div className="mb-stack-md border-y border-outline-variant/25 py-4">
+          <p className="mb-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+            File Invoice
+          </p>
+
+          <a
+            href={invoicePdf.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-center gap-4 rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-4 transition-colors hover:border-primary/45"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/5">
+              <AppIcon
+                name="receipt"
+                size={22}
+                className="text-primary"
+              />
+            </div>
+
+            <div className="min-w-0 grow">
+              <p className="truncate font-label-md text-label-md text-on-surface">
+                {invoicePdf.fileName}
+              </p>
+
+              <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
+                {formatFileSize(
+                  invoicePdf.bytes,
+                )}
+                {" • "}
+                Invoice Down Payment
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 font-label-sm text-label-sm text-secondary transition-colors group-hover:text-primary">
+              <AppIcon
+                name="visibility"
+                size={18}
+              />
+              <span className="hidden sm:inline">
+                Lihat PDF
+              </span>
+            </div>
+          </a>
+        </div>
+      )}
 
       <div className="flex items-start gap-3 rounded-lg bg-surface-container-low p-4">
         <AppIcon

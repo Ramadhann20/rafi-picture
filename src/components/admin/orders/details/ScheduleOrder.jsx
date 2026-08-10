@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { auth } from "@/lib/firebase-config";
 
 import Review from "./sections/Review";
 import CrewAssignment from "./sections/CrewAssignment";
@@ -17,12 +18,12 @@ const BOOKING_STATUS = {
   },
 
   approved: {
-    label: "Approved & Sent",
+    label: "Approved · Awaiting Payment",
     badgeClass: "bg-primary-container text-on-primary-container",
   },
 
   confirmed: {
-    label: "Confirmed",
+    label: "Payment Under Review",
     badgeClass: "bg-primary text-on-primary",
   },
 
@@ -70,7 +71,19 @@ function createCrewDraft(booking, existingAssignment) {
 
     title:
       existingAssignment?.title ??
-      `Wedding: ${getClientDisplayName(booking.client)}`,
+      `${booking.package?.name ?? "Booking"}: ${getClientDisplayName(
+        booking.client,
+      )}`,
+
+    bookingCode:
+      existingAssignment?.bookingCode ??
+      booking.bookingCode ??
+      null,
+
+    packageName:
+      existingAssignment?.packageName ??
+      booking.package?.name ??
+      null,
 
     eventDate:
       existingAssignment?.eventDate ??
@@ -81,9 +94,20 @@ function createCrewDraft(booking, existingAssignment) {
     startTime:
       existingAssignment?.startTime ?? booking.event?.startTime ?? null,
 
-    endTime: existingAssignment?.endTime ?? booking.event?.endTime ?? null,
+    endTime:
+      existingAssignment?.endTime ??
+      booking.event?.endTime ??
+      null,
 
-    location: existingAssignment?.location ?? booking.event?.location ?? null,
+    endTimeDayOffset:
+      existingAssignment?.endTimeDayOffset ??
+      booking.event?.endTimeDayOffset ??
+      0,
+
+    location:
+      existingAssignment?.location ??
+      booking.event?.location ??
+      null,
 
     crewIds: Array.isArray(existingAssignment?.crewIds)
       ? existingAssignment.crewIds
@@ -101,7 +125,7 @@ export default function ScheduleOrder({
   invoices = [],
   payments = [],
   onBack,
-  onSubmitAndSend,
+  onFinalizeBooking,
 }) {
   const [hasEntered, setHasEntered] = useState(false);
 
@@ -125,6 +149,31 @@ export default function ScheduleOrder({
 
   const [depositDraft, setDepositDraft] = useState(null);
 
+  const [
+    depositPdfPreview,
+    setDepositPdfPreview,
+  ] = useState(null);
+
+  const [
+    depositPdfReviewed,
+    setDepositPdfReviewed,
+  ] = useState(false);
+
+  const [
+    depositPdfReviewOpen,
+    setDepositPdfReviewOpen,
+  ] = useState(false);
+
+  const [
+    generatingDepositPdf,
+    setGeneratingDepositPdf,
+  ] = useState(false);
+
+  const [
+    finalizationNotice,
+    setFinalizationNotice,
+  ] = useState(null);
+
   const isPreparationMode = booking.status === "pending";
 
   useEffect(() => {
@@ -133,9 +182,28 @@ export default function ScheduleOrder({
     setCrewDraft(createCrewDraft(booking, existingAssignment));
 
     setDepositDraft(null);
+    setDepositPdfPreview((current) => {
+      if (current?.url) {
+        URL.revokeObjectURL(current.url);
+      }
+
+      return null;
+    });
+    setDepositPdfReviewed(false);
+    setDepositPdfReviewOpen(false);
+    setGeneratingDepositPdf(false);
+    setFinalizationNotice(null);
     setActionError(null);
     setSubmitting(false);
   }, [booking.id, existingAssignment?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (depositPdfPreview?.url) {
+        URL.revokeObjectURL(depositPdfPreview.url);
+      }
+    };
+  }, [depositPdfPreview?.url]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -165,13 +233,20 @@ export default function ScheduleOrder({
     !isPreparationMode ||
     (preparation.reviewCompleted && preparation.crewCompleted);
 
-  const canSubmitAndSend =
+  const hasDepositPdf =
+    Boolean(
+      depositPdfPreview?.url,
+    );
+
+  const canFinalize =
     isPreparationMode &&
     preparation.reviewCompleted &&
     preparation.crewCompleted &&
     preparation.billingCompleted &&
     hasCrewAssignment &&
-    hasDepositInvoice;
+    hasDepositInvoice &&
+    hasDepositPdf &&
+    depositPdfReviewed;
 
   const handleBack = () => {
     if (isLeaving) return;
@@ -251,26 +326,242 @@ export default function ScheduleOrder({
     });
   };
 
+  const clearDepositPdfPreview = () => {
+    setDepositPdfPreview((current) => {
+      if (current?.url) {
+        URL.revokeObjectURL(current.url);
+      }
+
+      return null;
+    });
+
+    setDepositPdfReviewed(false);
+    setDepositPdfReviewOpen(false);
+  };
+
   const handleInvoiceDraftChange = (nextDraft) => {
     if (!isPreparationMode) return;
 
     setDepositDraft(nextDraft);
+    clearDepositPdfPreview();
 
     setPreparation((current) => ({
       ...current,
       billingCompleted: false,
     }));
 
+    setFinalizationNotice(null);
     setActionError(null);
   };
 
-  const handleToggleBilling = () => {
+  const generateDepositPdfPreview = async () => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error(
+        "Sesi admin tidak tersedia.",
+      );
+    }
+
+    const idToken =
+      await currentUser.getIdToken(true);
+
+    const response =
+      await fetch(
+        "/api/admin/invoices/deposit-preview",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            bookingId:
+              booking.id,
+            invoiceDraft:
+              depositDraft,
+          }),
+        },
+      );
+
+    if (!response.ok) {
+      const contentType =
+        response.headers.get(
+          "content-type",
+        );
+
+      if (
+        contentType?.includes(
+          "application/json",
+        )
+      ) {
+        const result =
+          await response.json();
+
+        throw new Error(
+          result?.message ||
+            "PDF preview gagal dibuat.",
+        );
+      }
+
+      throw new Error(
+        "PDF preview gagal dibuat.",
+      );
+    }
+
+    /*
+     * Preview API sekarang mengirim JSON + base64, bukan binary body.
+     * Ini sengaja untuk menghindari kasus Response binary terbaca kosong
+     * pada Next.js/Turbopack dev mode.
+     */
+    const result =
+      await response.json();
+
+    const previewData =
+      result?.data;
+
+    const pdfBase64 =
+      String(
+        previewData?.pdfBase64 ||
+          "",
+      );
+
+    if (!pdfBase64) {
+      throw new Error(
+        "Server tidak mengembalikan data PDF preview.",
+      );
+    }
+
+    let binaryString;
+
+    try {
+      binaryString =
+        window.atob(
+          pdfBase64,
+        );
+    } catch {
+      throw new Error(
+        "Data PDF preview dari server tidak dapat dibaca.",
+      );
+    }
+
+    if (
+      binaryString.length <= 5
+    ) {
+      throw new Error(
+        "PDF preview kosong.",
+      );
+    }
+
+    const pdfBytes =
+      new Uint8Array(
+        binaryString.length,
+      );
+
+    for (
+      let index = 0;
+      index <
+      binaryString.length;
+      index += 1
+    ) {
+      pdfBytes[index] =
+        binaryString.charCodeAt(
+          index,
+        );
+    }
+
+    const signature =
+      String.fromCharCode(
+        ...pdfBytes.slice(
+          0,
+          5,
+        ),
+      );
+
+    if (
+      signature !== "%PDF-"
+    ) {
+      throw new Error(
+        "Data preview bukan file PDF yang valid.",
+      );
+    }
+
+    const blob =
+      new Blob(
+        [pdfBytes],
+        {
+          type:
+            previewData?.mimeType ||
+            "application/pdf",
+        },
+      );
+
+    const url =
+      URL.createObjectURL(
+        blob,
+      );
+
+    const invoiceNumber =
+      previewData?.invoiceNumber ||
+      null;
+
+    const fileName =
+      previewData?.fileName ||
+      "invoice-dp-preview.pdf";
+
+    clearDepositPdfPreview();
+
+    setDepositPdfPreview({
+      url,
+      fileName,
+      invoiceNumber,
+      size:
+        blob.size,
+      mimeType:
+        blob.type,
+      generatedAt:
+        new Date(),
+    });
+
+    setDepositPdfReviewed(false);
+    setDepositPdfReviewOpen(false);
+
+    return {
+      url,
+      fileName,
+      invoiceNumber,
+      size:
+        blob.size,
+    };
+  };
+
+  const handleToggleBilling = async () => {
     if (!isPreparationMode) return;
     if (!billingEnabled) return;
+    if (generatingDepositPdf) return;
 
     setActionError(null);
+    setFinalizationNotice(null);
 
-    if (!preparation.billingCompleted && !hasDepositInvoice) {
+    /*
+     * Edit Billing:
+     * preview lama langsung dibuang supaya admin tidak mungkin
+     * meng-approve PDF yang sudah stale.
+     */
+    if (preparation.billingCompleted) {
+      clearDepositPdfPreview();
+
+      setPreparation((current) => ({
+        ...current,
+        billingCompleted: false,
+      }));
+
+      return;
+    }
+
+    if (!hasDepositInvoice) {
       setActionError(
         "Create a valid deposit invoice draft before confirming billing.",
       );
@@ -278,14 +569,62 @@ export default function ScheduleOrder({
       return;
     }
 
-    setPreparation((current) => ({
-      ...current,
-      billingCompleted: !current.billingCompleted,
-    }));
+    setGeneratingDepositPdf(true);
+
+    try {
+      await generateDepositPdfPreview();
+
+      /*
+       * Billing baru dianggap confirmed SETELAH server berhasil
+       * membuat PDF preview.
+       */
+      setPreparation((current) => ({
+        ...current,
+        billingCompleted: true,
+      }));
+    } catch (error) {
+      console.error(
+        "GENERATE DEPOSIT PDF PREVIEW ERROR:",
+        error,
+      );
+
+      setActionError(
+        error?.message ||
+          "Deposit invoice PDF gagal dibuat.",
+      );
+    } finally {
+      setGeneratingDepositPdf(false);
+    }
+  };
+
+  const handleReviewDepositPdf = () => {
+    if (!depositPdfPreview?.url) {
+      return;
+    }
+
+    /*
+     * Review sekarang dibuka inline di Billing section.
+     * Ini menghindari inkonsistensi Chrome saat membuka Blob PDF
+     * melalui tab baru pada mode development/Turbopack.
+     */
+    setDepositPdfReviewOpen(
+      (current) => {
+        const next =
+          !current;
+
+        if (next) {
+          setDepositPdfReviewed(
+            true,
+          );
+        }
+
+        return next;
+      },
+    );
   };
 
   const handleFinalConfirmation = async () => {
-    if (!canSubmitAndSend || submitting) {
+    if (!canFinalize || submitting) {
       return;
     }
 
@@ -293,24 +632,40 @@ export default function ScheduleOrder({
     setActionError(null);
 
     try {
-      await onSubmitAndSend?.({
-        booking,
+      const result =
+        await onFinalizeBooking?.({
+          booking,
 
-        crewAssignment: {
-          ...crewDraft,
-          crewIds: [...crewDraft.crewIds],
-        },
+          crewAssignment: {
+            ...crewDraft,
+            crewIds: [...crewDraft.crewIds],
+          },
 
-        depositInvoice: {
-          ...depositDraft,
-        },
+          depositInvoice: {
+            ...depositDraft,
+          },
 
-        preparation: {
-          reviewCompleted: true,
-          crewCompleted: true,
-          billingCompleted: true,
-        },
-      });
+          preparation: {
+            reviewCompleted: true,
+            crewCompleted: true,
+            billingCompleted: true,
+          },
+
+          pdfReviewed:
+            depositPdfReviewed,
+        });
+
+      if (
+        result?.email?.sent === false
+      ) {
+        setFinalizationNotice(
+          "Booking berhasil di-approve dan invoice sudah tersimpan, tetapi email belum terkirim. Kamu masih bisa mengirim ulang email dari booking ini.",
+        );
+      } else if (result) {
+        setFinalizationNotice(
+          "Booking berhasil di-approve. Invoice PDF tersimpan dan email notifikasi telah dikirim ke client.",
+        );
+      }
     } catch (error) {
       console.error("FINAL CONFIRMATION ERROR:", error);
 
@@ -348,10 +703,14 @@ export default function ScheduleOrder({
               {getClientDisplayName(booking.client)}
             </h1>
 
-            <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
+            <p className="mt-1 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+              {booking.bookingCode ?? booking.id}
+            </p>
+
+            <p className="mt-3 max-w-2xl font-body-md text-body-md text-on-surface-variant">
               {isPreparationMode
-                ? "Confirm each section to unlock the next step. Firestore is updated only after Final Confirmation."
-                : "View the booking, assigned crew, invoices, and payment activity."}
+                ? "Review the booking, confirm the production crew, then prepare billing. Firestore is updated only after Final Confirmation."
+                : "View the booking snapshot, assigned crew, invoices, and payment activity."}
             </p>
           </div>
 
@@ -371,6 +730,15 @@ export default function ScheduleOrder({
           className="mb-stack-md rounded-lg border border-error/30 bg-error-container/40 px-4 py-3 font-body-md text-body-md text-error"
         >
           {actionError}
+        </div>
+      )}
+
+      {finalizationNotice && (
+        <div
+          role="status"
+          className="mb-stack-md rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 font-body-md text-body-md text-primary"
+        >
+          {finalizationNotice}
         </div>
       )}
 
@@ -448,22 +816,35 @@ export default function ScheduleOrder({
             preparationMode={isPreparationMode}
             invoiceDraft={depositDraft}
             readOnly={isPreparationMode && preparation.billingCompleted}
+            pdfPreview={depositPdfPreview}
+            pdfReviewed={depositPdfReviewed}
+            pdfReviewOpen={depositPdfReviewOpen}
+            pdfGenerating={generatingDepositPdf}
+            onReviewPdfPreview={handleReviewDepositPdf}
             onInvoiceDraftChange={handleInvoiceDraftChange}
           />
 
           {isPreparationMode && billingEnabled && (
             <StepConfirmation
               confirmed={preparation.billingCompleted}
-              confirmLabel="Confirm Billing"
+              confirmLabel="Confirm Billing & Generate PDF"
               editLabel="Edit Billing"
+              loading={generatingDepositPdf}
+              loadingLabel="Generating PDF..."
               description={
                 preparation.billingCompleted
-                  ? "Billing confirmed locally. Final Confirmation is now available."
+                  ? depositPdfReviewed
+                    ? "Billing confirmed and the generated DP invoice has been reviewed."
+                    : "Billing confirmed. Review the generated PDF below before Finalize & Approve."
                   : hasDepositInvoice
-                    ? "Confirm the local deposit invoice draft."
+                    ? "Confirm billing to generate the DP invoice PDF preview."
                     : "Create the deposit invoice draft before confirming billing."
               }
-              disabled={!preparation.billingCompleted && !hasDepositInvoice}
+              disabled={
+                generatingDepositPdf ||
+                (!preparation.billingCompleted &&
+                  !hasDepositInvoice)
+              }
               onClick={handleToggleBilling}
             />
           )}
@@ -474,7 +855,9 @@ export default function ScheduleOrder({
             preparation={preparation}
             hasCrewAssignment={hasCrewAssignment}
             hasDepositInvoice={hasDepositInvoice}
-            canSubmit={canSubmitAndSend}
+            hasDepositPdf={hasDepositPdf}
+            pdfReviewed={depositPdfReviewed}
+            canSubmit={canFinalize}
             submitting={submitting}
             onSubmit={handleFinalConfirmation}
           />
@@ -590,6 +973,8 @@ function StepConfirmation({
   editLabel,
   description,
   disabled = false,
+  loading = false,
+  loadingLabel = "Processing...",
   onClick,
 }) {
   return (
@@ -624,7 +1009,7 @@ function StepConfirmation({
 
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || loading}
         onClick={onClick}
         className={`shrink-0 rounded-lg px-6 py-3 font-label-md text-label-md transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${
           confirmed
@@ -632,7 +1017,11 @@ function StepConfirmation({
             : "bg-primary text-on-primary hover:opacity-90"
         }`}
       >
-        {confirmed ? editLabel : confirmLabel}
+        {loading
+          ? loadingLabel
+          : confirmed
+            ? editLabel
+            : confirmLabel}
       </button>
     </div>
   );
@@ -642,6 +1031,8 @@ function SubmitBookingPanel({
   preparation,
   hasCrewAssignment,
   hasDepositInvoice,
+  hasDepositPdf,
+  pdfReviewed,
   canSubmit,
   submitting,
   onSubmit,
@@ -662,6 +1053,16 @@ function SubmitBookingPanel({
       label: "Deposit invoice draft confirmed",
       completed: preparation.billingCompleted && hasDepositInvoice,
     },
+    {
+      id: "pdf",
+      label: "Deposit invoice PDF generated",
+      completed: hasDepositPdf,
+    },
+    {
+      id: "pdf-review",
+      label: "Deposit invoice PDF reviewed",
+      completed: pdfReviewed,
+    },
   ];
 
   return (
@@ -677,9 +1078,10 @@ function SubmitBookingPanel({
           </h2>
 
           <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-            This is the only action that writes the preparation result to
-            Firestore. It saves the crew assignment, issues the deposit invoice,
-            and changes the booking status to approved.
+            This is the only action that persists the preparation result. It
+            uploads the reviewed DP invoice PDF to Cloudinary, publishes the
+            crew assignment, issues the invoice, changes the booking status to
+            approved, and sends the approval email with the PDF attached.
           </p>
 
           <div className="mt-5 space-y-2">
@@ -707,7 +1109,7 @@ function SubmitBookingPanel({
           onClick={onSubmit}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3 font-label-md text-label-md text-on-primary transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {submitting ? "Saving & Sending..." : "Confirm & Send to Client"}
+          {submitting ? "Finalizing..." : "Finalize & Approve"}
 
           {!submitting && <AppIcon name="arrow_forward" size={18} />}
         </button>

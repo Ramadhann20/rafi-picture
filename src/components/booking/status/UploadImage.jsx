@@ -2,11 +2,25 @@
 
 import { useEffect, useState } from "react";
 
+const MAX_FILE_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_TYPES =
+  new Set([
+    "image/png",
+    "image/jpeg",
+  ]);
+
 export default function UploadImage({ onSubmit, onCancel }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [fileError, setFileError] = useState("");
 
-  const isImageFile = selectedFile?.type?.startsWith("image/");
+  const isImageFile =
+    selectedFile &&
+    ALLOWED_TYPES.has(
+      selectedFile.type,
+    );
 
   useEffect(() => {
     if (!selectedFile || !isImageFile) {
@@ -23,7 +37,41 @@ export default function UploadImage({ onSubmit, onCancel }) {
   }, [selectedFile, isImageFile]);
 
   const handleFileChange = (event) => {
-    setSelectedFile(event.target.files?.[0] || null);
+    const file =
+      event.target.files?.[0] ||
+      null;
+
+    setFileError("");
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (
+      !ALLOWED_TYPES.has(
+        file.type,
+      )
+    ) {
+      setSelectedFile(null);
+      setFileError(
+        "Bukti pembayaran harus berupa PNG, JPG, atau JPEG.",
+      );
+      return;
+    }
+
+    if (
+      file.size >
+      MAX_FILE_SIZE
+    ) {
+      setSelectedFile(null);
+      setFileError(
+        "Ukuran file maksimal 5 MB.",
+      );
+      return;
+    }
+
+    setSelectedFile(file);
   };
 
   return (
@@ -47,31 +95,20 @@ export default function UploadImage({ onSubmit, onCancel }) {
           <input
             className="hidden"
             type="file"
-            accept="image/*,.pdf"
+            accept="image/png,image/jpeg"
             onChange={handleFileChange}
           />
 
           {selectedFile ? (
             <div className="w-full">
-              {isImageFile && previewUrl ? (
+              {isImageFile &&
+                previewUrl && (
                 <div className="w-full h-[260px] bg-white">
                   <img
                     src={previewUrl}
                     alt="Selected payment proof preview"
                     className="w-full h-full object-contain"
                   />
-                </div>
-              ) : (
-                <div className="h-[260px] flex flex-col items-center justify-center gap-4 px-6">
-                  <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary text-[32px]">
-                      description
-                    </span>
-                  </div>
-
-                  <p className="font-body-md text-on-surface font-medium">
-                    PDF file selected
-                  </p>
                 </div>
               )}
 
@@ -99,7 +136,7 @@ export default function UploadImage({ onSubmit, onCancel }) {
                 </p>
 
                 <p className="font-label-sm text-on-surface-variant mt-1">
-                  Supported formats: JPG, PNG, PDF (Max 5MB)
+                  Supported formats: JPG, JPEG, PNG (Max 5MB)
                 </p>
               </div>
 
@@ -109,6 +146,15 @@ export default function UploadImage({ onSubmit, onCancel }) {
             </div>
           )}
         </label>
+
+        {fileError && (
+          <p
+            role="alert"
+            className="mt-4 rounded-lg border border-error/30 bg-error-container px-4 py-3 font-body-sm text-body-sm text-error"
+          >
+            {fileError}
+          </p>
+        )}
 
         <div className="mt-8 flex items-center justify-end gap-4">
           <button

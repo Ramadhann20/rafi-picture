@@ -23,7 +23,7 @@ export function useDoc(col, id, { enabled = true } = {}) {
       col,
       id,
       (snap) => {
-        setData(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+        setData(snap.exists() ? { ...snap.data(), id: snap.id } : null);
         setLoading(false);
       },
       (err) => {

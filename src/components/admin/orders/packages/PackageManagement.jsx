@@ -6,6 +6,7 @@ import AppIcon from "@/components/global/AppIcon";
 import SkeletonLoader from "@/components/global/SkeletonLoader";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
+import { CODE_PREFIXES, generateCode } from "@/lib/codefication";
 
 import PackageEdit from "./PackageEdit";
 
@@ -82,8 +83,7 @@ function normalizeCategory(row) {
 }
 
 function normalizePackage(row) {
-  // Package documents do not keep a separate business ID. row.id is the
-  // Firestore document ID and packageCategoryId/packageId are relation fields.
+  // row.id is always the Firestore document ID. packageCode is the business code.
   const price = Number(row?.price);
   const durationHours = Number(row?.durationHours);
   const sortOrder = Number(row?.sortOrder);
@@ -99,9 +99,15 @@ function normalizePackage(row) {
 
   return {
     id: String(row?.id || ""),
+    packageCode: String(row?.packageCode || ""),
     name: String(row?.name || "Untitled Package"),
     packageCategoryId: String(row?.packageCategoryId || ""),
     description: String(row?.description || ""),
+    bookingSubjectType: ["individual", "couple"].includes(
+      row?.bookingSubjectType,
+    )
+      ? row.bookingSubjectType
+      : null,
     serviceHighlights,
     price: Number.isFinite(price) ? price : 0,
     durationHours: Number.isFinite(durationHours) ? durationHours : 0,
@@ -290,13 +296,27 @@ export default function PackageManagement() {
 
     try {
       if (editor.mode === "edit" && editor.packageItem?.id) {
+        const packageCode =
+          editor.packageItem.packageCode ||
+          generateCode({
+            prefix: CODE_PREFIXES.package,
+            categoryId: payload.packageCategoryId,
+          });
+
         await updateDoc(COLLECTIONS.packages, editor.packageItem.id, {
           ...payload,
+          packageCode,
           updatedAt: serverTimestamp(),
         });
       } else {
+        const packageCode = generateCode({
+          prefix: CODE_PREFIXES.package,
+          categoryId: payload.packageCategoryId,
+        });
+
         await addDoc(COLLECTIONS.packages, {
           ...payload,
+          packageCode,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -692,7 +712,7 @@ export default function PackageManagement() {
                             {packageItem.name}
                           </p>
                           <p className="mt-0.5 font-label-sm text-label-sm text-on-surface-variant/60">
-                            Firestore ID: {packageItem.id}
+                            Package Code: {packageItem.packageCode || "-"}
                           </p>
                           {packageItem.featured && (
                             <p className="mt-0.5 font-label-sm text-label-sm text-secondary">

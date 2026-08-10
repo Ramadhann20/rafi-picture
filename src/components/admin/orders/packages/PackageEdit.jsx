@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
-import { useDb } from "@/context/DbContext";
-
-const PACKAGES_COLLECTION = "Packages";
 
 const inputClassName =
   "w-full rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface outline-none transition placeholder:text-on-surface-variant/45 focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60";
@@ -36,6 +33,10 @@ function createInitialForm(packageItem, defaultCategoryId, categories) {
       packageItem?.durationHours === null
         ? ""
         : String(packageItem.durationHours),
+    bookingSubjectType:
+      ["individual", "couple"].includes(packageItem?.bookingSubjectType)
+        ? packageItem.bookingSubjectType
+        : "",
     status: packageItem?.status || "active",
     featured: Boolean(packageItem?.featured),
     sortOrder:
@@ -87,6 +88,11 @@ function validateForm(form, categories) {
     errors.description = "Package description is required.";
   } else if (form.description.trim().length > 1000) {
     errors.description = "Description cannot exceed 1,000 characters.";
+  }
+
+  if (!["individual", "couple"].includes(form.bookingSubjectType)) {
+    errors.bookingSubjectType =
+      "Select whether this package is for an individual or a couple.";
   }
 
   if (highlights.length === 0) {
@@ -153,12 +159,12 @@ export default function PackageEdit({
   packageItem = null,
   categories = [],
   defaultCategoryId = "",
-  nextPackageId = "",
+  submitting = false,
+  submitError = "",
   onCancel,
-  onSaved,
+  onSubmit,
 }) {
-  const isEditing = Boolean(packageItem?._docId);
-  const { addDoc, serverTimestamp, updateDoc } = useDb();
+  const isEditing = Boolean(packageItem?.id);
 
   const selectableCategories = useMemo(
     () =>
@@ -183,14 +189,11 @@ export default function PackageEdit({
   const [form, setForm] = useState(initialForm);
   const [serviceHighlightInput, setServiceHighlightInput] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [submitError, setSubmitError] = useState("");
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setForm(initialForm);
     setServiceHighlightInput("");
     setFieldErrors({});
-    setSubmitError("");
   }, [initialForm]);
 
   function updateField(event) {
@@ -201,7 +204,6 @@ export default function PackageEdit({
       [name]: type === "checkbox" ? checked : value,
     }));
     setFieldErrors((current) => ({ ...current, [name]: undefined }));
-    setSubmitError("");
   }
 
   function updateServiceHighlightInput(event) {
@@ -210,7 +212,6 @@ export default function PackageEdit({
       ...current,
       serviceHighlights: undefined,
     }));
-    setSubmitError("");
   }
 
   function addServiceHighlight() {
@@ -256,7 +257,6 @@ export default function PackageEdit({
       ...current,
       serviceHighlights: undefined,
     }));
-    setSubmitError("");
   }
 
   function handleServiceHighlightKeyDown(event) {
@@ -289,7 +289,6 @@ export default function PackageEdit({
       ...current,
       serviceHighlights: undefined,
     }));
-    setSubmitError("");
   }
 
   function selectCategory(packageCategoryId) {
@@ -298,7 +297,6 @@ export default function PackageEdit({
       ...current,
       packageCategoryId: undefined,
     }));
-    setSubmitError("");
   }
 
   function clearCover() {
@@ -312,83 +310,41 @@ export default function PackageEdit({
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setSubmitError("");
 
     const errors = validateForm(form, selectableCategories);
     setFieldErrors(errors);
 
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0 || submitting) return;
 
-    setSaving(true);
+    const name = form.name.trim();
+    const coverUrl = form.coverUrl.trim() || null;
+    const previousCoverUrl = packageItem?.cover?.url || null;
+    const coverUrlChanged = coverUrl !== previousCoverUrl;
 
-    try {
-      const name = form.name.trim();
-      const coverUrl = form.coverUrl.trim() || null;
-      const previousCoverUrl = packageItem?.cover?.url || null;
-      const coverUrlChanged = coverUrl !== previousCoverUrl;
+    const payload = {
+      name,
+      packageCategoryId: form.packageCategoryId,
+      description: form.description.trim(),
+      bookingSubjectType: form.bookingSubjectType,
+      serviceHighlights: form.serviceHighlights,
+      price: Number(form.price),
+      durationHours: Number(form.durationHours),
+      status: ["active", "inactive", "archived"].includes(form.status)
+        ? form.status
+        : "inactive",
+      featured: Boolean(form.featured),
+      sortOrder: Number(form.sortOrder),
+      cover: {
+        url: coverUrl,
+        storagePath:
+          coverUrl && !coverUrlChanged
+            ? form.coverStoragePath.trim() || null
+            : null,
+        alt: form.coverAlt.trim() || `Paket ${name}`,
+      },
+    };
 
-      const payload = {
-        name,
-        packageCategoryId: form.packageCategoryId,
-        description: form.description.trim(),
-        serviceHighlights: form.serviceHighlights,
-        price: Number(form.price),
-        durationHours: Number(form.durationHours),
-        status: ["active", "inactive", "archived"].includes(form.status)
-          ? form.status
-          : "inactive",
-        featured: Boolean(form.featured),
-        sortOrder: Number(form.sortOrder),
-        cover: {
-          url: coverUrl,
-          storagePath:
-            coverUrl && !coverUrlChanged
-              ? form.coverStoragePath.trim() || null
-              : null,
-          alt: form.coverAlt.trim() || `Paket ${name}`,
-        },
-        updatedAt: serverTimestamp(),
-      };
-
-      let savedPackage;
-
-      if (isEditing) {
-        await updateDoc(PACKAGES_COLLECTION, packageItem._docId, payload);
-
-        savedPackage = {
-          ...packageItem,
-          ...payload,
-          id: packageItem.id,
-          _docId: packageItem._docId,
-        };
-      } else {
-        const businessId = nextPackageId || `p${Date.now()}`;
-        const createdPayload = {
-          id: businessId,
-          ...payload,
-          createdAt: serverTimestamp(),
-        };
-        const documentReference = await addDoc(
-          PACKAGES_COLLECTION,
-          createdPayload,
-        );
-
-        savedPackage = {
-          ...createdPayload,
-          id: businessId,
-          _docId: documentReference.id,
-        };
-      }
-
-      onSaved?.(savedPackage);
-    } catch (error) {
-      console.error("save package error:", error);
-      setSubmitError(
-        error?.message || "The package could not be saved. Please try again.",
-      );
-    } finally {
-      setSaving(false);
-    }
+    await onSubmit?.(payload);
   }
 
   const coverPreview = form.coverUrl.trim();
@@ -399,7 +355,7 @@ export default function PackageEdit({
         <button
           type="button"
           onClick={onCancel}
-          disabled={saving}
+          disabled={submitting}
           className="mb-6 inline-flex items-center gap-2 rounded-lg px-3 py-2 font-label-md text-label-md text-on-surface-variant transition hover:bg-surface-container-high hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
           <AppIcon name="arrow_back" size={20} />
@@ -434,7 +390,7 @@ export default function PackageEdit({
           </div>
         )}
 
-        <fieldset className="space-y-4" disabled={saving}>
+        <fieldset className="space-y-4" disabled={submitting}>
           <legend className="font-label-md text-label-md text-on-surface-variant">
             Package Category
           </legend>
@@ -496,7 +452,7 @@ export default function PackageEdit({
               maxLength={100}
               value={form.name}
               onChange={updateField}
-              disabled={saving}
+              disabled={submitting}
               className={inputClassName}
               placeholder="Example: Classic Union"
             />
@@ -519,7 +475,7 @@ export default function PackageEdit({
               maxLength={1000}
               value={form.description}
               onChange={updateField}
-              disabled={saving}
+              disabled={submitting}
               className={`${inputClassName} resize-y`}
               placeholder="Briefly explain the package and who it is suitable for."
             />
@@ -536,6 +492,72 @@ export default function PackageEdit({
               </span>
             </div>
           </div>
+
+          <fieldset className="space-y-3 md:col-span-2">
+            <legend className="block font-label-md text-label-md text-on-surface-variant">
+              Booking Subject
+            </legend>
+
+            <p className="font-label-sm text-label-sm text-on-surface-variant/70">
+              Controls whether the client booking form should ask for a partner name.
+            </p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                {
+                  value: "individual",
+                  title: "Individual / Single",
+                  description:
+                    "For birthday, circumcision, personal events, and packages that do not require a partner.",
+                },
+                {
+                  value: "couple",
+                  title: "Couple / Partnered",
+                  description:
+                    "For prewedding, wedding, engagement, and other paired packages.",
+                },
+              ].map((option) => {
+                const selected = form.bookingSubjectType === option.value;
+
+                return (
+                  <label
+                    key={option.value}
+                    className={`cursor-pointer rounded-xl border p-4 transition ${
+                      selected
+                        ? "border-primary bg-secondary-container/25 ring-1 ring-primary"
+                        : "border-outline-variant bg-surface hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="bookingSubjectType"
+                        value={option.value}
+                        checked={selected}
+                        onChange={updateField}
+                        disabled={submitting}
+                        className="mt-1 h-4 w-4 border-outline text-primary focus:ring-primary/20"
+                      />
+                      <span>
+                        <span className="block font-label-md text-label-md text-on-surface">
+                          {option.title}
+                        </span>
+                        <span className="mt-1 block font-label-sm text-label-sm text-on-surface-variant">
+                          {option.description}
+                        </span>
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            {fieldErrors.bookingSubjectType && (
+              <p className="text-sm text-error">
+                {fieldErrors.bookingSubjectType}
+              </p>
+            )}
+          </fieldset>
 
           <div className="space-y-2 md:col-span-2">
             <div className="flex items-center justify-between gap-3">
@@ -556,7 +578,7 @@ export default function PackageEdit({
                   <ServiceHighlightPill
                     key={`${highlight}-${index}`}
                     text={highlight}
-                    disabled={saving}
+                    disabled={submitting}
                     onRemove={() => removeServiceHighlight(index)}
                   />
                 ))}
@@ -570,7 +592,7 @@ export default function PackageEdit({
               value={serviceHighlightInput}
               onChange={updateServiceHighlightInput}
               onKeyDown={handleServiceHighlightKeyDown}
-              disabled={saving || form.serviceHighlights.length >= 6}
+              disabled={submitting || form.serviceHighlights.length >= 6}
               className={inputClassName}
               placeholder={
                 form.serviceHighlights.length >= 6
@@ -614,7 +636,7 @@ export default function PackageEdit({
                 inputMode="numeric"
                 value={form.price}
                 onChange={updateField}
-                disabled={saving}
+                disabled={submitting}
                 className={`${inputClassName} pl-12`}
                 placeholder="0"
               />
@@ -641,7 +663,7 @@ export default function PackageEdit({
                 inputMode="numeric"
                 value={form.durationHours}
                 onChange={updateField}
-                disabled={saving}
+                disabled={submitting}
                 className={`${inputClassName} pr-20`}
                 placeholder="8"
               />
@@ -672,7 +694,7 @@ export default function PackageEdit({
               inputMode="numeric"
               value={form.sortOrder}
               onChange={updateField}
-              disabled={saving}
+              disabled={submitting}
               className={inputClassName}
               placeholder="1"
             />
@@ -693,7 +715,7 @@ export default function PackageEdit({
               name="status"
               value={form.status}
               onChange={updateField}
-              disabled={saving}
+              disabled={submitting}
               className={inputClassName}
             >
               <option value="active">Active</option>
@@ -708,7 +730,7 @@ export default function PackageEdit({
               type="checkbox"
               checked={form.featured}
               onChange={updateField}
-              disabled={saving}
+              disabled={submitting}
               className="h-4 w-4 rounded border-outline text-primary focus:ring-primary/20"
             />
             <span>
@@ -746,7 +768,7 @@ export default function PackageEdit({
                 type="url"
                 value={form.coverUrl}
                 onChange={updateField}
-                disabled={saving}
+                disabled={submitting}
                 className={inputClassName}
                 placeholder="https://example.com/package-cover.jpg"
               />
@@ -769,7 +791,7 @@ export default function PackageEdit({
                 maxLength={150}
                 value={form.coverAlt}
                 onChange={updateField}
-                disabled={saving}
+                disabled={submitting}
                 className={inputClassName}
                 placeholder="Classic Union package cover"
               />
@@ -797,7 +819,7 @@ export default function PackageEdit({
               <button
                 type="button"
                 onClick={clearCover}
-                disabled={saving}
+                disabled={submitting}
                 aria-label="Remove cover URL"
                 title="Remove cover"
                 className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-50"
@@ -821,22 +843,22 @@ export default function PackageEdit({
           <button
             type="button"
             onClick={onCancel}
-            disabled={saving}
+            disabled={submitting}
             className="rounded-lg px-8 py-3 font-label-md text-label-md text-on-surface-variant transition hover:bg-surface-container-high hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={saving || selectableCategories.length === 0}
+            disabled={submitting || selectableCategories.length === 0}
             className="inline-flex min-w-44 items-center justify-center gap-2 rounded-lg bg-primary px-10 py-3 font-label-md text-label-md text-on-primary transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {saving ? (
+            {submitting ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-on-primary/40 border-t-on-primary" />
             ) : (
               <AppIcon name={isEditing ? "check" : "add"} size={18} />
             )}
-            {saving
+            {submitting
               ? "Saving..."
               : isEditing
                 ? "Save Changes"

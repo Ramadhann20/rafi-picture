@@ -8,12 +8,9 @@ import {
 
 import AppIcon from "@/components/global/AppIcon";
 
+import { useAuth } from "@/context/AuthContext";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
-
-import {
-  getPaymentProofUrl,
-} from "@/lib/paymentProofDb";
 
 const PAYMENT_FILTERS = [
   {
@@ -237,6 +234,115 @@ function getInvoiceLabel(invoice) {
   );
 }
 
+
+function getLocationLabel(location) {
+  if (
+    typeof location === "string"
+  ) {
+    return (
+      location.trim() ||
+      "-"
+    );
+  }
+
+  return (
+    String(
+      location?.venueName ??
+        location?.addressLabel ??
+        "",
+    ).trim() ||
+    "-"
+  );
+}
+
+function getEventTimeLabel(event) {
+  if (!event?.startTime) {
+    return "-";
+  }
+
+  if (!event?.endTime) {
+    return event.startTime;
+  }
+
+  return `${event.startTime} - ${event.endTime}${
+    Number(
+      event.endTimeDayOffset || 0,
+    ) > 0
+      ? " (next day)"
+      : ""
+  }`;
+}
+
+function getPaymentProofUrl(payment) {
+  return (
+    payment?.proof?.url ??
+    payment?.proof?.secureUrl ??
+    payment?.proofUrl ??
+    payment?.paymentProofUrl ??
+    payment?.paymentProof ??
+    null
+  );
+}
+
+function getInvoicePdfUrl(invoice) {
+  return (
+    invoice?.pdf?.url ??
+    invoice?.pdf?.secureUrl ??
+    invoice?.pdfUrl ??
+    null
+  );
+}
+
+function formatFileSize(bytes) {
+  const value =
+    Number(bytes);
+
+  if (
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return "-";
+  }
+
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  if (
+    value <
+    1024 * 1024
+  ) {
+    return `${(
+      value / 1024
+    ).toFixed(1)} KB`;
+  }
+
+  return `${(
+    value /
+    (1024 * 1024)
+  ).toFixed(1)} MB`;
+}
+
+function getPaymentMethodLabel(method) {
+  const value =
+    String(
+      method || "",
+    ).toLowerCase();
+
+  if (
+    value ===
+      "bank_transfer" ||
+    value === "bank-transfer"
+  ) {
+    return "Bank Transfer";
+  }
+
+  return (
+    method ||
+    "Bank Transfer"
+  );
+}
+
 function getSelectedPaymentFromUrl() {
   if (
     typeof window ===
@@ -257,6 +363,10 @@ function getSelectedPaymentFromUrl() {
 }
 
 export default function Payments() {
+  const {
+    user,
+  } = useAuth();
+
   const db = useDb();
 
   const [activeFilter, setActiveFilter] =
@@ -288,21 +398,6 @@ export default function Payments() {
   const [
     actionError,
     setActionError,
-  ] = useState(null);
-
-  const [
-    proofUrl,
-    setProofUrl,
-  ] = useState(null);
-
-  const [
-    proofLoading,
-    setProofLoading,
-  ] = useState(false);
-
-  const [
-    proofError,
-    setProofError,
   ] = useState(null);
 
   /* =========================================================
@@ -345,18 +440,6 @@ export default function Payments() {
     () =>
       db.query(
         db.colRef("Invoices"),
-      ),
-    [],
-  );
-
-  const {
-    rows: schedules,
-    loading: schedulesLoading,
-    error: schedulesError,
-  } = useCollection(
-    () =>
-      db.query(
-        db.colRef("Schedules"),
       ),
     [],
   );
@@ -500,8 +583,10 @@ export default function Payments() {
                 ?.email,
               booking?.package
                 ?.name,
-              booking?.event
-                ?.location,
+              getLocationLabel(
+                booking?.event
+                  ?.location,
+              ),
             ]
               .filter(Boolean)
               .join(" ")
@@ -631,101 +716,25 @@ export default function Payments() {
       : null;
 
   /* =========================================================
-     INDEXEDDB PROOF
+     CLOUDINARY PAYMENT PROOF
   ========================================================= */
 
-  useEffect(() => {
-    let localObjectUrl =
-      null;
-
-    let cancelled = false;
-
-    async function loadProof() {
-      setProofUrl(null);
-      setProofError(null);
-
-      if (!selectedPayment) {
-        setProofLoading(false);
-        return;
-      }
-
-      if (
-        selectedPayment.proofUrl
-      ) {
-        setProofUrl(
-          selectedPayment.proofUrl,
-        );
-        setProofLoading(false);
-        return;
-      }
-
-      if (
-        !selectedPayment.proofStorageKey
-      ) {
-        setProofError(
-          "Payment proof key is not available.",
-        );
-        setProofLoading(false);
-        return;
-      }
-
-      setProofLoading(true);
-
-      try {
-        localObjectUrl =
-          await getPaymentProofUrl(
-            selectedPayment.proofStorageKey,
-          );
-
-        if (cancelled) {
-          return;
-        }
-
-        if (!localObjectUrl) {
-          setProofError(
-            "Payment proof was not found in this browser.",
-          );
-          return;
-        }
-
-        setProofUrl(
-          localObjectUrl,
-        );
-      } catch (error) {
-        console.error(
-          "LOAD PAYMENT PROOF ERROR:",
-          error,
-        );
-
-        if (!cancelled) {
-          setProofError(
-            "Failed to load payment proof.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setProofLoading(false);
-        }
-      }
-    }
-
-    loadProof();
-
-    return () => {
-      cancelled = true;
-
-      if (localObjectUrl) {
-        URL.revokeObjectURL(
-          localObjectUrl,
-        );
-      }
-    };
-  }, [
-    selectedPayment?.id,
+  const proofUrl =
     selectedPayment
-      ?.proofStorageKey,
-    selectedPayment?.proofUrl,
-  ]);
+      ? getPaymentProofUrl(
+          selectedPayment,
+        )
+      : null;
+
+  const proofError =
+    selectedPayment &&
+    !proofUrl
+      ? selectedPayment
+          .proofStorageType ===
+        "indexeddb"
+        ? "Legacy payment proof hanya tersimpan pada browser client lama dan tidak tersedia di admin."
+        : "Payment proof URL is not available."
+      : null;
 
   /* =========================================================
      UI HANDLERS
@@ -790,6 +799,61 @@ export default function Payments() {
      PAYMENT REVIEW
   ========================================================= */
 
+  const submitPaymentReview =
+    async (action) => {
+      if (
+        !selectedPayment?.id
+      ) {
+        return;
+      }
+
+      if (!user) {
+        throw new Error(
+          "Admin session is not available.",
+        );
+      }
+
+      const idToken =
+        await user.getIdToken(
+          true,
+        );
+
+      const response =
+        await fetch(
+          "/api/admin/payments/review",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+            body:
+              JSON.stringify({
+                paymentId:
+                  selectedPayment.id,
+                action,
+              }),
+          },
+        );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            "Payment review failed.",
+        );
+      }
+
+      return (
+        result?.data ??
+        null
+      );
+    };
+
   const handleApprovePayment =
     async () => {
       if (
@@ -806,119 +870,9 @@ export default function Payments() {
       setActionError(null);
 
       try {
-        const existingSchedule =
-          schedules.find(
-            (schedule) =>
-              schedule.bookingId ===
-                selectedBooking.id &&
-              schedule.status !==
-                "cancelled",
-          );
-
-        /*
-         * Payment menjadi verified.
-         */
-        await db.updateDoc(
-          "Payments",
-          selectedPayment.id,
-          {
-            status: "verified",
-            verificationStatus:
-              "verified",
-
-            verifiedAt:
-              db.serverTimestamp(),
-
-            reviewedAt:
-              db.serverTimestamp(),
-
-            updatedAt:
-              db.serverTimestamp(),
-          },
+        await submitPaymentReview(
+          "approve",
         );
-
-        /*
-         * Invoice terkait menjadi paid.
-         */
-        if (
-          selectedInvoice?.id
-        ) {
-          await db.updateDoc(
-            "Invoices",
-            selectedInvoice.id,
-            {
-              status: "paid",
-
-              paidAt:
-                db.serverTimestamp(),
-
-              updatedAt:
-                db.serverTimestamp(),
-            },
-          );
-        }
-
-        /*
-         * Booking masuk tahap produksi.
-         */
-        await db.updateDoc(
-          "Bookings",
-          selectedBooking.id,
-          {
-            status: "in_progress",
-
-            paymentStatus:
-              "verified",
-
-            paymentVerifiedAt:
-              db.serverTimestamp(),
-
-            updatedAt:
-              db.serverTimestamp(),
-          },
-        );
-
-        /*
-         * Satu booking hanya dibuatkan satu
-         * schedule aktif.
-         */
-        if (!existingSchedule) {
-          await db.addDoc(
-            "Schedules",
-            {
-              bookingId:
-                selectedBooking.id,
-
-              clientId:
-                selectedBooking.client
-                  ?.uid ?? null,
-
-              paymentId:
-                selectedPayment.id,
-
-              eventDate:
-                selectedBooking.event
-                  ?.preferredDate ??
-                null,
-
-              location:
-                selectedBooking.event
-                  ?.location ??
-                null,
-
-              status: "draft",
-
-              source:
-                "payment_verification",
-
-              createdAt:
-                db.serverTimestamp(),
-
-              updatedAt:
-                db.serverTimestamp(),
-            },
-          );
-        }
       } catch (error) {
         console.error(
           "APPROVE PAYMENT ERROR:",
@@ -952,63 +906,8 @@ export default function Payments() {
       setActionError(null);
 
       try {
-        await db.updateDoc(
-          "Payments",
-          selectedPayment.id,
-          {
-            status: "rejected",
-
-            verificationStatus:
-              "rejected",
-
-            rejectedAt:
-              db.serverTimestamp(),
-
-            reviewedAt:
-              db.serverTimestamp(),
-
-            updatedAt:
-              db.serverTimestamp(),
-          },
-        );
-
-        /*
-         * Invoice tetap dapat dibayar ulang.
-         */
-        if (
-          selectedInvoice?.id
-        ) {
-          await db.updateDoc(
-            "Invoices",
-            selectedInvoice.id,
-            {
-              status: "issued",
-
-              updatedAt:
-                db.serverTimestamp(),
-            },
-          );
-        }
-
-        /*
-         * Booking dikembalikan ke approved agar
-         * client dapat mengunggah bukti baru.
-         */
-        await db.updateDoc(
-          "Bookings",
-          selectedBooking.id,
-          {
-            status: "approved",
-
-            paymentStatus:
-              "rejected",
-
-            paymentRejectedAt:
-              db.serverTimestamp(),
-
-            updatedAt:
-              db.serverTimestamp(),
-          },
+        await submitPaymentReview(
+          "reject",
         );
       } catch (error) {
         console.error(
@@ -1034,14 +933,12 @@ export default function Payments() {
   const loading =
     paymentsLoading ||
     bookingsLoading ||
-    invoicesLoading ||
-    schedulesLoading;
+    invoicesLoading;
 
   const dataError =
     paymentsError ||
     bookingsError ||
-    invoicesError ||
-    schedulesError;
+    invoicesError;
 
   if (loading) {
     return (
@@ -1171,7 +1068,7 @@ export default function Payments() {
                     className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-outline-variant/40 px-4 py-2.5 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-bright hover:text-primary"
                   >
                     <AppIcon
-                      name="filter_list"
+                      name="filter"
                       size={18}
                     />
 
@@ -1418,30 +1315,21 @@ export default function Payments() {
                       </section>
 
                       <section className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-surface-container-high">
-                        {proofLoading && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <p className="font-label-sm text-label-sm text-on-surface-variant">
-                              Loading payment proof...
-                            </p>
+                        {proofError && (
+                          <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+                            <div>
+                              <AppIcon
+                                name="receipt"
+                                size={36}
+                                className="mx-auto text-on-surface-variant opacity-40"
+                              />
+
+                              <p className="mt-3 font-label-sm text-label-sm text-on-surface-variant">
+                                {proofError}
+                              </p>
+                            </div>
                           </div>
                         )}
-
-                        {!proofLoading &&
-                          proofError && (
-                            <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
-                              <div>
-                                <AppIcon
-                                  name="receipt"
-                                  size={36}
-                                  className="mx-auto text-on-surface-variant opacity-40"
-                                />
-
-                                <p className="mt-3 font-label-sm text-label-sm text-on-surface-variant">
-                                  {proofError}
-                                </p>
-                              </div>
-                            </div>
-                          )}
 
                         {proofUrl && (
                           <>
@@ -1499,6 +1387,15 @@ export default function Payments() {
                         />
 
                         <DetailRow
+                          label="Booking Code"
+                          value={
+                            selectedBooking.bookingCode ??
+                            selectedBooking.id ??
+                            "-"
+                          }
+                        />
+
+                        <DetailRow
                           label="Submitted At"
                           value={formatDateTime(
                             selectedPayment.submittedAt ??
@@ -1517,16 +1414,45 @@ export default function Payments() {
                         <DetailRow
                           label="File Type"
                           value={
-                            selectedPayment.proofMimeType ??
+                            selectedPayment
+                              .proof?.mimeType ??
+                            selectedPayment
+                              .proofMimeType ??
                             "-"
+                          }
+                        />
+
+                        <DetailRow
+                          label="File Size"
+                          value={
+                            formatFileSize(
+                              selectedPayment
+                                .proof?.bytes ??
+                                selectedPayment
+                                  .proofFileSize,
+                            )
+                          }
+                        />
+
+                        <DetailRow
+                          label="Storage"
+                          value={
+                            selectedPayment
+                              .proofStorageType ===
+                            "cloudinary"
+                              ? "Cloudinary Image"
+                              : selectedPayment
+                                  .proofStorageType ??
+                                "-"
                           }
                         />
 
                         <DetailRow
                           label="Payment Method"
                           value={
-                            selectedPayment.method ??
-                            "bank_transfer"
+                            getPaymentMethodLabel(
+                              selectedPayment.method,
+                            )
                           }
                         />
 
@@ -1549,14 +1475,66 @@ export default function Payments() {
                         />
 
                         <DetailRow
+                          label="Event Time"
+                          value={
+                            getEventTimeLabel(
+                              selectedBooking.event,
+                            )
+                          }
+                        />
+
+                        <DetailRow
                           label="Location"
                           value={
-                            selectedBooking.event
-                              ?.location ??
-                            "-"
+                            getLocationLabel(
+                              selectedBooking.event
+                                ?.location,
+                            )
                           }
                         />
                       </dl>
+
+                      {getInvoicePdfUrl(
+                        selectedInvoice,
+                      ) && (
+                        <a
+                          href={getInvoicePdfUrl(
+                            selectedInvoice,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 rounded-xl border border-outline-variant/30 p-4 transition-colors hover:border-primary/45"
+                        >
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/5">
+                            <AppIcon
+                              name="receipt"
+                              size={20}
+                              className="text-primary"
+                            />
+                          </div>
+
+                          <div className="min-w-0 grow">
+                            <p className="truncate font-label-md text-label-md text-on-surface">
+                              {selectedInvoice
+                                ?.pdf
+                                ?.fileName ??
+                                `${getInvoiceLabel(
+                                  selectedInvoice,
+                                )}.pdf`}
+                            </p>
+
+                            <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
+                              Invoice Down Payment
+                            </p>
+                          </div>
+
+                          <AppIcon
+                            name="visibility"
+                            size={19}
+                            className="shrink-0 text-secondary"
+                          />
+                        </a>
+                      )}
 
                       {actionError && (
                         <div
@@ -1604,7 +1582,7 @@ export default function Payments() {
                             className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-error/30 bg-surface-bright px-5 py-4 font-label-md text-label-md text-error transition-all hover:bg-error-container/50 active:scale-[0.98] disabled:cursor-wait disabled:opacity-50"
                           >
                             <AppIcon
-                              name="block"
+                              name="cancel"
                               size={20}
                             />
 
@@ -1621,14 +1599,14 @@ export default function Payments() {
                         <ReviewResult
                           icon="verified"
                           title="Payment accepted"
-                          description="The payment, invoice, and booking have been updated. A schedule has also been created for this booking."
+                          description="Payment verified, deposit invoice marked paid, booking moved to production, and the event date is now booked in the schedule."
                         />
                       )}
 
                       {selectedPaymentStatus ===
                         "rejected" && (
                         <ReviewResult
-                          icon="block"
+                          icon="cancel"
                           title="Payment rejected"
                           description="The booking has been returned to approved so the client can upload a new proof."
                           error
