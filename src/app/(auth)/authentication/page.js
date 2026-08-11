@@ -40,14 +40,9 @@ export default function AuthPage() {
 
           <div className="flex items-center space-x-6 text-white/60">
             <span className="font-label-sm text-label-sm uppercase tracking-widest">
-              London
+              Bandung
             </span>
-            <span className="font-label-sm text-label-sm uppercase tracking-widest">
-              Paris
-            </span>
-            <span className="font-label-sm text-label-sm uppercase tracking-widest">
-              New York
-            </span>
+           
           </div>
         </div>
       </section>
