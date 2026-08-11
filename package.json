@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@use-gesture/react": "^10.3.1",
     "cloudinary": "^2.10.0",
     "firebase": "^12.15.0",
     "firebase-admin": "13.10.0",
+    "framer-motion": "^13.1.0",
     "googleapis": "^174.0.1",
     "leaflet": "^1.9.4",
     "next": "16.2.9",

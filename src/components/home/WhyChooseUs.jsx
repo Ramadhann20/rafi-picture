@@ -1,45 +1,71 @@
-import MaterialIcon from "@/components/global/MaterialIcon";
+import AppIcon from "@/components/global/AppIcon";
 
 const reasons = [
   {
-    icon: "history_edu",
-    title: "Timeless Style",
+    number: "01",
+    icon: "photo_camera",
+    title: "HASIL FOTO BERKUALITAS",
     description:
-      "We avoid passing trends, focusing on a clean, classic aesthetic that will look as beautiful in 50 years as it does today.",
+      "Menghasilkan foto dengan detail yang tajam, komposisi yang tepat, dan warna yang natural.",
   },
   {
-    icon: "camera",
-    title: "Professional Gear",
+    number: "02",
+    icon: "auto_awesome",
+    title: "EDITING PROFESIONAL",
     description:
-      "Utilizing industry-leading medium format cameras and prime lenses to deliver unmatched detail and dynamic range.",
+      "Setiap foto melalui proses editing untuk menghasilkan tampilan yang clean, estetik, dan konsisten.",
   },
   {
-    icon: "favorite",
-    title: "Emotional Storytelling",
+    number: "03",
+    icon: "verified_user",
+    title: "PELAYANAN PROFESIONAL",
     description:
-      "Beyond poses, we capture the silent glances and spontaneous joy that define the true soul of your celebration.",
+      "Didukung fotografer berpengalaman dengan proses kerja yang terencana dan sesuai kebutuhan setiap klien.",
   },
 ];
 
 export default function WhyChooseUs() {
   return (
-    <section className="py-[120px] bg-surface" id="about">
-      <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop text-center mb-[80px]">
-        <span className="font-label-md text-label-md text-secondary uppercase tracking-widest mb-4 block">
-          The Experience
+    <section
+      className="bg-surface py-[120px]"
+      id="about"
+    >
+      <div className="mx-auto mb-[80px] max-w-container-max px-margin-mobile text-center md:px-margin-desktop">
+        <span className="mb-4 block font-label-md text-label-md uppercase tracking-widest text-secondary">
+          Rafi Picture
         </span>
-        <h2 className="font-headline-lg text-headline-lg text-primary">Why Choose Rafi Picture</h2>
+
+        <h2 className="font-headline-lg text-headline-lg text-primary">
+          Mengapa Memilih Rafi Picture?
+        </h2>
       </div>
 
-      <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop grid grid-cols-1 md:grid-cols-3 gap-12">
+      <div className="mx-auto grid max-w-container-max grid-cols-1 gap-12 px-margin-mobile md:grid-cols-3 md:px-margin-desktop">
         {reasons.map((item) => (
-          <div key={item.title} className="text-center group">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6 ambient-shadow group-hover:bg-primary transition-colors duration-300">
-              <MaterialIcon className="text-3xl group-hover:text-white transition-colors">{item.icon}</MaterialIcon>
+          <article
+            key={item.number}
+            className="group text-center"
+          >
+            <div className="ambient-shadow mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white transition-colors duration-300 group-hover:bg-primary">
+              <AppIcon
+                name={item.icon}
+                size={28}
+                className="text-primary transition-colors duration-300 group-hover:text-white"
+              />
             </div>
-            <h3 className="font-headline-md text-headline-md text-primary mb-4">{item.title}</h3>
-            <p className="font-body-md text-body-md text-on-surface-variant">{item.description}</p>
-          </div>
+
+            <p className="mb-3 font-label-sm text-label-sm uppercase tracking-[0.18em] text-secondary">
+              {item.number}
+            </p>
+
+            <h3 className="mb-4 font-headline-md text-headline-md text-primary">
+              {item.title}
+            </h3>
+
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              {item.description}
+            </p>
+          </article>
         ))}
       </div>
     </section>

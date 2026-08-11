@@ -52,7 +52,15 @@ import {
   MdVisibility,
   MdVisibilityOff,
   MdZoomIn,
+ 
 } from "react-icons/md";
+
+import {
+  FaWhatsapp,
+  FaInstagram,
+} from "react-icons/fa6";
+
+import { TbSocial } from "react-icons/tb";
 
 const iconRegistry = {
   access_time: MdAccessTime,
@@ -113,6 +121,11 @@ const iconRegistry = {
   visibility: MdVisibility,
   visibility_off: MdVisibilityOff,
   zoom_in: MdZoomIn,
+
+  whatsapp: FaWhatsapp,
+  instagram: FaInstagram,
+
+  social: TbSocial,
 };
 
 export default function AppIcon({

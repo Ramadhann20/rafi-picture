@@ -1,864 +1,425 @@
-// =========================
-// USERS
-// =========================
-export const USERS = [
-  {
-    uid: "u1",
-    username: "Admin Rafi",
-    email: "admin@rafi.com",
-    role: "admin", // admin | customer | crew
-    photoUrl: "https://i.pravatar.cc/100"
-  }
-];
-
-
-// =========================
-// PACKAGES
-// =========================
-
-// =========================
-// PACKAGES
-// =========================
-
-export const PACKAGES = [
-  // =====================================================
-  // WEDDING
-  // packageCategoryId: HAxzPXQu9x60Q6G0vrnl
-  // =====================================================
-
-  {
-    name: "Signature Wedding",
-    packageCategoryId: "HAxzPXQu9x60Q6G0vrnl",
-
-    description:
-      "Paket dokumentasi pernikahan lengkap untuk menangkap seluruh rangkaian acara, mulai dari persiapan hingga resepsi.",
-
-    serviceHighlights: [
-      "Liputan 10 Jam",
-      "2 Fotografer",
-      "1 Videografer",
-      "Album Premium",
-    ],
-
-    price: 45000000,
-    durationHours: 10,
-
-    status: "active",
-    featured: false,
-    sortOrder: 1,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Signature Wedding",
-    },
-
-    createdAt: "2026-06-01T08:00:00.000Z",
-    updatedAt: "2026-06-01T08:00:00.000Z",
-  },
-
-  {
-    name: "Classic Union",
-    packageCategoryId: "HAxzPXQu9x60Q6G0vrnl",
-
-    description:
-      "Paket wedding pilihan utama dengan dokumentasi foto dan video untuk prosesi inti serta momen keluarga.",
-
-    serviceHighlights: [
-      "Liputan 8 Jam",
-      "2 Fotografer",
-      "1 Videografer",
-      "Album Mini",
-    ],
-
-    price: 28000000,
-    durationHours: 8,
-
-    status: "active",
-    featured: true,
-    sortOrder: 2,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Classic Union",
-    },
-
-    createdAt: "2026-06-01T08:05:00.000Z",
-    updatedAt: "2026-06-01T08:05:00.000Z",
-  },
-
-  {
-    name: "Essential Wedding",
-    packageCategoryId: "HAxzPXQu9x60Q6G0vrnl",
-
-    description:
-      "Paket dokumentasi ringkas untuk pernikahan sederhana dengan fokus pada prosesi utama dan sesi keluarga.",
-
-    serviceHighlights: [
-      "Liputan 5 Jam",
-      "1 Fotografer",
-      "1 Videografer",
-      "Galeri Digital",
-    ],
-
-    price: 15000000,
-    durationHours: 5,
-
-    status: "active",
-    featured: false,
-    sortOrder: 3,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Essential Wedding",
-    },
-
-    createdAt: "2026-06-01T08:10:00.000Z",
-    updatedAt: "2026-06-01T08:10:00.000Z",
-  },
-
-  // =====================================================
-  // PRE-WEDDING
-  // packageCategoryId: MMqQ3Vb3zxa3cWDwndIw
-  // =====================================================
-
-  {
-    name: "Editorial Journey",
-    packageCategoryId: "MMqQ3Vb3zxa3cWDwndIw",
-
-    description:
-      "Sesi pre-wedding bergaya editorial dengan konsep visual yang dirancang sesuai karakter pasangan.",
-
-    serviceHighlights: [
-      "Sesi 8 Jam",
-      "2 Lokasi",
-      "2 Fotografer",
-      "40 Foto Pilihan",
-    ],
-
-    price: 18000000,
-    durationHours: 8,
-
-    status: "active",
-    featured: true,
-    sortOrder: 1,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Editorial Journey",
-    },
-
-    createdAt: "2026-06-01T08:15:00.000Z",
-    updatedAt: "2026-06-01T08:15:00.000Z",
-  },
-
-  {
-    name: "Natural Escape",
-    packageCategoryId: "MMqQ3Vb3zxa3cWDwndIw",
-
-    description:
-      "Sesi pre-wedding outdoor dengan pendekatan natural dan pilihan lokasi yang menonjolkan suasana alam.",
-
-    serviceHighlights: [
-      "Sesi 6 Jam",
-      "2 Lokasi",
-      "1 Fotografer",
-      "30 Foto Pilihan",
-    ],
-
-    price: 12000000,
-    durationHours: 6,
-
-    status: "active",
-    featured: false,
-    sortOrder: 2,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Natural Escape",
-    },
-
-    createdAt: "2026-06-01T08:20:00.000Z",
-    updatedAt: "2026-06-01T08:20:00.000Z",
-  },
-
-  {
-    name: "Intimate Story",
-    packageCategoryId: "MMqQ3Vb3zxa3cWDwndIw",
-
-    description:
-      "Paket pre-wedding sederhana untuk pasangan yang menginginkan sesi santai dengan hasil foto personal.",
-
-    serviceHighlights: [
-      "Sesi 3 Jam",
-      "1 Lokasi",
-      "1 Fotografer",
-      "20 Foto Pilihan",
-    ],
-
-    price: 7500000,
-    durationHours: 3,
-
-    status: "active",
-    featured: false,
-    sortOrder: 3,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Intimate Story",
-    },
-
-    createdAt: "2026-06-01T08:25:00.000Z",
-    updatedAt: "2026-06-01T08:25:00.000Z",
-  },
-
-  // =====================================================
-  // TUNANGAN
-  // packageCategoryId: d1K5SCKplQQ7IcAkgNDF
-  // =====================================================
-
-  {
-    name: "Engagement Luxe",
-    packageCategoryId: "d1K5SCKplQQ7IcAkgNDF",
-
-    description:
-      "Dokumentasi acara pertunangan lengkap untuk mengabadikan prosesi, dekorasi, pasangan, dan keluarga.",
-
-    serviceHighlights: [
-      "Liputan 6 Jam",
-      "2 Fotografer",
-      "1 Videografer",
-      "Video Highlight",
-    ],
-
-    price: 16000000,
-    durationHours: 6,
-
-    status: "active",
-    featured: true,
-    sortOrder: 1,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Engagement Luxe",
-    },
-
-    createdAt: "2026-06-01T08:30:00.000Z",
-    updatedAt: "2026-06-01T08:30:00.000Z",
-  },
-
-  {
-    name: "Family Intimate",
-    packageCategoryId: "d1K5SCKplQQ7IcAkgNDF",
-
-    description:
-      "Paket dokumentasi pertunangan untuk acara keluarga dengan suasana hangat dan jumlah tamu terbatas.",
-
-    serviceHighlights: [
-      "Liputan 4 Jam",
-      "1 Fotografer",
-      "1 Videografer",
-      "Galeri Digital",
-    ],
-
-    price: 10000000,
-    durationHours: 4,
-
-    status: "active",
-    featured: false,
-    sortOrder: 2,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Family Intimate",
-    },
-
-    createdAt: "2026-06-01T08:35:00.000Z",
-    updatedAt: "2026-06-01T08:35:00.000Z",
-  },
-
-  {
-    name: "Simple Promise",
-    packageCategoryId: "d1K5SCKplQQ7IcAkgNDF",
-
-    description:
-      "Paket foto pertunangan sederhana yang berfokus pada prosesi utama, pasangan, dan keluarga inti.",
-
-    serviceHighlights: [
-      "Liputan 3 Jam",
-      "1 Fotografer",
-      "20 Foto Pilihan",
-      "Galeri Online",
-    ],
-
-    price: 6500000,
-    durationHours: 3,
-
-    status: "active",
-    featured: false,
-    sortOrder: 3,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Simple Promise",
-    },
-
-    createdAt: "2026-06-01T08:40:00.000Z",
-    updatedAt: "2026-06-01T08:40:00.000Z",
-  },
-
-  // =====================================================
-  // ACARA
-  // packageCategoryId: 8kXZV0busmkITm7b6itD
-  // =====================================================
-
-  {
-    name: "Corporate Documentation",
-    packageCategoryId: "8kXZV0busmkITm7b6itD",
-
-    description:
-      "Dokumentasi profesional untuk seminar, peluncuran produk, gathering, dan kegiatan perusahaan.",
-
-    serviceHighlights: [
-      "Liputan 8 Jam",
-      "2 Fotografer",
-      "1 Videografer",
-      "Video Highlight",
-    ],
-
-    price: 20000000,
-    durationHours: 8,
-
-    status: "active",
-    featured: true,
-    sortOrder: 1,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Corporate Documentation",
-    },
-
-    createdAt: "2026-06-01T08:45:00.000Z",
-    updatedAt: "2026-06-01T08:45:00.000Z",
-  },
-
-  {
-    name: "Celebration Story",
-    packageCategoryId: "8kXZV0busmkITm7b6itD",
-
-    description:
-      "Paket dokumentasi untuk ulang tahun, anniversary, bridal shower, dan perayaan keluarga lainnya.",
-
-    serviceHighlights: [
-      "Liputan 5 Jam",
-      "1 Fotografer",
-      "1 Videografer",
-      "30 Foto Pilihan",
-    ],
-
-    price: 12000000,
-    durationHours: 5,
-
-    status: "active",
-    featured: false,
-    sortOrder: 2,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Celebration Story",
-    },
-
-    createdAt: "2026-06-01T08:50:00.000Z",
-    updatedAt: "2026-06-01T08:50:00.000Z",
-  },
-
-  {
-    name: "Graduation Moments",
-    packageCategoryId: "8kXZV0busmkITm7b6itD",
-
-    description:
-      "Paket dokumentasi wisuda untuk individu, pasangan, atau keluarga dengan sesi foto formal dan kasual.",
-
-    serviceHighlights: [
-      "Sesi 3 Jam",
-      "1 Fotografer",
-      "2 Lokasi",
-      "20 Foto Pilihan",
-    ],
-
-    price: 7000000,
-    durationHours: 3,
-
-    status: "active",
-    featured: false,
-    sortOrder: 3,
-
-    cover: {
-      url: null,
-      storagePath: null,
-      alt: "Paket Graduation Moments",
-    },
-
-    createdAt: "2026-06-01T08:55:00.000Z",
-    updatedAt: "2026-06-01T08:55:00.000Z",
-  },
-];
+// ============================================================
+// RAFI PICTURE - PACKAGE & CATEGORY SEED DATA
+// Pricelist 2026
+//
+// File ini sengaja hanya berisi data yang dibutuhkan untuk
+// inject PackageCategories dan Packages.
+// ============================================================
+
+const PACKAGE_IMAGE_BY_SLUG = {
+  "classic-a-wedding-package": "/images-package/ClassicA.jpg",
+  "classic-b-wedding-package": "/images-package/ClassicB.jpg",
+  "bronze-wedding-package": "/images-package/WBronze.jpg",
+  "silver-wedding-package": "/images-package/WSilver.jpeg",
+  "gold-wedding-package": "/images-package/WGold.jpg",
+  "platinum-wedding-package": "/images-package/WPlatinum.jpg",
+
+  "prewedding-bronze": "/images-package/PWBronze.jpg",
+  "prewedding-silver": "/images-package/PWSilver.jpg",
+
+  "engagement-bronze": "/images-package/EBronze.jpg",
+  "engagement-silver": "/images-package/ESilver.jpg",
+
+  "bronze-pengajian-siraman": "/images-package/Siraman.jpg",
+  "silver-pengajian-siraman": "/images-package/Siraman2.jpg",
+
+  "prewedding-wedding-bundle": "/images-package/Wfull.jpg",
+};
+
+function makeCover(slug, packageName) {
+  return {
+    url: PACKAGE_IMAGE_BY_SLUG[slug] || null,
+    storagePath: null,
+    alt: `${packageName} - Rafi Picture`,
+  };
+}
 
 export const PACKAGE_CATEGORIES = [
   {
-    id: "HAxzPXQu9x60Q6G0vrnl",
+    id: "wedding",
     name: "Wedding",
     slug: "wedding",
-    icon: "favorite",
+    icon: "event",
     sortOrder: 1,
     isActive: true,
   },
   {
-    id: "MMqQ3Vb3zxa3cWDwndIw",
-    name: "Pre-Wedding",
-    slug: "pre-wedding",
+    id: "prewedding",
+    name: "Prewedding",
+    slug: "prewedding",
     icon: "photo_camera",
     sortOrder: 2,
     isActive: true,
   },
   {
-    id: "d1K5SCKplQQ7IcAkgNDF",
-    name: "Tunangan",
-    slug: "tunangan",
+    id: "engagement",
+    name: "Engagement",
+    slug: "engagement",
     icon: "person",
     sortOrder: 3,
     isActive: true,
   },
   {
-    id: "8kXZVObusmkITm7b6itD",
+    id: "acara",
     name: "Acara",
     slug: "acara",
     icon: "calendar_month",
     sortOrder: 4,
     isActive: true,
   },
-];
-
-
-// =========================
-// BOOKINGS
-// =========================
-export const BOOKINGS = [
   {
-    id: "b1",
-
-    client: {
-      name: "Alya",
-      partnerName: "Bima",
-      email: "",
-      phone: "08123456789",
-      instagram: "@alya_bima"
-    },
-
-    event: {
-      preferredDate: "2026-06-10",
-      location: "Bandung",
-      vision: "Casual and fun wedding with natural poses"
-    },
-
-    userId: "u1",
-    packageId: "p1",
-
-    bookingStatus: "pending",
-    // pending | confirmed | rejected | completed
-
-    source: "website_booking_form",
-    submittedAt: "2026-06-01T10:00:00Z",
-  }
-];
-
-
-// =========================
-// SCHEDULES
-// =========================
-export const SCHEDULES = [
-  {
-    id: "s1",
-
-    bookingId: "b1",
-
-    date: "2026-06-10",
-    startTime: "08:00",
-    endTime: "16:00",
-
-    scheduleStatus: "booked"
-    // available | booked | conflict
-  }
-];
-
-
-// =========================
-// PAYMENTS
-// =========================
-export const PAYMENTS = [
-  {
-    id: "pay1",
-    bookingId: "b1",
-
-    type: "DP", // DP | FULL
-
-    amount: 1500000,
-    percent: 30,
-
-    paymentStatus: "verified",
-    // unpaid | half_paid | paid | rejected
-
-    proofImage: "/proof/pay1.jpg"
-  }
-];
-
-
-
-// =========================
-// CREWS
-// =========================
-
-export const CREWS = [
-  {
-    id: "c1",
-    name: "Rizky Pratama",
-    email: "rizky@rafipicture.com",
-    phone: "081234567890",
-
-    baseRole: "lead_photographer",
-
-    skills: [
-      "wedding",
-      "prewedding",
-      "outdoor",
-    ],
-
-    employmentStatus: "active",
-
-    avatarUrl: null,
-    userId: null,
-
-    notes:
-      "Berpengalaman menangani wedding outdoor dan menjadi lead photographer.",
-
-    createdAt: "2026-01-10T08:00:00.000Z",
-    updatedAt: "2026-06-20T09:30:00.000Z",
-  },
-
-  {
-    id: "c2",
-    name: "Dimas Saputra",
-    email: "dimas@rafipicture.com",
-    phone: "081298765432",
-
-    baseRole: "videographer",
-
-    skills: [
-      "wedding",
-      "cinematic_video",
-      "drone",
-    ],
-
-    employmentStatus: "active",
-
-    avatarUrl: null,
-    userId: null,
-
-    notes:
-      "Fokus pada video cinematic dan pengambilan gambar menggunakan drone.",
-
-    createdAt: "2026-01-12T08:00:00.000Z",
-    updatedAt: "2026-06-18T10:00:00.000Z",
-  },
-
-  {
-    id: "c3",
-    name: "Aldi Kurniawan",
-    email: "aldi@rafipicture.com",
-    phone: "081377788899",
-
-    baseRole: "assistant_photographer",
-
-    skills: [
-      "lighting",
-      "equipment",
-      "documentation",
-    ],
-
-    employmentStatus: "active",
-
-    avatarUrl: null,
-    userId: null,
-
-    notes:
-      "Membantu pengaturan lighting, perlengkapan, dan dokumentasi acara.",
-
-    createdAt: "2026-02-01T08:00:00.000Z",
-    updatedAt: "2026-06-15T08:45:00.000Z",
-  },
-
-  {
-    id: "c4",
-    name: "Nabila Putri",
-    email: "nabila@rafipicture.com",
-    phone: "081355566677",
-
-    baseRole: "photographer",
-
-    skills: [
-      "prewedding",
-      "portrait",
-      "indoor",
-    ],
-
-    employmentStatus: "active",
-
-    avatarUrl: null,
-    userId: null,
-
-    notes:
-      "Berpengalaman dalam portrait, prewedding, dan sesi foto indoor.",
-
-    createdAt: "2026-02-15T08:00:00.000Z",
-    updatedAt: "2026-06-22T11:15:00.000Z",
-  },
-
-  {
-    id: "c5",
-    name: "Fajar Ramadhan",
-    email: "fajar@rafipicture.com",
-    phone: "081322233344",
-
-    baseRole: "editor",
-
-    skills: [
-      "photo_editing",
-      "color_grading",
-      "album_design",
-    ],
-
-    employmentStatus: "active",
-
-    avatarUrl: null,
-    userId: null,
-
-    notes:
-      "Bertanggung jawab atas editing foto, color grading, dan desain album.",
-
-    createdAt: "2026-03-01T08:00:00.000Z",
-    updatedAt: "2026-06-19T07:30:00.000Z",
-  },
-
-  {
-    id: "c6",
-    name: "Siti Maharani",
-    email: "siti@rafipicture.com",
-    phone: "081344455566",
-
-    baseRole: "videographer",
-
-    skills: [
-      "traditional_wedding",
-      "documentary",
-      "short_video",
-    ],
-
-    employmentStatus: "on_leave",
-
-    avatarUrl: null,
-    userId: null,
-
-    notes:
-      "Sedang mengambil cuti dan belum dapat menerima assignment baru.",
-
-    createdAt: "2026-03-10T08:00:00.000Z",
-    updatedAt: "2026-06-24T13:00:00.000Z",
+    id: "bundle",
+    name: "Bundle",
+    slug: "bundle",
+    icon: "shopping_bag",
+    sortOrder: 5,
+    isActive: true,
   },
 ];
 
-// =========================
-// CREW ASSIGNMENTS
-// =========================
-
-export const ASSIGNMENTS = [
+export const PACKAGES = [
+  // ==========================================================
+  // WEDDING
+  // ==========================================================
   {
-    id: "a1",
-
-    bookingId: "b1",
-
-    crewIds: [
-      "c1",
-      "c2",
-      "c3",
+    id: "classic-a-wedding-package",
+    name: "Classic A Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket dokumentasi wedding foto untuk kebutuhan dokumentasi inti dengan fotografer dan asisten fotografer.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "1 Photographer",
+      "1 Assistant Photographer",
+      "Edited 100 Photos",
+      "All Data (Soft File)",
+      "Google Drive & Flashdisk",
+      "Wedding Documentation",
     ],
-
-    task: "Wedding Documentation",
-
-    eventDate: "2026-07-12",
-    startTime: "08:00",
-    endTime: "18:00",
-
-    location: "The Westin Surabaya",
-
-    status: "published",
-
-    notes:
-      "Tim hadir satu jam sebelum acara dimulai.",
-
-    createdAt: "2026-06-20T08:00:00.000Z",
-    updatedAt: "2026-06-20T08:00:00.000Z",
+    price: 1999000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+    cover: makeCover(
+      "classic-a-wedding-package",
+      "Classic A Wedding Package",
+    ),
+  },
+  {
+    id: "classic-b-wedding-package",
+    name: "Classic B Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket wedding foto dengan album dan frame untuk dokumentasi acara serta hasil cetak pilihan.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "1 Photographer",
+      "1 Assistant Photographer",
+      "Edited 100 Photos",
+      "Magazine Album 10 Sheets",
+      "16RP + Big Frame 1 Pc",
+      "Google Drive & Flashdisk",
+    ],
+    price: 2599000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+    cover: makeCover(
+      "classic-b-wedding-package",
+      "Classic B Wedding Package",
+    ),
+  },
+  {
+    id: "bronze-wedding-package",
+    name: "Bronze Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket wedding foto dan video dengan cinematic highlight, album, serta frame untuk dokumentasi acara.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "1 Photographer + 1 Assistant",
+      "1 Videographer",
+      "Edited 100 Photos",
+      "Wedding Cinematic Video 2-3 Minutes",
+      "Magazine Album 10 Sheets + Standard Box",
+      "16RP + Big Frame 1 Pc",
+    ],
+    price: 3799000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 3,
+    cover: makeCover(
+      "bronze-wedding-package",
+      "Bronze Wedding Package",
+    ),
+  },
+  {
+    id: "silver-wedding-package",
+    name: "Silver Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket wedding foto dan video dengan dua fotografer, cinematic video, teaser, album eksklusif, serta frame.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "2 Photographers + 1 Assistant",
+      "1 Videographer",
+      "Edited 100 Photos",
+      "Wedding Cinematic + 1 Minute Teaser",
+      "Magazine Album 10 Sheets + Exclusive Box",
+      "16RP + Big Frame 2 Pcs",
+    ],
+    price: 4599000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 4,
+    cover: makeCover(
+      "silver-wedding-package",
+      "Silver Wedding Package",
+    ),
+  },
+  {
+    id: "gold-wedding-package",
+    name: "Gold Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket wedding lengkap dengan tim foto dan video, cinematic serta teaser Instagram, album single eksklusif, dan frame.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "2 Photographers + 1 Assistant",
+      "1 Videographer",
+      "Wedding Cinematic Video",
+      "1 Minute Teaser for Instagram",
+      "Magazine Album Single 10 Sheets + Exclusive Box",
+      "Large & Small Frames",
+    ],
+    price: 4699000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 5,
+    cover: makeCover(
+      "gold-wedding-package",
+      "Gold Wedding Package",
+    ),
+  },
+  {
+    id: "platinum-wedding-package",
+    name: "Platinum Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket wedding premium dengan tim foto dan video, cinematic serta teaser Instagram, album double eksklusif, dan frame.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "2 Photographers + 1 Assistant",
+      "1 Videographer",
+      "Wedding Cinematic Video",
+      "1 Minute Teaser for Instagram",
+      "Magazine Album Double 20 Sheets + Exclusive Box",
+      "Large & Small Frames",
+    ],
+    price: 5799000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 6,
+    cover: makeCover(
+      "platinum-wedding-package",
+      "Platinum Wedding Package",
+    ),
   },
 
+  // ==========================================================
+  // PREWEDDING
+  // ==========================================================
   {
-    id: "a2",
-
-    bookingId: "b2",
-
-    crewIds: [
-      "c2",
-      "c3",
-      "c4",
+    id: "prewedding-bronze",
+    name: "Prewedding Bronze",
+    packageCategoryId: "prewedding",
+    description:
+      "Paket prewedding photos only untuk satu lokasi dengan hasil edit pilihan, frame, dan seluruh file foto melalui Google Drive.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "Photos Only",
+      "1 Location",
+      "Edit 50 Photos",
+      "16RP Big Frame 2 Pcs",
+      "4R + Frame 10 Pcs",
+      "All Photo Files via Google Drive",
     ],
-
-    task: "Prewedding Photoshoot",
-
-    eventDate: "2026-07-18",
-    startTime: "06:00",
-    endTime: "12:00",
-
-    location: "Bromo, Jawa Timur",
-
-    status: "published",
-
-    notes:
-      "Membawa perlengkapan outdoor dan lighting portable.",
-
-    createdAt: "2026-06-21T09:00:00.000Z",
-    updatedAt: "2026-06-22T10:00:00.000Z",
+    price: 1499000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+    cover: makeCover(
+      "prewedding-bronze",
+      "Prewedding Bronze",
+    ),
+  },
+  {
+    id: "prewedding-silver",
+    name: "Prewedding Silver",
+    packageCategoryId: "prewedding",
+    description:
+      "Paket prewedding foto dan video untuk satu lokasi dengan cinematic video, foto pilihan, frame, dan file melalui Google Drive.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "Photos & Video",
+      "1 Location",
+      "Cinematic Video",
+      "Edit Selected Photos Max 100",
+      "16RP + 4R Frames",
+      "All Photo Files via Google Drive",
+    ],
+    price: 2299000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+    cover: makeCover(
+      "prewedding-silver",
+      "Prewedding Silver",
+    ),
   },
 
+  // ==========================================================
+  // ENGAGEMENT
+  // ==========================================================
   {
-    id: "a3",
-
-    bookingId: "b3",
-
-    crewIds: [
-      "c1",
-      "c3",
-      "c4",
+    id: "engagement-bronze",
+    name: "Engagement Bronze",
+    packageCategoryId: "engagement",
+    description:
+      "Paket dokumentasi engagement berbasis foto dengan unlimited shoot selama sesi, foto pilihan, dan seluruh data melalui Google Drive.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "Photo",
+      "Unlimited Shoot",
+      "Full Session",
+      "Edit Selected Photos",
+      "All Data via Google Drive",
+      "Engagement Documentation",
     ],
-
-    task: "Engagement Documentation",
-
-    eventDate: "2026-07-25",
-    startTime: "09:00",
-    endTime: "15:00",
-
-    location: "Grand Mercure Malang",
-
-    status: "published",
-
-    notes:
-      "Fokus pada dokumentasi keluarga dan sesi portrait pasangan.",
-
-    createdAt: "2026-06-23T08:30:00.000Z",
-    updatedAt: "2026-06-23T08:30:00.000Z",
+    price: 1099000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+    cover: makeCover(
+      "engagement-bronze",
+      "Engagement Bronze",
+    ),
+  },
+  {
+    id: "engagement-silver",
+    name: "Engagement Silver",
+    packageCategoryId: "engagement",
+    description:
+      "Paket dokumentasi engagement foto dan cinematic video dengan unlimited shoot, foto pilihan, serta seluruh data digital.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "Photo",
+      "Cinematic Video",
+      "Unlimited Shoot",
+      "Full Session",
+      "Edit Selected Photos",
+      "Google Drive & Flashdisk",
+    ],
+    price: 1899000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+    cover: makeCover(
+      "engagement-silver",
+      "Engagement Silver",
+    ),
   },
 
+  // ==========================================================
+  // PENGAJIAN & SIRAMAN
+  // ==========================================================
   {
-    id: "a4",
-
-    bookingId: "b4",
-
-    crewIds: [
-      "c2",
-      "c4",
+    id: "bronze-pengajian-siraman",
+    name: "Bronze Pengajian & Siraman",
+    packageCategoryId: "acara",
+    description:
+      "Paket dokumentasi foto untuk rangkaian pengajian dan siraman dengan hasil edit dan seluruh data melalui Google Drive.",
+    bookingSubjectType: "individual",
+    serviceHighlights: [
+      "1 Photographer",
+      "Edited 50 Files",
+      "Edited 50 Photos",
+      "All Data (Soft File)",
+      "Google Drive",
+      "Pengajian & Siraman Documentation",
     ],
-
-    task: "Company Profile Production",
-
-    eventDate: "2026-08-02",
-    startTime: "08:00",
-    endTime: "16:00",
-
-    location: "Surabaya Industrial Estate",
-
-    status: "completed",
-
-    notes:
-      "Dokumentasi foto dan video untuk kebutuhan company profile.",
-
-    createdAt: "2026-06-24T08:00:00.000Z",
-    updatedAt: "2026-08-03T09:00:00.000Z",
+    price: 999000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+    cover: makeCover(
+      "bronze-pengajian-siraman",
+      "Bronze Pengajian & Siraman",
+    ),
+  },
+  {
+    id: "silver-pengajian-siraman",
+    name: "Silver Pengajian & Siraman",
+    packageCategoryId: "acara",
+    description:
+      "Paket dokumentasi foto dan video untuk rangkaian pengajian dan siraman dengan cinematic video dan hasil edit.",
+    bookingSubjectType: "individual",
+    serviceHighlights: [
+      "1 Photographer",
+      "1 Videographer",
+      "Cinematic Video",
+      "Edited 100 Files",
+      "Edited 50 Photos",
+      "All Data via Google Drive",
+    ],
+    price: 1599000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 2,
+    cover: makeCover(
+      "silver-pengajian-siraman",
+      "Silver Pengajian & Siraman",
+    ),
   },
 
+  // ==========================================================
+  // BUNDLE
+  // ==========================================================
   {
-    id: "a5",
-
-    bookingId: "b5",
-
-    crewIds: [
-      "c1",
-      "c2",
-      "c3",
+    id: "prewedding-wedding-bundle",
+    name: "Prewedding + Wedding Bundle",
+    packageCategoryId: "bundle",
+    description:
+      "Bundle dokumentasi Prewedding dan Wedding yang menggabungkan layanan foto, cinematic video, album, frame, dan file digital.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "Prewedding Photo Session",
+      "Wedding Photo",
+      "Cinematic + 1 Minute Teaser",
+      "Magazine Album Single + Exclusive Box",
+      "Large & Small Frames",
+      "Google Drive & Flashdisk",
     ],
-
-    task: "Wedding Reception",
-
-    eventDate: "2026-08-10",
-    startTime: "10:00",
-    endTime: "21:00",
-
-    location: "Hotel Majapahit Surabaya",
-
-    status: "cancelled",
-
-    notes:
-      "Assignment dibatalkan karena perubahan jadwal dari client.",
-
-    createdAt: "2026-06-25T09:00:00.000Z",
-    updatedAt: "2026-06-26T07:00:00.000Z",
+    price: 6299000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+    cover: makeCover(
+      "prewedding-wedding-bundle",
+      "Prewedding + Wedding Bundle",
+    ),
   },
 ];
-
-// =========================
-// HELPER EXAMPLES
-// =========================
-
-// Mencari assignment berdasarkan booking.
-export function getAssignmentByBookingId(
-  bookingId,
-) {
-  return (
-    ASSIGNMENTS.find(
-      (assignment) =>
-        assignment.bookingId === bookingId,
-    ) ?? null
-  );
-}
-
-// Mengambil data lengkap kru dari suatu assignment.
-export function getAssignedCrews(
-  assignment,
-) {
-  if (!assignment) return [];
-
-  return CREWS.filter((crew) =>
-    assignment.crewIds.includes(crew.id),
-  );
-}
-
-// Contoh:
-// const assignment = getAssignmentByBookingId("b1");
-// const assignedCrews = getAssignedCrews(assignment);
-

@@ -4,164 +4,294 @@ import { useState } from "react";
 import { useDb } from "@/context/DbContext";
 
 import {
-  USERS,
   PACKAGES,
   PACKAGE_CATEGORIES,
-  BOOKINGS,
-  SCHEDULES,
-  PAYMENTS,
-  CREWS,
-  ASSIGNMENTS
 } from "@/lib/dummy/dataDummy";
 
-const seedMap = {
-  Users: USERS,
-  Packages: PACKAGES,
-  PackageCategories: PACKAGE_CATEGORIES,
-  Bookings: BOOKINGS,
-  Schedules: SCHEDULES,
-  Payments: PAYMENTS,
-  Crews: CREWS,
-  Assignments: ASSIGNMENTS
+const COLLECTIONS = {
+  categories: "PackageCategories",
+  packages: "Packages",
 };
-  
+
+function withoutId(item) {
+  const { id, ...payload } = item;
+  return payload;
+}
+
 export default function SeederPage() {
-  const { seedCollection, deleteCollection } = useDb();
+  const {
+    setDoc,
+    deleteCollection,
+  } = useDb();
 
   const [loading, setLoading] = useState(false);
-  const [input, setInput] = useState("");
+  const [message, setMessage] = useState("");
 
-  // =========================
-  // SAFE WRAPPER
-  // =========================
   const run = async (fn) => {
+    if (loading) return;
+
     setLoading(true);
+    setMessage("");
+
     try {
       await fn();
+    } catch (error) {
+      console.error("PACKAGE SEED ERROR:", error);
+      setMessage(
+        error?.message ||
+          "Terjadi kesalahan saat memproses package seed.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // =========================
-  // SEED SINGLE
-  // =========================
-  const handleSeed = (key) =>
-    run(async () => {
-      if (!seedMap[key]) return;
-      await seedCollection(key, seedMap[key]);
-    });
-
-  // =========================
-  // SEED ALL
-  // =========================
-  const handleSeedAll = () =>
-    run(async () => {
-      for (const key of Object.keys(seedMap)) {
-        await seedCollection(key, seedMap[key]);
+  const seedRows = async (
+    collectionName,
+    rows,
+  ) => {
+    for (const row of rows) {
+      if (!row?.id) {
+        throw new Error(
+          `Seed ${collectionName} memiliki item tanpa id.`,
+        );
       }
-      alert("All seeded");
+
+      await setDoc(
+        collectionName,
+        row.id,
+        withoutId(row),
+      );
+    }
+  };
+
+  const seedCategories = async ({
+    clear = false,
+  } = {}) => {
+    if (clear) {
+      await deleteCollection(
+        COLLECTIONS.categories,
+      );
+    }
+
+    await seedRows(
+      COLLECTIONS.categories,
+      PACKAGE_CATEGORIES,
+    );
+  };
+
+  const seedPackages = async ({
+    clear = false,
+  } = {}) => {
+    /*
+     * Packages bergantung pada deterministic category ids.
+     * Upsert kategori dulu agar packageCategoryId selalu valid.
+     */
+    await seedCategories();
+
+    if (clear) {
+      await deleteCollection(
+        COLLECTIONS.packages,
+      );
+    }
+
+    await seedRows(
+      COLLECTIONS.packages,
+      PACKAGES,
+    );
+  };
+
+  const handleResetAndSeedAll = () =>
+    run(async () => {
+      /*
+       * Hapus data lama/deprecated terlebih dahulu.
+       * Packages dihapus sebelum categories.
+       */
+      await deleteCollection(
+        COLLECTIONS.packages,
+      );
+      await deleteCollection(
+        COLLECTIONS.categories,
+      );
+
+      await seedRows(
+        COLLECTIONS.categories,
+        PACKAGE_CATEGORIES,
+      );
+
+      await seedRows(
+        COLLECTIONS.packages,
+        PACKAGES,
+      );
+
+      setMessage(
+        `${PACKAGE_CATEGORIES.length} kategori dan ${PACKAGES.length} paket berhasil di-seed.`,
+      );
     });
 
-  // =========================
-  // DELETE SINGLE
-  // =========================
-  const handleDelete = (key) =>
+  const handleSeedCategories = () =>
     run(async () => {
-      await deleteCollection(key);
+      await seedCategories({
+        clear: true,
+      });
+
+      setMessage(
+        `${PACKAGE_CATEGORIES.length} kategori berhasil di-reset dan di-seed.`,
+      );
     });
 
-  // =========================
-  // DELETE ALL
-  // =========================
-  const handleDeleteAll = () =>
+  const handleSeedPackages = () =>
     run(async () => {
-      for (const key of Object.keys(seedMap)) {
-        await deleteCollection(key);
-      }
-      alert("All deleted");
+      await seedPackages({
+        clear: true,
+      });
+
+      setMessage(
+        `${PACKAGES.length} paket berhasil di-reset dan di-seed.`,
+      );
     });
 
-  // =========================
-  // DELETE INPUT
-  // =========================
-  const handleDeleteInput = () =>
+  const handleClearAll = () =>
     run(async () => {
-      if (!input) return;
-      await deleteCollection(input);
-      alert(`Deleted: ${input}`);
+      await deleteCollection(
+        COLLECTIONS.packages,
+      );
+      await deleteCollection(
+        COLLECTIONS.categories,
+      );
+
+      setMessage(
+        "Packages dan PackageCategories sudah dikosongkan.",
+      );
     });
 
   return (
-    <div className="p-6 flex flex-col gap-6">
-      <h1 className="text-xl font-bold">Seeder Panel</h1>
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
+      <header>
+        <p className="text-sm uppercase tracking-[0.18em] text-gray-500">
+          Development Utility
+        </p>
 
-      {/* INPUT DELETE */}
-      <div className="flex gap-3">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="collection name (e.g bookings)"
-          className="border px-3 py-2 rounded"
-        />
+        <h1 className="mt-1 text-2xl font-bold">
+          Package Seeder 2026
+        </h1>
+
+        <p className="mt-2 max-w-2xl text-sm text-gray-600">
+          Seeder ini hanya mengelola PackageCategories dan Packages.
+          Gunakan Reset & Seed All untuk menghapus data package lama
+          lalu memasukkan data Pricelist 2026.
+        </p>
+      </header>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border p-4">
+          <p className="text-sm text-gray-500">
+            Categories
+          </p>
+          <p className="mt-1 text-2xl font-semibold">
+            {PACKAGE_CATEGORIES.length}
+          </p>
+        </div>
+
+        <div className="rounded-xl border p-4">
+          <p className="text-sm text-gray-500">
+            Packages
+          </p>
+          <p className="mt-1 text-2xl font-semibold">
+            {PACKAGES.length}
+          </p>
+        </div>
+      </section>
+
+      <section className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={handleResetAndSeedAll}
+          disabled={loading}
+          className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading
+            ? "Processing..."
+            : "Reset & Seed All"}
+        </button>
 
         <button
-          onClick={handleDeleteInput}
+          type="button"
+          onClick={handleSeedCategories}
           disabled={loading}
-          className="bg-red-600 text-white px-4 py-2 rounded"
+          className="rounded-lg border px-4 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Delete
-        </button>
-      </div>
-
-      {/* ACTION BUTTONS */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleSeedAll}
-          disabled={loading}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Seed All
+          Reset Categories
         </button>
 
         <button
-          onClick={handleDeleteAll}
+          type="button"
+          onClick={handleSeedPackages}
           disabled={loading}
-          className="bg-gray-700 text-white px-4 py-2 rounded"
+          className="rounded-lg border px-4 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Clear All
+          Reset Packages
         </button>
-      </div>
 
-      {/* COLLECTION GRID */}
-      <div className="grid grid-cols-2 gap-3">
-        {Object.keys(seedMap).map((key) => (
-          <div
-            key={key}
-            className="border p-3 rounded flex justify-between items-center"
-          >
-            <span className="capitalize">{key}</span>
+        <button
+          type="button"
+          onClick={handleClearAll}
+          disabled={loading}
+          className="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-medium text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Clear Package Data
+        </button>
+      </section>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleSeed(key)}
-                disabled={loading}
-                className="text-blue-600 text-sm"
-              >
-                seed
-              </button>
+      {message ? (
+        <div
+          role="status"
+          className="rounded-lg border bg-gray-50 px-4 py-3 text-sm"
+        >
+          {message}
+        </div>
+      ) : null}
 
-              <button
-                onClick={() => handleDelete(key)}
-                disabled={loading}
-                className="text-red-600 text-sm"
-              >
-                delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      <section className="rounded-xl border">
+        <div className="border-b px-4 py-3">
+          <h2 className="font-semibold">
+            Seed Content
+          </h2>
+        </div>
+
+        <div className="divide-y">
+          {PACKAGE_CATEGORIES.map(
+            (category) => {
+              const packageCount =
+                PACKAGES.filter(
+                  (item) =>
+                    item.packageCategoryId ===
+                    category.id,
+                ).length;
+
+              return (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {category.name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {category.id}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium">
+                    {packageCount} package
+                  </span>
+                </div>
+              );
+            },
+          )}
+        </div>
+      </section>
+    </main>
   );
 }
