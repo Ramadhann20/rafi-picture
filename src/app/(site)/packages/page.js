@@ -6,10 +6,14 @@ export const metadata = {
     "Pilihan paket fotografi pernikahan, pertunangan, prewedding, dan acara dari Rafi Picture Studio.",
 };
 
+import ActionButtonWrapper from "@/components/global/ActionButtonWrapper";
+
 const filterItems = ["Pernikahan", "Pertunangan", "Prewedding", "Acara"];
 
 export default function PackagesPage() {
   return (
+    <>
+    <ActionButtonWrapper />
     <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg">
       {/* Page Header */}
       <header className="mb-stack-lg text-center">
@@ -27,5 +31,6 @@ export default function PackagesPage() {
       {/* Interactive Package Cards Section */}
       <PackageListing />
     </main>
+    </>
   );
 }
