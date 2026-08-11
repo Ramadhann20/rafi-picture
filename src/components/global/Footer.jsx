@@ -69,8 +69,14 @@ export default function Footer() {
             </li>
 
             <li>
-              <Link className={linkClassName} href="/portofolio">
+              <Link className={linkClassName} href="/portfolio">
                 Portofolio
+              </Link>
+            </li>
+
+            <li>
+              <Link className={linkClassName} href="/packages">
+                Paket
               </Link>
             </li>
 
