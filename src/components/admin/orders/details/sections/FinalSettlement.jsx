@@ -195,9 +195,57 @@ function getBookingAmounts(
   };
 }
 
+function getInvoicePrincipalAmount(
+  invoice,
+) {
+  const penaltyAmount =
+    Math.max(
+      Number(
+        invoice?.penalty
+          ?.appliedAmount ??
+          invoice?.penaltyAmount,
+      ) || 0,
+      0,
+    );
+
+  const explicitPrincipal =
+    Number(
+      invoice?.principalAmount ??
+        invoice?.baseAmount,
+    );
+
+  if (
+    Number.isFinite(
+      explicitPrincipal,
+    ) &&
+    explicitPrincipal >= 0
+  ) {
+    return explicitPrincipal;
+  }
+
+  return Math.max(
+    0,
+    (Number(
+      invoice?.amount,
+    ) || 0) -
+      penaltyAmount,
+  );
+}
+
 function getVerifiedPaymentTotal(
   payments,
+  invoices = [],
 ) {
+  const invoiceById =
+    new Map(
+      invoices.map(
+        (invoice) => [
+          invoice.id,
+          invoice,
+        ],
+      ),
+    );
+
   return payments
     .filter(
       (payment) =>
@@ -215,14 +263,37 @@ function getVerifiedPaymentTotal(
       (
         total,
         payment,
-      ) =>
-        total +
-        Math.max(
-          Number(
-            payment.amount,
-          ) || 0,
-          0,
-        ),
+      ) => {
+        const paymentAmount =
+          Math.max(
+            Number(
+              payment.amount,
+            ) || 0,
+            0,
+          );
+
+        const invoice =
+          invoiceById.get(
+            payment.invoiceId,
+          );
+
+        if (!invoice) {
+          return (
+            total +
+            paymentAmount
+          );
+        }
+
+        return (
+          total +
+          Math.min(
+            paymentAmount,
+            getInvoicePrincipalAmount(
+              invoice,
+            ),
+          )
+        );
+      },
       0,
     );
 }
@@ -230,6 +301,7 @@ function getVerifiedPaymentTotal(
 function createDraft({
   booking,
   payments,
+  invoices,
 }) {
   const {
     bookingTotal,
@@ -240,6 +312,7 @@ function createDraft({
   const totalPaid =
     getVerifiedPaymentTotal(
       payments,
+      invoices,
     );
 
   return {
@@ -406,8 +479,9 @@ export default function FinalSettlement({
       () =>
         getVerifiedPaymentTotal(
           payments,
+          invoices,
         ),
-      [payments],
+      [payments, invoices],
     );
 
   const remaining =
@@ -518,6 +592,28 @@ export default function FinalSettlement({
   if (
     finalInvoice
   ) {
+    const penaltyAmount =
+      Math.max(
+        Number(
+          finalInvoice?.penalty
+            ?.appliedAmount ??
+            finalInvoice?.penaltyAmount,
+        ) || 0,
+        0,
+      );
+
+    const principalAmount =
+      Math.max(
+        Number(
+          finalInvoice?.principalAmount,
+        ) ||
+          Number(
+            finalInvoice?.amount,
+          ) -
+            penaltyAmount,
+        0,
+      );
+
     const pdfUrl =
       finalInvoice?.pdf?.url ??
       finalInvoice?.pdfUrl ??
@@ -554,7 +650,29 @@ export default function FinalSettlement({
 
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
               <span>
-                Pelunasan:{" "}
+                Pokok Pelunasan:{" "}
+                <strong className="text-on-surface">
+                  {formatCurrency(
+                    principalAmount,
+                    finalInvoice.currency,
+                  )}
+                </strong>
+              </span>
+
+              {penaltyAmount > 0 && (
+                <span className="text-error">
+                  Denda:{" "}
+                  <strong>
+                    {formatCurrency(
+                      penaltyAmount,
+                      finalInvoice.currency,
+                    )}
+                  </strong>
+                </span>
+              )}
+
+              <span>
+                Total Invoice:{" "}
                 <strong className="text-on-surface">
                   {formatCurrency(
                     finalInvoice.amount,
@@ -630,6 +748,7 @@ export default function FinalSettlement({
       createDraft({
         booking,
         payments,
+        invoices,
       }),
     );
 

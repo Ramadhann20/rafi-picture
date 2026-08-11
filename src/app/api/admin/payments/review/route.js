@@ -180,6 +180,43 @@ function getBookingTotal(
   );
 }
 
+function getInvoicePrincipalAmount(
+  invoice,
+) {
+  const penaltyAmount =
+    Math.max(
+      getNumber(
+        invoice?.penalty
+          ?.appliedAmount ??
+          invoice?.penaltyAmount,
+      ),
+      0,
+    );
+
+  const explicitPrincipal =
+    Number(
+      invoice?.principalAmount ??
+        invoice?.baseAmount,
+    );
+
+  if (
+    Number.isFinite(
+      explicitPrincipal,
+    ) &&
+    explicitPrincipal >= 0
+  ) {
+    return explicitPrincipal;
+  }
+
+  return Math.max(
+    getNumber(
+      invoice?.amount,
+    ) -
+      penaltyAmount,
+    0,
+  );
+}
+
 async function requireAdmin(
   request,
 ) {
@@ -1002,15 +1039,11 @@ export async function POST(
       null;
 
     const depositPaid =
-      Math.max(
-        getNumber(
-          depositInvoice
-            ?.totalPaid ??
-            depositInvoice
-              ?.amount,
-        ),
-        0,
-      );
+      depositInvoice
+        ? getInvoicePrincipalAmount(
+            depositInvoice,
+          )
+        : 0;
 
     const receiptNumber =
       buildPaymentReceiptNumber(

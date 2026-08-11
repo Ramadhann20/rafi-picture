@@ -623,6 +623,27 @@ export async function generateDepositInvoicePdf({
     );
   }
 
+  const penaltyAmount =
+    Math.max(
+      Number(
+        invoice?.penalty
+          ?.appliedAmount ??
+          invoice?.penaltyAmount,
+      ) || 0,
+      0,
+    );
+
+  const principalAmount =
+    Math.max(
+      Number(
+        invoice?.principalAmount ??
+          invoice?.baseAmount,
+      ) ||
+        amount -
+          penaltyAmount,
+      0,
+    );
+
   const bookingTotal =
     Math.max(
       Number(
@@ -970,7 +991,10 @@ export async function generateDepositInvoicePdf({
   const tableWidth =
     contentWidth;
   const headerHeight = 24;
-  const rowHeight = 27;
+  const rowHeight =
+    penaltyAmount > 0
+      ? 48
+      : 27;
   const referenceHeight = 23;
   const splitX =
     tableX +
@@ -1004,7 +1028,7 @@ export async function generateDepositInvoicePdf({
   );
 
   page.drawText(
-    "Down Payment",
+    "Amount",
     {
       x:
         splitX + 10,
@@ -1079,7 +1103,7 @@ export async function generateDepositInvoicePdf({
   drawRightText(
     page,
     formatPlainAmount(
-      amount,
+      principalAmount,
     ),
     {
       right:
@@ -1090,6 +1114,37 @@ export async function generateDepositInvoicePdf({
       size: 9.5,
     },
   );
+
+  if (penaltyAmount > 0) {
+    page.drawText(
+      "Late Payment Fee",
+      {
+        x:
+          tableX + 11,
+        y:
+          tableY - 39,
+        size: 9.5,
+        font: bold,
+        color:
+          COLORS.ink,
+      },
+    );
+
+    drawRightText(
+      page,
+      formatPlainAmount(
+        penaltyAmount,
+      ),
+      {
+        right:
+          right - 10,
+        y:
+          tableY - 39,
+        font: bold,
+        size: 9.5,
+      },
+    );
+  }
 
   page.drawRectangle({
     x:

@@ -1,6 +1,7 @@
 "use client";
 
 import AppIcon from "@/components/global/AppIcon";
+import BookingCountdowns from "./BookingCountdowns";
 
 const STATUS_CONFIG = {
   pending: {
@@ -403,6 +404,7 @@ function DetailItem({
 export default function BookingStatus({
   booking,
   invoice = null,
+  payments = [],
   receipt = null,
 }) {
   if (!booking) {
@@ -593,6 +595,12 @@ export default function BookingStatus({
           </div>
         </div>
       </header>
+
+      <BookingCountdowns
+        booking={booking}
+        invoice={invoice}
+        payments={payments}
+      />
 
       {/* PACKAGE */}
       <section className="border-b border-outline-variant/35 pb-7">

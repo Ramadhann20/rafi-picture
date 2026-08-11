@@ -557,6 +557,10 @@ export async function POST(
 
       revision: 1,
       invoiceNumber,
+      rootInvoiceId:
+        invoiceId,
+      rootInvoiceNumber:
+        invoiceNumber,
 
       /*
        * packageTotal tetap alias bookingTotal agar client payment
@@ -573,6 +577,9 @@ export async function POST(
           booking,
         ),
 
+      principalAmount:
+        amount,
+      penaltyAmount: 0,
       amount,
       totalPaid: 0,
       amountDue:

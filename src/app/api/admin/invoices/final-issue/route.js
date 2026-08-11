@@ -126,11 +126,37 @@ function getBookingAmounts(
 function getPaidAmount(
   invoice,
 ) {
-  return Math.max(
+  const penaltyAmount =
+    Math.max(
+      Number(
+        invoice?.penalty
+          ?.appliedAmount ??
+          invoice?.penaltyAmount,
+      ) || 0,
+      0,
+    );
+
+  const principalAmount =
     Number(
+      invoice?.principalAmount ??
+        invoice?.baseAmount,
+    );
+
+  if (
+    Number.isFinite(
+      principalAmount,
+    ) &&
+    principalAmount >= 0
+  ) {
+    return principalAmount;
+  }
+
+  return Math.max(
+    (Number(
       invoice?.totalPaid ??
         invoice?.amount,
-    ) || 0,
+    ) || 0) -
+      penaltyAmount,
     0,
   );
 }
@@ -354,6 +380,10 @@ export async function POST(
 
       revision: 1,
       invoiceNumber,
+      rootInvoiceId:
+        invoiceId,
+      rootInvoiceNumber:
+        invoiceNumber,
 
       packageTotal:
         bookingTotal,
@@ -392,6 +422,9 @@ export async function POST(
         null,
       depositPaid,
 
+      principalAmount:
+        amount,
+      penaltyAmount: 0,
       amount,
       totalPaid: 0,
       amountDue:

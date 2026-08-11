@@ -1009,6 +1009,7 @@ export default function BookingClient({ packageId = null }) {
           finalInvoice ??
           depositInvoice
         }
+        payments={bookingPayments}
         receipt={receipt}
       />
     );

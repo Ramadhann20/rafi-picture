@@ -91,13 +91,27 @@ function getBookingAmounts(
       0,
     );
 
+  const penaltyAmount =
+    Math.max(
+      Number(
+        invoice?.penalty
+          ?.appliedAmount ??
+          invoice?.penaltyAmount,
+      ) || 0,
+      0,
+    );
+
+  const billedTotal =
+    bookingTotal +
+    penaltyAmount;
+
   const amountDue =
     Math.max(
       Number(
         invoice?.amountDue ??
           invoice?.amount,
       ) ||
-        bookingTotal -
+        billedTotal -
           depositPaid,
       0,
     );
@@ -107,6 +121,8 @@ function getBookingAmounts(
     travelCharge,
     bookingTotal,
     depositPaid,
+    penaltyAmount,
+    billedTotal,
     amountDue,
   };
 }
@@ -156,6 +172,8 @@ export async function generateMainInvoicePdf({
     travelCharge,
     bookingTotal,
     depositPaid,
+    penaltyAmount,
+    billedTotal,
     amountDue,
   } = getBookingAmounts(
     booking,
@@ -771,9 +789,18 @@ export async function generateMainInvoicePdf({
       bookingTotal,
       false,
     ],
+    ...(penaltyAmount > 0
+      ? [
+          [
+            "Late Payment Fee",
+            penaltyAmount,
+            true,
+          ],
+        ]
+      : []),
     [
       "Total",
-      bookingTotal,
+      billedTotal,
       true,
     ],
     [
@@ -782,6 +809,11 @@ export async function generateMainInvoicePdf({
       true,
     ],
   ];
+
+  const totalsTopY =
+    penaltyAmount > 0
+      ? 390
+      : 372;
 
   totals.forEach(
     (
@@ -793,7 +825,7 @@ export async function generateMainInvoicePdf({
       index,
     ) => {
       const y =
-        372 -
+        totalsTopY -
         index * 18;
 
       drawRightText(

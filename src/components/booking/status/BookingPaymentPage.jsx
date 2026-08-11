@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import BookingCountdowns from "./BookingCountdowns";
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
@@ -524,6 +525,12 @@ export default function BookingPaymentPage({
           </span>
         </div>
       </header>
+
+      <BookingCountdowns
+        booking={booking}
+        invoice={invoice}
+        payments={payments}
+      />
 
       <div className="grid grid-cols-1 items-start gap-gutter lg:grid-cols-12">
         <div className="space-y-stack-md lg:col-span-7">

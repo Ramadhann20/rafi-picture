@@ -9,6 +9,7 @@ import Review from "./sections/Review";
 import CrewAssignment from "./sections/CrewAssignment";
 import BillingPayment from "./sections/BillingPayment";
 import FinalSettlement from "./sections/FinalSettlement";
+import AdminBookingCountdowns from "./AdminBookingCountdowns";
 
 const REQUIRED_CREW_COUNT = 3;
 
@@ -722,6 +723,12 @@ export default function ScheduleOrder({
           </span>
         </div>
       </header>
+
+      <AdminBookingCountdowns
+        booking={booking}
+        invoices={invoices}
+        payments={payments}
+      />
 
       {isPreparationMode && <PreparationProgress preparation={preparation} />}
 
