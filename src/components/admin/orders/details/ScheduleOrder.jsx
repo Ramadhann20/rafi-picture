@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import CrewDetails from "@/components/admin/schedules/CrewDetails";
+import { useOverlay } from "@/context/ui/OverlayContext";
 import { auth } from "@/lib/firebase-config";
 
 import Review from "./sections/Review";
 import CrewAssignment from "./sections/CrewAssignment";
 import BillingPayment from "./sections/BillingPayment";
 import FinalSettlement from "./sections/FinalSettlement";
-import AdminBookingCountdowns from "./AdminBookingCountdowns";
 
 const REQUIRED_CREW_COUNT = 3;
 
@@ -128,7 +129,10 @@ export default function ScheduleOrder({
   payments = [],
   onBack,
   onFinalizeBooking,
+  onCreateFreelance,
 }) {
+  const { openOverlay, closeOverlay } = useOverlay();
+
   const [hasEntered, setHasEntered] = useState(false);
 
   const [isLeaving, setIsLeaving] = useState(false);
@@ -296,6 +300,46 @@ export default function ScheduleOrder({
     }));
 
     setActionError(null);
+  };
+
+
+  const handleOpenFreelance = () => {
+    if (!onCreateFreelance) return;
+
+    openOverlay({
+      closeOnBackdrop: true,
+      closeOnEscape: true,
+      className: "p-3 sm:p-6",
+      content: (
+        <CrewDetails
+          mode="freelance"
+          booking={booking}
+          assignments={assignments}
+          onClose={() => closeOverlay()}
+          onSubmit={async (payload) => {
+            const createdCrew = await onCreateFreelance({
+              booking,
+              assignment: existingAssignment,
+              crew: payload,
+            });
+
+            if (!createdCrew?.id) {
+              throw new Error("Freelance berhasil dibuat tetapi ID crew tidak tersedia.");
+            }
+
+            if (isPreparationMode) {
+              const nextCrewIds = [
+                ...new Set([...crewDraft.crewIds, createdCrew.id]),
+              ];
+
+              handleCrewSelectionChange(nextCrewIds);
+            }
+
+            closeOverlay();
+          }}
+        />
+      ),
+    });
   };
 
   const handleToggleCrew = () => {
@@ -724,12 +768,6 @@ export default function ScheduleOrder({
         </div>
       </header>
 
-      <AdminBookingCountdowns
-        booking={booking}
-        invoices={invoices}
-        payments={payments}
-      />
-
       {isPreparationMode && <PreparationProgress preparation={preparation} />}
 
       {actionError && (
@@ -789,6 +827,11 @@ export default function ScheduleOrder({
             readOnly={!isPreparationMode || preparation.crewCompleted}
             showOnlySelected={!isPreparationMode}
             requiredCrewCount={REQUIRED_CREW_COUNT}
+            allowFreelance={
+              crewAssignmentEnabled &&
+              !["completed", "cancelled"].includes(booking.status)
+            }
+            onAddFreelance={handleOpenFreelance}
             onSelectedCrewIdsChange={handleCrewSelectionChange}
           />
 

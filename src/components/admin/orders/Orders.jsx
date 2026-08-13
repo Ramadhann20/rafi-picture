@@ -6,6 +6,7 @@ import AppIcon from "@/components/global/AppIcon";
 import { auth } from "@/lib/firebase-config";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
+import { cleanupCompletedFreelanceCrews } from "@/lib/crewFreelance";
 
 import ScheduleOrder from "./details/ScheduleOrder";
 
@@ -506,6 +507,34 @@ export default function Orders() {
     []
   );
 
+
+  /* ---------------------------------------------------------
+     TEMPORARY FREELANCE CLEANUP
+  --------------------------------------------------------- */
+
+  useEffect(() => {
+    if (bookingsLoading || crewLoading || assignmentsLoading) {
+      return;
+    }
+
+    cleanupCompletedFreelanceCrews({
+      db,
+      bookings,
+      assignments,
+      crewMembers,
+    }).catch((error) => {
+      console.error("FREELANCE CREW CLEANUP ERROR:", error);
+    });
+  }, [
+    db,
+    bookings,
+    assignments,
+    crewMembers,
+    bookingsLoading,
+    crewLoading,
+    assignmentsLoading,
+  ]);
+
   /* ---------------------------------------------------------
      LOCAL UI STATE
   --------------------------------------------------------- */
@@ -921,6 +950,93 @@ export default function Orders() {
       );
     } finally {
       setSavingAssignment(false);
+    }
+  };
+
+
+  const handleCreateFreelance = async ({
+    booking,
+    assignment,
+    crew,
+  }) => {
+    const currentBooking =
+      selectedBooking?.id === booking?.id ? selectedBooking : booking;
+
+    if (!currentBooking?.id) {
+      throw new Error("Booking tidak ditemukan.");
+    }
+
+    if (["completed", "cancelled"].includes(currentBooking.status)) {
+      throw new Error("Freelance tidak dapat ditambahkan ke booking yang sudah selesai atau dibatalkan.");
+    }
+
+    const crewPayload = {
+      ...crew,
+      crewType: "freelance",
+      temporary: true,
+      temporaryBookingId: currentBooking.id,
+      temporaryBookingCode: currentBooking.bookingCode ?? null,
+      cleanupOnCompletion: true,
+      avatarUrl: null,
+      userId: null,
+      createdAt: db.serverTimestamp(),
+      updatedAt: db.serverTimestamp(),
+    };
+
+    const crewRef = await db.addDoc("Crews", crewPayload);
+
+    try {
+      // Booking pending masih menggunakan local preparation draft.
+      // ID freelance akan dimasukkan oleh ScheduleOrder ke crewDraft.
+      if (currentBooking.status !== "pending") {
+        const currentAssignment =
+          assignment?.id
+            ? assignment
+            : assignments.find(
+                (item) =>
+                  item.bookingId === currentBooking.id &&
+                  !["cancelled", "void"].includes(
+                    String(item.status ?? "").toLowerCase(),
+                  ),
+              );
+
+        if (!currentAssignment?.id) {
+          throw new Error(
+            "Crew assignment booking belum tersedia. Tambahkan freelance saat assignment sudah terbentuk.",
+          );
+        }
+
+        const currentCrewIds = Array.isArray(currentAssignment.crewIds)
+          ? currentAssignment.crewIds
+          : [];
+
+        const currentTemporaryCrewIds = Array.isArray(
+          currentAssignment.temporaryCrewIds,
+        )
+          ? currentAssignment.temporaryCrewIds
+          : [];
+
+        await db.updateDoc("CrewAssignments", currentAssignment.id, {
+          crewIds: [...new Set([...currentCrewIds, crewRef.id])],
+          temporaryCrewIds: [
+            ...new Set([...currentTemporaryCrewIds, crewRef.id]),
+          ],
+          updatedAt: db.serverTimestamp(),
+        });
+      }
+
+      return {
+        id: crewRef.id,
+        ...crewPayload,
+      };
+    } catch (error) {
+      try {
+        await db.deleteDoc("Crews", crewRef.id);
+      } catch (rollbackError) {
+        console.error("ROLLBACK FREELANCE CREW ERROR:", rollbackError);
+      }
+
+      throw error;
     }
   };
 
@@ -1555,6 +1671,9 @@ export default function Orders() {
         }
         onFinalizeBooking={
           handleFinalizeBooking
+        }
+        onCreateFreelance={
+          handleCreateFreelance
         }
         onCreateInvoice={
           handleCreateInvoice

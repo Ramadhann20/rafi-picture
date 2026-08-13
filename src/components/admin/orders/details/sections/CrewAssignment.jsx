@@ -324,6 +324,8 @@ export default function CrewAssignment({
 
   requiredCrewCount = 3,
 
+  allowFreelance = false,
+  onAddFreelance,
   onSelectedCrewIdsChange,
 }) {
   const [search, setSearch] = useState("");
@@ -488,36 +490,46 @@ export default function CrewAssignment({
       return;
     }
 
-    if (selectedCrewIds.length >= requiredCrewCount) {
-      setActionError(`Maksimal ${requiredCrewCount} kru dapat dipilih.`);
-
-      return;
-    }
-
+    // `requiredCrewCount` adalah jumlah minimum, bukan batas maksimum.
+    // Ini memungkinkan admin menambahkan freelance sebagai crew tambahan.
     onSelectedCrewIdsChange?.([...selectedCrewIds, crew.id]);
   };
 
   return (
     <section aria-labelledby="crew-assignment-title" className="relative">
-      <div className="mb-stack-md">
-        <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Step 02
-        </p>
+      <div className="mb-stack-md flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
+            Step 02
+          </p>
 
-        <h2
-          id="crew-assignment-title"
-          className="mt-2 font-headline-lg text-headline-lg text-on-surface"
-        >
-          Crew Assignment
-        </h2>
+          <h2
+            id="crew-assignment-title"
+            className="mt-2 font-headline-lg text-headline-lg text-on-surface"
+          >
+            Crew Assignment
+          </h2>
 
-        <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          {readOnly
-            ? "View the production crew assigned to this booking."
-            : `All crew are shown. Only active crew without another assignment on ${formatDate(
-                eventDate,
-              )} can be selected.`}
-        </p>
+          <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
+            {readOnly
+              ? "View the production crew assigned to this booking."
+              : `All crew are shown. Only active crew without another assignment on ${formatDate(
+                  eventDate,
+                )} can be selected.`}
+          </p>
+        </div>
+
+        {onAddFreelance && (
+          <button
+            type="button"
+            onClick={onAddFreelance}
+            disabled={!allowFreelance}
+            className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 font-label-md text-label-md text-primary transition-all hover:bg-primary hover:text-on-primary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <AppIcon name="person_add" size={18} />
+            Tambah Freelance
+          </button>
+        )}
       </div>
 
       {!enabled && (
@@ -714,7 +726,7 @@ export default function CrewAssignment({
               <p className="font-label-sm text-label-sm text-on-surface-variant">
                 Assigned:{" "}
                 <span className="font-bold text-on-surface">
-                  {selectedCrewIds.length}/{requiredCrewCount} Crew
+                  {selectedCrewIds.length} Crew · minimum {requiredCrewCount}
                 </span>
               </p>
 
@@ -816,6 +828,15 @@ function CrewList({ crew, selectedCrewIds, canInteract, onToggle }) {
               <span className="font-label-sm text-label-sm text-on-surface-variant">
                 {formatRole(getCrewRole(crewMember))}
               </span>
+
+              {(crewMember.temporary === true || crewMember.crewType === "freelance") && (
+                <>
+                  <span className="h-1 w-1 rounded-full bg-outline-variant" />
+                  <span className="rounded-full bg-secondary/10 px-2 py-0.5 font-label-sm text-label-sm text-secondary">
+                    Freelance
+                  </span>
+                </>
+              )}
 
               <span className="h-1 w-1 rounded-full bg-outline-variant" />
 
