@@ -13,8 +13,8 @@ export default function HeroSection() {
           className="w-full h-full object-cover"
           src={"/RafiPicture.png"}
           alt="A cinematic wide-angle wedding photograph capturing a couple in a sun-drenched meadow during golden hour."
-          width={900}
-          height={800}
+          width={800}
+          height={700}
         />
       </div>
 
