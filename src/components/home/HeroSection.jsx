@@ -11,20 +11,20 @@ export default function HeroSection() {
       <div className="absolute inset-0 z-0">
         <Image
           className="w-full h-full object-cover"
-          src={"/FG.jpeg"}
+          src={"/RafiPicture.png"}
           alt="A cinematic wide-angle wedding photograph capturing a couple in a sun-drenched meadow during golden hour."
-          width={900}
-          height={800}
+          width={800}
+          height={700}
         />
       </div>
 
       <div className="relative z-10 w-full max-w-4xl px-margin-mobile text-center">
         <div className=" p-stack-lg md:p-16 rounded-xl animate-fade-in">
           <h1 className="font-display-lg text-display-lg text-on-primary mb-6 text-shadow-subtle leading-tight">
-            Capture The Soul <br className="hidden md:block" /> of Your Story
+            Capturing Moments <br className="hidden md:block" /> Creating Memories
           </h1>
           <p className="font-body-lg text-body-lg text-white/90 mb-stack-md max-w-2xl mx-auto font-medium">
-            High-end wedding and editorial photography for couples who value timeless elegance, authentic emotion, and artistic storytelling.
+            Setiap momen memiliki cerita, kami mengabadikannya dengan sentuhan profesional dan penuh keindahan.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
