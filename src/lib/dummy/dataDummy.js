@@ -106,6 +106,7 @@ export const PACKAGES = [
       "Classic A Wedding Package",
     ),
   },
+
   {
     id: "classic-b-wedding-package",
     name: "Classic B Wedding Package",
@@ -131,6 +132,7 @@ export const PACKAGES = [
       "Classic B Wedding Package",
     ),
   },
+  
   {
     id: "bronze-wedding-package",
     name: "Bronze Wedding Package",
@@ -283,6 +285,32 @@ export const PACKAGES = [
     cover: makeCover(
       "prewedding-silver",
       "Prewedding Silver",
+    ),
+  },
+
+  {
+    id: "classic-a-wedding-package",
+    name: "Classic A Wedding Package",
+    packageCategoryId: "wedding",
+    description:
+      "Paket dokumentasi wedding foto untuk kebutuhan dokumentasi inti dengan fotografer dan asisten fotografer.",
+    bookingSubjectType: "couple",
+    serviceHighlights: [
+      "1 Photographer",
+      "1 Assistant Photographer",
+      "Edited 100 Photos",
+      "All Data (Soft File)",
+      "Google Drive & Flashdisk",
+      "Wedding Documentation",
+    ],
+    price: 1999000,
+    durationHours: 8,
+    status: "active",
+    featured: false,
+    sortOrder: 1,
+    cover: makeCover(
+      "classic-a-wedding-package",
+      "Classic A Wedding Package",
     ),
   },
 
