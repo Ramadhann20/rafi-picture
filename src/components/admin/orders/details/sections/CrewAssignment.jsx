@@ -42,8 +42,22 @@ function formatRole(role) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+const SUPPORTED_CREW_ROLES = new Set([
+  "photographer",
+  "videographer",
+  "assistant_photographer",
+]);
+
 function getCrewRole(crew) {
-  return crew?.baseRole ?? crew?.role ?? null;
+  const role = crew?.baseRole ?? crew?.role ?? null;
+
+  if (role === "lead_photographer") {
+    return "photographer";
+  }
+
+  return SUPPORTED_CREW_ROLES.has(role)
+    ? role
+    : null;
 }
 
 function getInitials(name) {
@@ -254,7 +268,10 @@ function getBusyCrewIds({
  * Kru hanya dapat dipilih jika employmentStatus = active.
  */
 function isCrewActive(crew) {
-  return String(crew?.employmentStatus ?? "").toLowerCase() === "active";
+  return (
+    String(crew?.employmentStatus ?? "").toLowerCase() === "active" &&
+    Boolean(getCrewRole(crew))
+  );
 }
 
 function getCrewAvailability({ crew, busyCrewIds }) {

@@ -37,15 +37,21 @@ function getInitials(name) {
 }
 
 function getCrewRole(member) {
-  return member?.baseRole ?? member?.role ?? null;
+  const role = member?.baseRole ?? member?.role ?? null;
+
+  if (role === "lead_photographer") {
+    return "photographer";
+  }
+
+  return CREW_ROLE_OPTIONS.some((option) => option.value === role)
+    ? role
+    : null;
 }
 
 function getRoleLabel(role) {
   return (
     CREW_ROLE_OPTIONS.find((option) => option.value === role)?.label ||
-    String(role || "Crew Member")
-      .replaceAll("_", " ")
-      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    "Role perlu diperbarui"
   );
 }
 

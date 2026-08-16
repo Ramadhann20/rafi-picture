@@ -1,97 +1,125 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 
 import AppIcon from "@/components/global/AppIcon";
+import ProfilePhotoEditor from "@/components/profile/ProfilePhotoEditor";
+import { useOverlay } from "@/context/ui/OverlayContext";
+
+function getInitials(value) {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "RP";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
 
 export default function ProfileMenu({
   user,
   userDoc,
   logout,
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] =
-    useState(false);
-
   const menuRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const username = useMemo(() => {
-    return (
-      userDoc?.username ||
-      user?.displayName ||
-      user?.email?.split("@")[0] ||
-      "Pengguna"
-    );
-  }, [user, userDoc]);
+  const {
+    openOverlay,
+    closeOverlay,
+  } = useOverlay();
 
-  const email =
-    userDoc?.email ||
-    user?.email ||
-    "Email tidak tersedia";
+  const displayName =
+    userDoc?.username ||
+    userDoc?.fullName ||
+    user?.displayName ||
+    "Akun Saya";
 
-  const profileImage =
+  const photoURL =
     userDoc?.photoURL ||
-    userDoc?.photoUrl ||
     user?.photoURL ||
-    "https://i.pravatar.cc/100";
+    null;
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!open) return undefined;
 
-    function handleOutsideClick(event) {
+    function handlePointerDown(event) {
       if (
         menuRef.current &&
         !menuRef.current.contains(event.target)
       ) {
-        setIsOpen(false);
+        setOpen(false);
       }
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
-        setIsOpen(false);
+        setOpen(false);
       }
     }
 
     document.addEventListener(
-      "mousedown",
-      handleOutsideClick,
+      "pointerdown",
+      handlePointerDown,
     );
-
-    window.addEventListener(
+    document.addEventListener(
       "keydown",
       handleEscape,
     );
 
     return () => {
       document.removeEventListener(
-        "mousedown",
-        handleOutsideClick,
+        "pointerdown",
+        handlePointerDown,
       );
-
-      window.removeEventListener(
+      document.removeEventListener(
         "keydown",
         handleEscape,
       );
     };
-  }, [isOpen]);
+  }, [open]);
+
+  function handleEditPhoto() {
+    setOpen(false);
+
+    openOverlay({
+      closeOnBackdrop: true,
+      closeOnEscape: true,
+      className: "p-3 sm:p-6",
+      content: (
+        <ProfilePhotoEditor
+          user={user}
+          currentPhotoURL={photoURL}
+          displayName={displayName}
+          onClose={closeOverlay}
+        />
+      ),
+    });
+  }
 
   async function handleLogout() {
-    if (isLoggingOut) return;
+    if (loggingOut) return;
 
-    setIsLoggingOut(true);
+    setLoggingOut(true);
 
     try {
-      await logout();
-      setIsOpen(false);
+      await logout?.();
+      setOpen(false);
     } catch (error) {
       console.error(
         "PROFILE MENU LOGOUT ERROR:",
         error,
       );
     } finally {
-      setIsLoggingOut(false);
+      setLoggingOut(false);
     }
   }
 
@@ -100,134 +128,88 @@ export default function ProfileMenu({
       ref={menuRef}
       className="relative"
     >
-      {/* PROFILE BUTTON */}
-
       <button
         type="button"
         onClick={() =>
-          setIsOpen((previous) => !previous)
+          setOpen((current) => !current)
         }
+        className="flex items-center gap-3 rounded-xl border border-outline-variant/30 bg-surface px-3 py-2 transition-colors hover:bg-surface-container-low"
+        aria-expanded={open}
         aria-haspopup="menu"
-        aria-expanded={isOpen}
-        className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-all ${
-          isOpen
-            ? "border-primary/30 bg-surface-container-high"
-            : "border-transparent bg-surface-container hover:bg-surface-container-high"
-        }`}
       >
-        <div className="min-w-0 text-right">
-          <p className="max-w-32 truncate font-label-md text-label-md text-on-surface">
-            {username}
-          </p>
-        </div>
+        <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold uppercase text-on-primary">
+          {photoURL ? (
+            <img
+              src={photoURL}
+              alt={`Foto profil ${displayName}`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            getInitials(displayName)
+          )}
+        </span>
 
-        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-container">
-          <img
-            src={profileImage}
-            alt={`Foto profil ${username}`}
-            className="h-full w-full object-cover"
-          />
-        </div>
+        <span className="max-w-36 truncate font-label-md text-label-md text-primary">
+          {displayName}
+        </span>
 
         <AppIcon
-          name={
-            isOpen
-              ? "expand_less"
-              : "expand_more"
-          }
-          size={22}
-          className="shrink-0 text-on-surface-variant"
+          name={open ? "expand_less" : "expand_more"}
+          size={18}
+          className="text-on-surface-variant"
         />
       </button>
 
-      {/* PROFILE MENU */}
-
-      {isOpen && (
+      {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[70] mt-3 flex min-h-[320px] w-[320px] flex-col overflow-hidden rounded-xl border border-outline-variant/30 bg-surface p-3 shadow-2xl"
+          className="absolute right-0 top-[calc(100%+0.6rem)] z-[80] w-64 overflow-hidden rounded-xl border border-outline-variant/25 bg-surface shadow-xl"
         >
-          <div>
-            {/* PROFILE INFORMATION */}
-
-            <div className="rounded-lg bg-surface-container-low p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-surface-container-high">
-                  <img
-                    src={profileImage}
-                    alt={`Foto profil ${username}`}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="truncate font-label-md text-label-md text-on-surface">
-                    {email}
-                  </p>
-
-                  <p className="mt-1 truncate font-label-sm text-label-sm text-on-surface-variant">
-                    {username}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* MENU LIST */}
-
-            <nav
-              aria-label="Menu profil"
-              className="mt-3"
-            >
-              <Link
-                href="/booking"
-                role="menuitem"
-                onClick={() => setIsOpen(false)}
-                className="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
-                  <AppIcon
-                    name="calendar_month"
-                    size={19}
-                  />
-                </span>
-
-                <span>Booking Saya</span>
-
-                <AppIcon
-                  name="chevron_right"
-                  size={21}
-                  className="ml-auto text-on-surface-variant"
-                />
-              </Link>
-            </nav>
+          <div className="border-b border-outline-variant/20 px-4 py-4">
+            <p className="truncate font-label-md text-label-md text-on-surface">
+              {displayName}
+            </p>
+            <p className="mt-1 truncate font-body-sm text-body-sm text-on-surface-variant">
+              {user?.email || ""}
+            </p>
           </div>
 
-          {/* LOGOUT */}
-
-          <div className="mt-auto border-t border-outline-variant/30 pt-3">
+          <div className="p-2">
             <button
               type="button"
-              role="menuitem"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label-md text-label-md text-error transition-colors hover:bg-error-container/40 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={handleEditPhoto}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-error-container text-error">
-                {isLoggingOut ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-error/30 border-t-error" />
-                ) : (
-                  <AppIcon
-                    name="logout"
-                    size={19}
-                  />
-                )}
-              </span>
+              <AppIcon
+                name="photo_camera"
+                size={19}
+              />
+              Ubah Foto Profil
+            </button>
 
-              <span>
-                {isLoggingOut
-                  ? "Keluar..."
-                  : "Logout"}
-              </span>
+            <Link
+              href="/booking"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
+            >
+              <AppIcon
+                name="calendar_month"
+                size={19}
+              />
+              Pemesanan Saya
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left font-label-md text-label-md text-error transition-colors hover:bg-error-container/40 disabled:opacity-50"
+            >
+              <AppIcon
+                name="logout"
+                size={19}
+              />
+              {loggingOut ? "Keluar..." : "Keluar"}
             </button>
           </div>
         </div>

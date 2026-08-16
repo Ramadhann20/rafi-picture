@@ -897,12 +897,7 @@ export default function Orders() {
       );
     }
   };
-
-  const handleCreateBooking = () => {
-    console.log("OPEN_CREATE_BOOKING");
-  };
-
-  const handleAdvancedFilter = () => {
+const handleAdvancedFilter = () => {
     console.log("OPEN_ADVANCED_FILTER");
   };
 
@@ -1733,19 +1728,6 @@ export default function Orders() {
               photography orders.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleCreateBooking}
-            className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary shadow-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-          >
-            <AppIcon
-              name="add"
-              size={20}
-            />
-
-            New Booking
-          </button>
         </div>
       </header>
 

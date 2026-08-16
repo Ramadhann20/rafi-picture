@@ -7,6 +7,10 @@ import {
 } from "next/navigation";
 
 import AppIcon from "@/components/global/AppIcon";
+import ProfilePhotoEditor from "@/components/profile/ProfilePhotoEditor";
+
+import { useAuth } from "@/context/AuthContext";
+import { useOverlay } from "@/context/ui/OverlayContext";
 
 const menuConfig = [
   {
@@ -43,26 +47,52 @@ const menuConfig = [
   },
 ];
 
+function getInitials(value) {
+  const parts = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) return "RP";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const {
+    user,
+    userDoc,
+    authLoading,
+    logout,
+  } = useAuth();
+
+  const {
+    openOverlay,
+    closeOverlay,
+  } = useOverlay();
+
   const [collapsed, setCollapsed] =
     useState(false);
 
-  /*
-   * Parent hanya aktif ketika URL sama persis
-   * dengan href parent.
-   */
+  const displayName =
+    userDoc?.username ||
+    userDoc?.fullName ||
+    user?.displayName ||
+    "Rafi Picture";
+
+  const photoURL =
+    userDoc?.photoURL ||
+    user?.photoURL ||
+    null;
+
   const isParentActive = (menu) => {
     return pathname === menu.href;
   };
 
-  /*
-   * Mengecek apakah salah satu child sedang aktif.
-   * startsWith dipakai agar sub-page di bawah child
-   * juga tetap dianggap aktif.
-   */
   const getActiveChild = (menu) => {
     if (!menu.children) return null;
 
@@ -77,12 +107,6 @@ export default function Sidebar() {
     );
   };
 
-  /*
-   * Submenu tetap terbuka ketika:
-   * - parent aktif;
-   * - salah satu child aktif;
-   * - URL masih berada di area parent.
-   */
   const isSubmenuOpen = (menu) => {
     if (!menu.children) return false;
 
@@ -102,6 +126,39 @@ export default function Sidebar() {
     router.push(href);
   };
 
+  const handleOpenProfilePhoto = () => {
+    if (!user) return;
+
+    openOverlay({
+      closeOnBackdrop: true,
+      closeOnEscape: true,
+      className: "p-3 sm:p-6",
+      content: (
+        <ProfilePhotoEditor
+          user={user}
+          currentPhotoURL={photoURL}
+          displayName={displayName}
+          onClose={closeOverlay}
+        />
+      ),
+    });
+  };
+
+  const handleLogout = async () => {
+    if (authLoading) return;
+
+    try {
+      await logout();
+      router.replace("/");
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "ADMIN SIDEBAR LOGOUT ERROR:",
+        error,
+      );
+    }
+  };
+
   return (
     <>
       <aside
@@ -115,18 +172,27 @@ export default function Sidebar() {
         `}
       >
         {/* PROFILE */}
-        <div className="flex items-center gap-3 border-b border-outline-variant px-4 py-5">
-          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-surface-container">
-            <img
-              src="https://i.pravatar.cc/100"
-              className="h-full w-full object-cover"
-              alt="Rafi Picture profile"
-            />
+        <button
+          type="button"
+          onClick={handleOpenProfilePhoto}
+          className={`flex items-center gap-3 border-b border-outline-variant px-4 py-5 text-left transition-colors hover:bg-surface-container ${collapsed ? "justify-center" : ""}`}
+          title="Ubah foto profil"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-container-high font-label-md text-label-md text-primary">
+            {photoURL ? (
+              <img
+                src={photoURL}
+                className="h-full w-full object-cover"
+                alt={`Foto profil ${displayName}`}
+              />
+            ) : (
+              getInitials(displayName)
+            )}
           </div>
 
           <div
             className={`
-              flex flex-col
+              flex min-w-0 flex-col
               transition-all duration-300 ease-in-out
               ${
                 collapsed
@@ -135,15 +201,15 @@ export default function Sidebar() {
               }
             `}
           >
-            <span className="whitespace-nowrap font-label-md">
-              Rafi Picture
+            <span className="truncate whitespace-nowrap font-label-md">
+              {displayName}
             </span>
 
             <span className="whitespace-nowrap text-xs text-on-surface-variant">
-              Admin Studio
+              Admin Studio · Ubah Foto
             </span>
           </div>
-        </div>
+        </button>
 
         {/* MENU */}
         <nav className="flex flex-1 flex-col gap-1 p-2">
@@ -159,7 +225,6 @@ export default function Sidebar() {
 
             return (
               <div key={menu.href}>
-                {/* PARENT */}
                 <button
                   type="button"
                   onClick={() =>
@@ -203,21 +268,19 @@ export default function Sidebar() {
                     </span>
                   </div>
 
-                  {!collapsed &&
-                    menu.children && (
-                      <AppIcon
-                        name={
-                          submenuOpen
-                            ? "expand_less"
-                            : "expand_more"
-                        }
-                        size={18}
-                        className="shrink-0"
-                      />
-                    )}
+                  {!collapsed && menu.children && (
+                    <AppIcon
+                      name={
+                        submenuOpen
+                          ? "expand_less"
+                          : "expand_more"
+                      }
+                      size={18}
+                      className="shrink-0"
+                    />
+                  )}
                 </button>
 
-                {/* CHILDREN */}
                 {!collapsed &&
                   menu.children &&
                   submenuOpen && (
@@ -230,9 +293,7 @@ export default function Sidebar() {
 
                           return (
                             <button
-                              key={
-                                child.href
-                              }
+                              key={child.href}
                               type="button"
                               onClick={() =>
                                 handleChildClick(
@@ -250,9 +311,7 @@ export default function Sidebar() {
                               `}
                             >
                               <span className="font-label-sm">
-                                {
-                                  child.label
-                                }
+                                {child.label}
                               </span>
                             </button>
                           );
@@ -269,17 +328,17 @@ export default function Sidebar() {
         <div className="border-t border-outline-variant p-3">
           <button
             type="button"
+            onClick={handleLogout}
+            disabled={authLoading}
             className={`
               flex w-full items-center gap-3
               rounded-lg px-3 py-3
               text-on-surface
               transition-colors
               hover:bg-surface-container
-              ${
-                collapsed
-                  ? "justify-center"
-                  : ""
-              }
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+              ${collapsed ? "justify-center" : ""}
             `}
           >
             <AppIcon
@@ -290,7 +349,7 @@ export default function Sidebar() {
 
             <span
               className={`
-                font-label-md
+                whitespace-nowrap font-label-md
                 transition-all duration-200
                 ${
                   collapsed
@@ -299,7 +358,9 @@ export default function Sidebar() {
                 }
               `}
             >
-              Logout
+              {authLoading
+                ? "Logging out..."
+                : "Logout"}
             </span>
           </button>
         </div>
@@ -345,4 +406,3 @@ export default function Sidebar() {
     </>
   );
 }
-

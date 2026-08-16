@@ -9,19 +9,21 @@ import Link from "next/link";
 
 import AppIcon from "@/components/global/AppIcon";
 import SkeletonLoader from "@/components/global/SkeletonLoader";
+import ProfilePhotoEditor from "@/components/profile/ProfilePhotoEditor";
 import ProfileMenu from "./ProfileMenu";
 
 import { useAuth } from "@/context/AuthContext";
+import { useOverlay } from "@/context/ui/OverlayContext";
 
 const navLinks = [
   {
     label: "Beranda",
     href: "/",
-    icon: "home",
+    icon: "dashboard",
   },
   {
     label: "Portofolio",
-    href: "/portfolio",
+    href: "/portofolio",
     icon: "photo_camera",
   },
   {
@@ -32,7 +34,7 @@ const navLinks = [
   {
     label: "Pemesanan",
     href: "/booking",
-    icon: "event",
+    icon: "calendar_month",
   },
 ];
 
@@ -46,64 +48,42 @@ export default function Navbar() {
     error,
   } = useAuth();
 
+  const {
+    openOverlay,
+    closeOverlay,
+  } = useOverlay();
+
   const pathname = usePathname();
 
   const [isScrolled, setIsScrolled] =
     useState(false);
-
-  const [
-    isMobileMenuOpen,
-    setIsMobileMenuOpen,
-  ] = useState(false);
-
-  /* =========================================================
-     NAVBAR SCROLL
-  ========================================================= */
+  const [isMobileMenuOpen, setIsMobileMenuOpen] =
+    useState(false);
 
   useEffect(() => {
     function handleScroll() {
-      setIsScrolled(
-        window.scrollY > 50,
-      );
+      setIsScrolled(window.scrollY > 50);
     }
 
     handleScroll();
-
-    window.addEventListener(
-      "scroll",
-      handleScroll,
-    );
+    window.addEventListener("scroll", handleScroll);
 
     return () => {
-      window.removeEventListener(
-        "scroll",
-        handleScroll,
-      );
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
-
-  /* =========================================================
-     CLOSE MENU AFTER ROUTE CHANGE
-  ========================================================= */
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  /* =========================================================
-     MOBILE DRAWER EFFECTS
-  ========================================================= */
-
   useEffect(() => {
-    if (!isMobileMenuOpen) {
-      return undefined;
-    }
+    if (!isMobileMenuOpen) return undefined;
 
     const previousOverflow =
       document.body.style.overflow;
 
-    document.body.style.overflow =
-      "hidden";
+    document.body.style.overflow = "hidden";
 
     function handleEscape(event) {
       if (event.key === "Escape") {
@@ -111,68 +91,70 @@ export default function Navbar() {
       }
     }
 
-    window.addEventListener(
-      "keydown",
-      handleEscape,
-    );
+    window.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.body.style.overflow =
-        previousOverflow;
-
-      window.removeEventListener(
-        "keydown",
-        handleEscape,
-      );
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
     };
   }, [isMobileMenuOpen]);
-
-  /* =========================================================
-     LOGOUT
-  ========================================================= */
 
   async function handleLogout() {
     try {
       await logout();
-
       setIsMobileMenuOpen(false);
     } catch (logoutError) {
-      console.error(
-        "LOGOUT ERROR:",
-        logoutError,
-      );
+      console.error("LOGOUT ERROR:", logoutError);
     }
   }
 
-  /* =========================================================
-     ERROR
-  ========================================================= */
+  const displayName =
+    userDoc?.username ||
+    userDoc?.fullName ||
+    user?.displayName ||
+    "Akun Saya";
+
+  const photoURL =
+    userDoc?.photoURL ||
+    user?.photoURL ||
+    null;
+
+  function handleEditProfilePhoto() {
+    if (!user) return;
+
+    setIsMobileMenuOpen(false);
+
+    openOverlay({
+      closeOnBackdrop: true,
+      closeOnEscape: true,
+      className: "p-3 sm:p-6",
+      content: (
+        <ProfilePhotoEditor
+          user={user}
+          currentPhotoURL={photoURL}
+          displayName={displayName}
+          onClose={closeOverlay}
+        />
+      ),
+    });
+  }
 
   if (error) {
     return (
       <nav className="bg-error-container p-4 text-sm text-error">
-        Terjadi kesalahan saat memuat data
-        user.
+        Terjadi kesalahan saat memuat data user.
       </nav>
     );
   }
 
   return (
     <>
-      {/* =====================================================
-          NAVBAR
-      ====================================================== */}
-
       <nav
         className={`sticky top-0 z-50 border-b border-white/20 bg-surface/80 backdrop-blur-md transition-shadow ${
-          isScrolled
-            ? "shadow-md"
-            : ""
+          isScrolled ? "shadow-md" : ""
         }`}
       >
         <div className="relative mx-auto flex w-full max-w-container-max items-center justify-between px-margin-mobile py-4 md:px-margin-desktop">
-          {/* BRAND */}
-
           <Link
             href="/"
             className="font-headline-md text-headline-md font-bold text-primary"
@@ -180,23 +162,13 @@ export default function Navbar() {
             Rafi Picture
           </Link>
 
-          {/* =================================================
-              DESKTOP NAVIGATION
-          ================================================== */}
-
           <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 md:flex">
             {navLinks
-              .filter(
-                (item) =>
-                  item.href !== "/",
-              )
+              .filter((item) => item.href !== "/")
               .map((item) => {
                 const isActive =
-                  pathname ===
-                    item.href ||
-                  pathname.startsWith(
-                    `${item.href}/`,
-                  );
+                  pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
 
                 return (
                   <Link
@@ -214,13 +186,8 @@ export default function Navbar() {
               })}
           </div>
 
-          {/* =================================================
-              DESKTOP PROFILE
-          ================================================== */}
-
           <div className="hidden items-center md:flex">
-            {loading ||
-            profileLoading ? (
+            {loading || profileLoading ? (
               <SkeletonLoader className="h-12 w-[160px] rounded-lg" />
             ) : user ? (
               <ProfileMenu
@@ -238,39 +205,22 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* =================================================
-              MOBILE BUTTON
-          ================================================== */}
-
           <button
             type="button"
-            onClick={() =>
-              setIsMobileMenuOpen(true)
-            }
+            onClick={() => setIsMobileMenuOpen(true)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-primary transition-all hover:bg-surface-container active:scale-95 md:hidden"
             aria-label="Buka menu navigasi"
-            aria-expanded={
-              isMobileMenuOpen
-            }
+            aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-sidebar"
           >
-            <AppIcon
-              name="more_vert"
-              size={25}
-            />
+            <AppIcon name="more_vert" size={25} />
           </button>
         </div>
       </nav>
 
-      {/* =====================================================
-          MOBILE BACKDROP
-      ====================================================== */}
-
       <div
         aria-hidden="true"
-        onClick={() =>
-          setIsMobileMenuOpen(false)
-        }
+        onClick={() => setIsMobileMenuOpen(false)}
         className={`fixed inset-0 z-[60] bg-black/35 backdrop-blur-[2px] transition-opacity duration-300 md:hidden ${
           isMobileMenuOpen
             ? "pointer-events-auto opacity-100"
@@ -278,23 +228,13 @@ export default function Navbar() {
         }`}
       />
 
-      {/* =====================================================
-          MOBILE RIGHT SIDEBAR
-      ====================================================== */}
-
       <aside
         id="mobile-sidebar"
         aria-label="Menu navigasi"
         className={`fixed right-0 top-0 z-[70] flex h-[100dvh] w-[86%] max-w-[360px] flex-col border-l border-outline-variant/20 bg-surface shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:hidden ${
-          isMobileMenuOpen
-            ? "translate-x-0"
-            : "translate-x-full"
+          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* ===================================================
-            SIDEBAR HEADER
-        ==================================================== */}
-
         <div className="flex items-center justify-between border-b border-outline-variant/20 px-5 py-4">
           <Link
             href="/"
@@ -305,47 +245,39 @@ export default function Navbar() {
 
           <button
             type="button"
-            onClick={() =>
-              setIsMobileMenuOpen(false)
-            }
+            onClick={() => setIsMobileMenuOpen(false)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
             aria-label="Tutup menu navigasi"
           >
-            <AppIcon
-              name="close"
-              size={24}
-            />
+            <AppIcon name="close" size={24} />
           </button>
         </div>
 
-        {/* ===================================================
-            PROFILE
-        ==================================================== */}
-
         <div className="border-b border-outline-variant/20 p-5">
-          {loading ||
-          profileLoading ? (
+          {loading || profileLoading ? (
             <div className="flex items-center gap-3">
               <SkeletonLoader className="h-12 w-12 rounded-full" />
-
               <div className="flex-1 space-y-2">
                 <SkeletonLoader className="h-4 w-28 rounded" />
                 <SkeletonLoader className="h-3 w-40 rounded" />
               </div>
             </div>
           ) : user ? (
-            <MobileProfile
-              user={user}
-              userDoc={userDoc}
-            />
+            <button
+              type="button"
+              onClick={handleEditProfilePhoto}
+              className="flex w-full items-center gap-3 rounded-xl text-left transition-opacity hover:opacity-80"
+              title="Ubah foto profil"
+            >
+              <MobileProfile
+                user={user}
+                userDoc={userDoc}
+              />
+            </button>
           ) : (
             <GuestProfile />
           )}
         </div>
-
-        {/* ===================================================
-            NAVIGATION
-        ==================================================== */}
 
         <nav
           className="flex-1 overflow-y-auto px-3 py-5"
@@ -356,55 +288,38 @@ export default function Navbar() {
           </p>
 
           <div className="space-y-1">
-            {navLinks.map(
-              (item) => (
-                <MobileNavLink
-                  key={item.href}
-                  item={item}
-                  pathname={
-                    pathname
-                  }
-                />
-              ),
-            )}
+            {navLinks.map((item) => (
+              <MobileNavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+              />
+            ))}
           </div>
         </nav>
 
-        {/* ===================================================
-            BOTTOM ACTION
-        ==================================================== */}
-
         <div className="border-t border-outline-variant/20 p-4">
-          {loading ||
-          profileLoading ? (
+          {loading || profileLoading ? (
             <SkeletonLoader className="h-12 w-full rounded-xl" />
           ) : user ? (
             <button
               type="button"
-              onClick={
-                handleLogout
-              }
+              onClick={handleLogout}
               className="group flex w-full items-center justify-between rounded-xl px-4 py-3.5 text-left transition-colors hover:bg-error-container/40"
             >
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-error-container text-error">
-                  <AppIcon
-                    name="logout"
-                    size={19}
-                  />
+                  <AppIcon name="logout" size={19} />
                 </span>
-
                 <div>
                   <p className="font-label-md text-label-md text-error">
                     Keluar
                   </p>
-
                   <p className="mt-0.5 font-body-sm text-[11px] text-on-surface-variant">
                     Keluar dari akun
                   </p>
                 </div>
               </div>
-
               <AppIcon
                 name="chevron_right"
                 size={20}
@@ -425,36 +340,19 @@ export default function Navbar() {
   );
 }
 
-/* =========================================================
-   MOBILE PROFILE
-========================================================= */
-
-function MobileProfile({
-  user,
-  userDoc,
-}) {
+function MobileProfile({ user, userDoc }) {
   const displayName =
     userDoc?.username ||
     userDoc?.fullName ||
     user?.displayName ||
     "Akun Saya";
 
-  const email =
-    user?.email || "";
-
-  const photoURL =
-    userDoc?.photoURL ||
-    user?.photoURL ||
-    null;
-
-  const initials = getInitials(
-    displayName,
-  );
+  const email = user?.email || "";
+  const photoURL = userDoc?.photoURL || user?.photoURL || null;
+  const initials = getInitials(displayName);
 
   return (
-    <div className="flex items-center gap-3">
-      {/* AVATAR */}
-
+    <>
       <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold uppercase text-on-primary">
         {photoURL ? (
           <img
@@ -467,66 +365,47 @@ function MobileProfile({
         )}
       </div>
 
-      {/* INFO */}
-
       <div className="min-w-0 flex-1">
         <p className="truncate font-label-md text-label-md font-semibold text-primary">
           {displayName}
         </p>
-
         {email && (
           <p className="mt-1 truncate font-body-sm text-body-sm text-on-surface-variant">
             {email}
           </p>
         )}
+        <p className="mt-1 font-body-sm text-[10px] text-secondary">
+          Ketuk untuk ubah foto profil
+        </p>
       </div>
-    </div>
+    </>
   );
 }
-
-/* =========================================================
-   GUEST PROFILE
-========================================================= */
 
 function GuestProfile() {
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-container text-primary">
-        <AppIcon
-          name="person"
-          size={24}
-        />
+        <AppIcon name="person" size={24} />
       </div>
-
       <div>
         <p className="font-label-md text-label-md font-semibold text-primary">
           Selamat Datang
         </p>
-
         <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-          Login untuk mengakses akun
-          Anda.
+          Login untuk mengakses akun Anda.
         </p>
       </div>
     </div>
   );
 }
 
-/* =========================================================
-   MOBILE NAV LINK
-========================================================= */
-
-function MobileNavLink({
-  item,
-  pathname,
-}) {
+function MobileNavLink({ item, pathname }) {
   const isActive =
     item.href === "/"
       ? pathname === "/"
       : pathname === item.href ||
-        pathname.startsWith(
-          `${item.href}/`,
-        );
+        pathname.startsWith(`${item.href}/`);
 
   return (
     <Link
@@ -544,10 +423,7 @@ function MobileNavLink({
             : "bg-surface-container group-hover:bg-surface-container-high"
         }`}
       >
-        <AppIcon
-          name={item.icon}
-          size={19}
-        />
+        <AppIcon name={item.icon} size={19} />
       </span>
 
       <span className="flex-1 font-label-md text-label-md">
@@ -561,31 +437,16 @@ function MobileNavLink({
   );
 }
 
-/* =========================================================
-   INITIALS
-========================================================= */
-
 function getInitials(value) {
-  const normalized =
-    String(value || "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+  const normalized = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-  if (!normalized.length) {
-    return "RP";
-  }
-
+  if (!normalized.length) return "RP";
   if (normalized.length === 1) {
-    return normalized[0]
-      .slice(0, 2)
-      .toUpperCase();
+    return normalized[0].slice(0, 2).toUpperCase();
   }
 
-  return (
-    normalized[0][0] +
-    normalized[
-      normalized.length - 1
-    ][0]
-  ).toUpperCase();
+  return `${normalized[0][0]}${normalized[normalized.length - 1][0]}`.toUpperCase();
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import AppIcon from "@/components/global/AppIcon";
-import BookingCountdowns from "./BookingCountdowns";
 
 const STATUS_CONFIG = {
   pending: {
@@ -229,78 +228,6 @@ function getPackageFeatures(packageItem) {
     : [];
 }
 
-function getInvoicePdf(invoice) {
-  const url =
-    invoice?.pdf?.url ??
-    invoice?.pdf?.secureUrl ??
-    invoice?.pdfUrl ??
-    null;
-
-  if (!url) {
-    return null;
-  }
-
-  return {
-    url,
-    fileName:
-      invoice?.pdf?.fileName ??
-      `${invoice?.invoiceNumber ?? "invoice-dp"}.pdf`,
-    bytes:
-      Number(
-        invoice?.pdf?.bytes,
-      ) || null,
-  };
-}
-
-function formatFileSize(bytes) {
-  const value =
-    Number(bytes);
-
-  if (
-    !Number.isFinite(value) ||
-    value <= 0
-  ) {
-    return "PDF";
-  }
-
-  if (
-    value <
-    1024 * 1024
-  ) {
-    return `${(
-      value / 1024
-    ).toFixed(1)} KB`;
-  }
-
-  return `${(
-    value /
-    (1024 * 1024)
-  ).toFixed(1)} MB`;
-}
-
-function getReceiptPdf(receipt) {
-  const url =
-    receipt?.pdf?.url ??
-    receipt?.pdf?.secureUrl ??
-    receipt?.pdfUrl ??
-    null;
-
-  if (!url) {
-    return null;
-  }
-
-  return {
-    url,
-    fileName:
-      receipt?.pdf?.fileName ??
-      `${receipt?.receiptNumber ?? "receipt"}.pdf`,
-    bytes:
-      Number(
-        receipt?.pdf?.bytes,
-      ) || null,
-  };
-}
-
 function getPackagePriceLabel(packageItem) {
   const numericPrice =
     Number(packageItem?.price);
@@ -403,9 +330,6 @@ function DetailItem({
 
 export default function BookingStatus({
   booking,
-  invoice = null,
-  payments = [],
-  receipt = null,
 }) {
   if (!booking) {
     return (
@@ -475,86 +399,33 @@ export default function BookingStatus({
     booking.id ||
     EMPTY_VALUE;
 
-  const invoicePdf =
-    getInvoicePdf(invoice);
-
-  const receiptPdf =
-    getReceiptPdf(receipt);
-
-  const paymentStatus =
-    String(
-      booking?.paymentStatus ||
-        "",
-    ).toLowerCase();
-
-  const isFinalPaymentUnderReview =
-    paymentStatus ===
-    "final_pending_verification";
-
-  const isFullyPaid =
-    paymentStatus ===
-      "paid_full" ||
-    booking?.financialStatus ===
-      "paid_full";
-
-  const displayConfig =
-    isFinalPaymentUnderReview
-      ? {
-          ...statusConfig,
-          label:
-            "Pelunasan Dikirim",
-          title:
-            "Pelunasan Sedang Ditinjau",
-          description:
-            "Bukti pembayaran pelunasan sudah diterima dan sedang diverifikasi oleh admin Rafi Picture.",
-          icon:
-            "check_circle",
-          accentClass:
-            "text-primary",
-        }
-      : isFullyPaid
-        ? {
-            ...statusConfig,
-            label:
-              "Lunas",
-            title:
-              "Pembayaran Sudah Lunas",
-            description:
-              "Seluruh pembayaran booking sudah terverifikasi. Kuitansi pembayaran 100% tersedia di bawah dan juga dikirim melalui email.",
-            icon:
-              "verified",
-            accentClass:
-              "text-primary",
-          }
-        : statusConfig;
-
   return (
     <section className="mx-auto w-full max-w-4xl px-margin-mobile py-stack-lg md:px-0">
       {/* STATUS HEADER */}
       <header className="mb-9 text-center">
         <div
-          className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center ${displayConfig.accentClass}`}
+          className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center ${statusConfig.accentClass}`}
         >
           <AppIcon
             name={
-              displayConfig.icon
+              statusConfig.icon
             }
             size={38}
           />
         </div>
 
         <p
-          className={`font-label-sm text-label-sm uppercase tracking-[0.2em] ${displayConfig.accentClass}`}
+          className={`font-label-sm text-label-sm uppercase tracking-[0.2em] ${statusConfig.accentClass}`}
         >
-          {displayConfig.label}
+          {statusConfig.label}
         </p>
 
         <h1 className="mt-2 font-headline-lg text-headline-lg tracking-tight text-on-surface">
-          {displayConfig.title}
+          {statusConfig.title}
         </h1>
 
         <p className="mx-auto mt-3 max-w-2xl font-body-md text-body-md leading-relaxed text-on-surface-variant">
-          {displayConfig.description}
+          {statusConfig.description}
         </p>
 
         <div className="mx-auto mt-6 flex max-w-xl flex-col items-center justify-center gap-2 border-y border-outline-variant/35 py-4 sm:flex-row sm:gap-5">
@@ -595,12 +466,6 @@ export default function BookingStatus({
           </div>
         </div>
       </header>
-
-      <BookingCountdowns
-        booking={booking}
-        invoice={invoice}
-        payments={payments}
-      />
 
       {/* PACKAGE */}
       <section className="border-b border-outline-variant/35 pb-7">
@@ -868,94 +733,6 @@ export default function BookingStatus({
             </span>
           </div>
 
-          {invoicePdf && (
-            <div className="mt-5 border-t border-outline-variant/30 pt-5">
-              <p className="mb-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                File Invoice
-              </p>
-
-              <a
-                href={invoicePdf.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-4 rounded-lg border border-outline-variant/30 p-4 transition-colors hover:border-primary/45"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/5">
-                  <AppIcon
-                    name="receipt"
-                    size={20}
-                    className="text-primary"
-                  />
-                </div>
-
-                <div className="min-w-0 grow">
-                  <p className="truncate font-label-md text-label-md text-on-surface">
-                    {invoicePdf.fileName}
-                  </p>
-
-                  <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
-                    {formatFileSize(
-                      invoicePdf.bytes,
-                    )}
-                    {" • "}
-                    {invoice?.type ===
-                    "final"
-                      ? "Invoice Pelunasan"
-                      : "Invoice Down Payment"}
-                  </p>
-                </div>
-
-                <AppIcon
-                  name="visibility"
-                  size={19}
-                  className="shrink-0 text-secondary transition-colors group-hover:text-primary"
-                />
-              </a>
-            </div>
-          )}
-
-          {receiptPdf && (
-            <div className="mt-5 border-t border-outline-variant/30 pt-5">
-              <p className="mb-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                Kuitansi Pembayaran
-              </p>
-
-              <a
-                href={receiptPdf.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-4 rounded-lg border border-primary/25 bg-primary/5 p-4 transition-colors hover:border-primary/50"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary">
-                  <AppIcon
-                    name="verified"
-                    size={20}
-                  />
-                </div>
-
-                <div className="min-w-0 grow">
-                  <p className="truncate font-label-md text-label-md text-on-surface">
-                    {receiptPdf.fileName}
-                  </p>
-
-                  <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
-                    {formatFileSize(
-                      receiptPdf.bytes,
-                    )}
-                    {" • "}
-                    Kuitansi Pembayaran 100%
-                  </p>
-                </div>
-
-                <AppIcon
-                  name="visibility"
-                  size={19}
-                  className="shrink-0 text-primary"
-                />
-              </a>
-            </div>
-          )}
-
           {normalizedStatus ===
             "pending" && (
             <p className="mt-3 font-body-sm text-body-sm leading-relaxed text-on-surface-variant/70">
@@ -973,19 +750,6 @@ export default function BookingStatus({
             booking.updatedAt,
           )}
         </p>
-
-        {booking.id && (
-          <a
-            href={`/booking/${booking.id}`}
-            className="inline-flex items-center gap-2 font-label-md text-label-md text-secondary transition-colors hover:text-primary"
-          >
-            Lihat Detail Booking
-            <AppIcon
-              name="arrow_forward"
-              size={18}
-            />
-          </a>
-        )}
       </div>
     </section>
   );

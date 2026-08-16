@@ -5,11 +5,9 @@ import { useMemo, useState } from "react";
 import AppIcon from "@/components/global/AppIcon";
 
 export const CREW_ROLE_OPTIONS = [
-  { value: "lead_photographer", label: "Lead Photographer" },
   { value: "photographer", label: "Photographer" },
   { value: "videographer", label: "Videographer" },
   { value: "assistant_photographer", label: "Assistant Photographer" },
-  { value: "editor", label: "Photo & Video Editor" },
 ];
 
 export const CREW_EMPLOYMENT_OPTIONS = [
@@ -22,7 +20,14 @@ const inputClassName =
   "w-full rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface outline-none transition placeholder:text-on-surface-variant/45 focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60";
 
 function getRoleValue(crew) {
-  return crew?.baseRole ?? crew?.role ?? "photographer";
+  const role = crew?.baseRole ?? crew?.role ?? null;
+
+  if (!crew) return "photographer";
+  if (role === "lead_photographer") return "photographer";
+
+  return CREW_ROLE_OPTIONS.some((option) => option.value === role)
+    ? role
+    : "";
 }
 
 function createInitialForm(crew, mode) {
@@ -306,6 +311,8 @@ export default function CrewDetails({
                     disabled={submitting}
                     className={inputClassName}
                   >
+                    <option value="">Pilih role crew</option>
+
                     {CREW_ROLE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
