@@ -12,7 +12,7 @@ import CrewAssignment from "./sections/CrewAssignment";
 import BillingPayment from "./sections/BillingPayment";
 import FinalSettlement from "./sections/FinalSettlement";
 
-const REQUIRED_CREW_COUNT = 3;
+const REQUIRED_CREW_COUNT = 1;
 
 const BOOKING_STATUS = {
   pending: {

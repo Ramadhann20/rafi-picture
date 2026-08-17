@@ -339,7 +339,7 @@ export default function CrewAssignment({
   readOnly = false,
   showOnlySelected = false,
 
-  requiredCrewCount = 3,
+  requiredCrewCount = 1,
 
   allowFreelance = false,
   onAddFreelance,

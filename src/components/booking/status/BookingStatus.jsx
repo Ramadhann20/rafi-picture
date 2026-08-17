@@ -1,6 +1,7 @@
 "use client";
 
 import AppIcon from "@/components/global/AppIcon";
+import BookingCountdowns from "./BookingCountdowns";
 
 const STATUS_CONFIG = {
   pending: {
@@ -228,6 +229,78 @@ function getPackageFeatures(packageItem) {
     : [];
 }
 
+function getInvoicePdf(invoice) {
+  const url =
+    invoice?.pdf?.url ??
+    invoice?.pdf?.secureUrl ??
+    invoice?.pdfUrl ??
+    null;
+
+  if (!url) {
+    return null;
+  }
+
+  return {
+    url,
+    fileName:
+      invoice?.pdf?.fileName ??
+      `${invoice?.invoiceNumber ?? "invoice-dp"}.pdf`,
+    bytes:
+      Number(
+        invoice?.pdf?.bytes,
+      ) || null,
+  };
+}
+
+function formatFileSize(bytes) {
+  const value =
+    Number(bytes);
+
+  if (
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return "PDF";
+  }
+
+  if (
+    value <
+    1024 * 1024
+  ) {
+    return `${(
+      value / 1024
+    ).toFixed(1)} KB`;
+  }
+
+  return `${(
+    value /
+    (1024 * 1024)
+  ).toFixed(1)} MB`;
+}
+
+function getReceiptPdf(receipt) {
+  const url =
+    receipt?.pdf?.url ??
+    receipt?.pdf?.secureUrl ??
+    receipt?.pdfUrl ??
+    null;
+
+  if (!url) {
+    return null;
+  }
+
+  return {
+    url,
+    fileName:
+      receipt?.pdf?.fileName ??
+      `${receipt?.receiptNumber ?? "receipt"}.pdf`,
+    bytes:
+      Number(
+        receipt?.pdf?.bytes,
+      ) || null,
+  };
+}
+
 function getPackagePriceLabel(packageItem) {
   const numericPrice =
     Number(packageItem?.price);
@@ -328,8 +401,78 @@ function DetailItem({
   );
 }
 
+function PaymentDocumentCard({
+  pdf,
+  title,
+  subtitle,
+  icon,
+  highlighted = false,
+}) {
+  if (!pdf?.url) {
+    return null;
+  }
+
+  return (
+    <a
+      href={pdf.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`group flex items-center gap-4 rounded-lg border p-4 transition-colors ${
+        highlighted
+          ? "border-primary/25 bg-primary/5 hover:border-primary/50"
+          : "border-outline-variant/30 hover:border-primary/45"
+      }`}
+    >
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+          highlighted
+            ? "bg-primary text-on-primary"
+            : "bg-primary/5 text-primary"
+        }`}
+      >
+        <AppIcon
+          name={icon}
+          size={20}
+        />
+      </div>
+
+      <div className="min-w-0 grow">
+        <p className="font-label-md text-label-md text-on-surface">
+          {title}
+        </p>
+
+        <p className="mt-1 truncate font-label-sm text-label-sm text-on-surface-variant">
+          {subtitle}
+          {" • "}
+          {formatFileSize(
+            pdf.bytes,
+          )}
+        </p>
+
+        <p className="mt-1 truncate font-body-sm text-[11px] text-on-surface-variant/65">
+          {pdf.fileName}
+        </p>
+      </div>
+
+      <AppIcon
+        name="visibility"
+        size={19}
+        className={`shrink-0 transition-colors ${
+          highlighted
+            ? "text-primary"
+            : "text-secondary group-hover:text-primary"
+        }`}
+      />
+    </a>
+  );
+}
+
 export default function BookingStatus({
   booking,
+  depositInvoice = null,
+  finalInvoice = null,
+  payments = [],
+  receipt = null,
 }) {
   if (!booking) {
     return (
@@ -399,34 +542,131 @@ export default function BookingStatus({
     booking.id ||
     EMPTY_VALUE;
 
+  const depositInvoicePdf =
+    getInvoicePdf(
+      depositInvoice,
+    );
+
+  const finalInvoicePdf =
+    getInvoicePdf(
+      finalInvoice,
+    );
+
+  const receiptPdf =
+    getReceiptPdf(receipt);
+
+  const paymentStatus =
+    String(
+      booking?.paymentStatus ||
+        "",
+    )
+      .trim()
+      .toLowerCase();
+
+  const financialStatus =
+    String(
+      booking?.financialStatus ||
+        "",
+    )
+      .trim()
+      .toLowerCase();
+
+  const isFinalPaymentUnderReview =
+    paymentStatus ===
+      "final_pending_verification";
+
+  /*
+   * Receipt dijadikan fallback tambahan untuk data lama.
+   * Kalau kuitansi 100% sudah ada, pembayaran secara bisnis
+   * sudah selesai walaupun field status lama belum termigrasi.
+   */
+  const isFullyPaid =
+    paymentStatus ===
+      "paid_full" ||
+    financialStatus ===
+      "paid_full" ||
+    Boolean(receiptPdf);
+
+  const displayConfig =
+    isFinalPaymentUnderReview
+      ? {
+          ...statusConfig,
+          label:
+            "Pelunasan Dikirim",
+          title:
+            "Pelunasan Sedang Ditinjau",
+          description:
+            "Bukti pembayaran pelunasan sudah diterima dan sedang diverifikasi oleh admin Rafi Picture.",
+          icon:
+            "check_circle",
+          accentClass:
+            "text-primary",
+        }
+      : isFullyPaid
+        ? {
+            ...statusConfig,
+            label:
+              "Lunas",
+            title:
+              "Pembayaran Sudah Lunas",
+            description:
+              "Seluruh pembayaran booking sudah terverifikasi. Invoice dan kuitansi pembayaran tersedia pada bagian Dokumen Pembayaran.",
+            icon:
+              "verified",
+            accentClass:
+              "text-primary",
+          }
+        : statusConfig;
+
+  const countdownInvoice =
+    finalInvoice ??
+    depositInvoice;
+
   return (
     <section className="mx-auto w-full max-w-4xl px-margin-mobile py-stack-lg md:px-0">
       {/* STATUS HEADER */}
       <header className="mb-9 text-center">
         <div
-          className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center ${statusConfig.accentClass}`}
+          className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center ${displayConfig.accentClass}`}
         >
           <AppIcon
             name={
-              statusConfig.icon
+              displayConfig.icon
             }
             size={38}
           />
         </div>
 
         <p
-          className={`font-label-sm text-label-sm uppercase tracking-[0.2em] ${statusConfig.accentClass}`}
+          className={`font-label-sm text-label-sm uppercase tracking-[0.2em] ${displayConfig.accentClass}`}
         >
-          {statusConfig.label}
+          {displayConfig.label}
         </p>
 
         <h1 className="mt-2 font-headline-lg text-headline-lg tracking-tight text-on-surface">
-          {statusConfig.title}
+          {displayConfig.title}
         </h1>
 
         <p className="mx-auto mt-3 max-w-2xl font-body-md text-body-md leading-relaxed text-on-surface-variant">
-          {statusConfig.description}
+          {displayConfig.description}
         </p>
+
+        {(isFinalPaymentUnderReview ||
+          isFullyPaid) &&
+          normalizedStatus ===
+            "in_progress" && (
+            <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-outline-variant/35 bg-surface-container-low px-4 py-2">
+              <AppIcon
+                name="pending_actions"
+                size={16}
+                className="text-secondary"
+              />
+
+              <span className="font-label-sm text-label-sm text-on-surface-variant">
+                Status layanan: Dalam Proses
+              </span>
+            </div>
+          )}
 
         <div className="mx-auto mt-6 flex max-w-xl flex-col items-center justify-center gap-2 border-y border-outline-variant/35 py-4 sm:flex-row sm:gap-5">
           <div className="flex items-center gap-2">
@@ -466,6 +706,12 @@ export default function BookingStatus({
           </div>
         </div>
       </header>
+
+      <BookingCountdowns
+        booking={booking}
+        invoice={countdownInvoice}
+        payments={payments}
+      />
 
       {/* PACKAGE */}
       <section className="border-b border-outline-variant/35 pb-7">
@@ -732,6 +978,59 @@ export default function BookingStatus({
               )}
             </span>
           </div>
+
+          {(depositInvoicePdf ||
+            finalInvoicePdf ||
+            receiptPdf) && (
+            <div className="mt-6 border-t border-outline-variant/30 pt-6">
+              <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                Dokumen Pembayaran
+              </p>
+
+              <p className="mt-1 font-body-sm text-body-sm leading-relaxed text-on-surface-variant/75">
+                Invoice dan kuitansi yang sudah diterbitkan untuk booking ini.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                {depositInvoicePdf && (
+                  <PaymentDocumentCard
+                    pdf={depositInvoicePdf}
+                    title="Invoice Down Payment"
+                    subtitle={
+                      depositInvoice?.invoiceNumber ||
+                      "Invoice DP"
+                    }
+                    icon="receipt"
+                  />
+                )}
+
+                {finalInvoicePdf && (
+                  <PaymentDocumentCard
+                    pdf={finalInvoicePdf}
+                    title="Invoice Pelunasan"
+                    subtitle={
+                      finalInvoice?.invoiceNumber ||
+                      "Invoice Pelunasan"
+                    }
+                    icon="payments"
+                  />
+                )}
+
+                {receiptPdf && (
+                  <PaymentDocumentCard
+                    pdf={receiptPdf}
+                    title="Kuitansi Pembayaran"
+                    subtitle={
+                      receipt?.receiptNumber ||
+                      "Pembayaran 100%"
+                    }
+                    icon="verified"
+                    highlighted
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           {normalizedStatus ===
             "pending" && (

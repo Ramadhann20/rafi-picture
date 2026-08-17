@@ -29,6 +29,11 @@ import {
   sendBookingDocumentEmail,
 } from "@/lib/email/systemEmail";
 
+import {
+  getDefaultJakartaDueDate,
+  getJakartaDateKey,
+} from "@/lib/jakartaDate";
+
 export const runtime =
   "nodejs";
 
@@ -62,33 +67,7 @@ function normalizeDueDate(
     return normalized;
   }
 
-  const date =
-    new Date();
-
-  date.setDate(
-    date.getDate() + 3,
-  );
-
-  const year =
-    date.getFullYear();
-
-  const month =
-    String(
-      date.getMonth() + 1,
-    ).padStart(
-      2,
-      "0",
-    );
-
-  const day =
-    String(
-      date.getDate(),
-    ).padStart(
-      2,
-      "0",
-    );
-
-  return `${year}-${month}-${day}`;
+  return getDefaultJakartaDueDate(3);
 }
 
 function getBookingAmounts(
@@ -356,6 +335,9 @@ export async function POST(
         invoiceDraft?.dueAt,
       );
 
+    const invoiceDate =
+      getJakartaDateKey();
+
     const note =
       String(
         invoiceDraft?.note ||
@@ -436,6 +418,7 @@ export async function POST(
         "IDR",
 
       dueAt,
+      invoiceDate,
       note,
 
       status:
@@ -447,8 +430,7 @@ export async function POST(
         booking,
         invoice,
         invoiceNumber,
-        invoiceDate:
-          new Date(),
+        invoiceDate,
         depositInvoice,
       });
 

@@ -1005,10 +1005,8 @@ export default function BookingClient({ packageId = null }) {
     return (
       <BookingStatus
         booking={bookingRecord}
-        invoice={
-          finalInvoice ??
-          depositInvoice
-        }
+        depositInvoice={depositInvoice}
+        finalInvoice={finalInvoice}
         payments={bookingPayments}
         receipt={receipt}
       />

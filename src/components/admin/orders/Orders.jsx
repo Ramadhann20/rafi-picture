@@ -10,7 +10,7 @@ import { cleanupCompletedFreelanceCrews } from "@/lib/crewFreelance";
 
 import ScheduleOrder from "./details/ScheduleOrder";
 
-const REQUIRED_CREW_COUNT = 3;
+const REQUIRED_CREW_COUNT = 1;
 
 /* =========================================================
    BOOKING STATUS
