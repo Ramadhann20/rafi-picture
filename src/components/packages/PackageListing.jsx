@@ -251,12 +251,26 @@ export default function PackageListing() {
         <section className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-3">
           {visiblePackages.map((packageItem) => {
             const category = categoryById.get(packageItem.packageCategoryId);
+            const cardDetails = [
+              ...(packageItem.durationHours > 0
+                ? [
+                    {
+                      icon: "calendar_month",
+                      text: `Liputan ${packageItem.durationHours} Jam`,
+                    },
+                  ]
+                : []),
+              ...packageItem.serviceHighlights.map((highlight) => ({
+                icon: "check_circle",
+                text: highlight,
+              })),
+            ].slice(0, 3);
 
             return (
               <article
                 key={packageItem.id}
                 onClick={() => setSelectedPackage(packageItem)}
-                className="package-card group flex h-[760px] cursor-pointer flex-col overflow-hidden rounded-xl bg-white ambient-shadow transition-all duration-500 hover:-translate-y-2"
+                className="package-card group flex min-h-[760px] cursor-pointer flex-col overflow-hidden rounded-xl bg-white ambient-shadow transition-all duration-500 hover:-translate-y-2"
               >
                 <div className="relative h-[300px] shrink-0 overflow-hidden">
                   <PackageImage
@@ -276,7 +290,7 @@ export default function PackageListing() {
                 <div className="flex min-h-0 flex-1 flex-col p-8">
                   <div className="flex min-h-[120px] items-start justify-between gap-6">
                     <div className="min-w-0">
-                      <h2 className="mb-2 font-headline-md text-headline-md leading-tight text-primary">
+                      <h2 className="mb-2 font-headline-sm text-headline-sm leading-tight text-primary">
                         {packageItem.name}
                       </h2>
 
@@ -302,27 +316,18 @@ export default function PackageListing() {
                   </p>
 
                   <ul className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-2 hide-scrollbar">
-                    {packageItem.durationHours > 0 && (
-                      <li className="grid grid-cols-[24px_1fr] items-start gap-x-3 text-on-surface-variant">
-                        <AppIcon name="calendar_month" size={20} className="mt-[3px]" />
-                        <span className="font-body-md text-body-md leading-relaxed">
-                          Liputan {packageItem.durationHours} Jam
-                        </span>
-                      </li>
-                    )}
-
-                    {packageItem.serviceHighlights.map((highlight, index) => (
+                    {cardDetails.map((detail, index) => (
                       <li
                         key={`${packageItem.id}-${index}`}
                         className="grid grid-cols-[24px_1fr] items-start gap-x-3 text-on-surface-variant"
                       >
                         <AppIcon
-                          name="check_circle"
+                          name={detail.icon}
                           size={20}
                           className="mt-[3px]"
                         />
                         <span className="font-body-md text-body-md leading-relaxed">
-                          {highlight}
+                          {detail.text}
                         </span>
                       </li>
                     ))}

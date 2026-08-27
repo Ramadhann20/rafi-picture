@@ -8,7 +8,8 @@ export const metadata = {
     "Book your photography session with Rafi Picture through a guided booking form.",
 };
 
-export default function BookingPage() {
+export default async function BookingPage({ searchParams }) {
+  const { packageId = null } = await searchParams;
 
   const dummyBookingRecord = {
   id: "RP-2026-0001",
@@ -72,7 +73,7 @@ export default function BookingPage() {
         </p>
       </div>
 
-      <BookingClient />
+      <BookingClient packageId={packageId} />
     </main>
   );
 }
