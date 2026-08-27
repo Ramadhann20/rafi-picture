@@ -23,7 +23,7 @@ const navLinks = [
   },
   {
     label: "Portofolio",
-    href: "/portofolio",
+    href: "/portfolio",
     icon: "photo_camera",
   },
   {
