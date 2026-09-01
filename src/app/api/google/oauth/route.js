@@ -13,15 +13,16 @@ export const runtime = "nodejs";
 export async function GET() {
   // Endpoint ini hanya untuk developer mendapatkan refresh token.
   // Jangan buka flow setup OAuth secara publik di production.
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      {
-        message:
-          "Gmail OAuth setup endpoint dinonaktifkan di production.",
-      },
-      { status: 404 }
-    );
-  }
+  
+  // if (process.env.NODE_ENV === "production") {
+  //   return NextResponse.json(
+  //     {
+  //       message:
+  //         "Gmail OAuth setup endpoint dinonaktifkan di production.",
+  //     },
+  //     { status: 404 }
+  //   );
+  // }
 
   try {
     const oauth2Client =
