@@ -271,12 +271,6 @@ function calculateTrend(currentValue, previousValue) {
   return `${rounded >= 0 ? "+" : ""}${rounded}%`;
 }
 
-function escapeCsvCell(value) {
-  const stringValue = String(value ?? "");
-
-  return `"${stringValue.replaceAll('"', '""')}"`;
-}
-
 /* =========================================================
    MONTHLY CHART HELPERS
 ========================================================= */
@@ -615,53 +609,6 @@ export default function Dashboard() {
   ];
 
   /* ---------------------------------------------------------
-     ACTIONS
-  --------------------------------------------------------- */
-
-  const handleGenerateReport = () => {
-    const header = [
-      "Booking ID",
-      "Client",
-      "Package",
-      "Event Date",
-      "Amount",
-      "Currency",
-      "Status",
-    ];
-
-    const rows = bookings.map((booking) => [
-      booking.id,
-      getClientDisplayName(booking.client),
-      booking.package?.name ?? "",
-      formatDate(getBookingEventDate(booking)),
-      getBookingAmount(booking),
-      getBookingCurrency(booking),
-      booking.status ?? "",
-    ]);
-
-    const csv = [header, ...rows]
-      .map((row) => row.map(escapeCsvCell).join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const objectUrl = URL.createObjectURL(blob);
-
-    const anchor = document.createElement("a");
-
-    anchor.href = objectUrl;
-    anchor.download = `studio-bookings-${now.toISOString().slice(0, 10)}.csv`;
-
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-
-    URL.revokeObjectURL(objectUrl);
-  };
-
-  /* ---------------------------------------------------------
      LOADING / ERROR STATE
   --------------------------------------------------------- */
 
@@ -711,16 +658,6 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={handleGenerateReport}
-            disabled={bookings.length === 0}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary px-6 py-2.5 font-label-md text-label-md text-primary transition-all hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <AppIcon name="download" size={18} />
-            Generate Report
-          </button>
-
           <div className="flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-2.5 text-on-surface-variant">
             <AppIcon name="calendar_month" size={19} />
 
