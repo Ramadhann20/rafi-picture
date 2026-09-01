@@ -72,15 +72,15 @@ function htmlPage(content) {
 }
 
 export async function GET(request) {
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      {
-        message:
-          "Gmail OAuth callback dinonaktifkan di production.",
-      },
-      { status: 404 }
-    );
-  }
+  // if (process.env.NODE_ENV === "production") {
+  //   return NextResponse.json(
+  //     {
+  //       message:
+  //         "Gmail OAuth callback dinonaktifkan di production.",
+  //     },
+  //     { status: 404 }
+  //   );
+  // }
 
   const requestUrl =
     new URL(request.url);
