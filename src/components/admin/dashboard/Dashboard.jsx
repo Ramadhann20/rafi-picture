@@ -512,10 +512,7 @@ export default function Dashboard() {
         label: "Total Orders",
         value: bookings.length,
         icon: "shopping_bag",
-        trend: calculateTrend(
-          currentMonthBookings.length,
-          previousMonthBookings.length,
-        ),
+        trend: null,
         iconClass: "bg-primary-container text-on-primary-container",
       },
 
@@ -531,7 +528,7 @@ export default function Dashboard() {
         label: "Monthly Revenue",
         value: formatCurrency(monthlyRevenue),
         icon: "payments",
-        trend: calculateTrend(monthlyRevenue, previousMonthlyRevenue),
+        trend: null,
         iconClass: "bg-primary-container text-on-primary-container",
       },
 
