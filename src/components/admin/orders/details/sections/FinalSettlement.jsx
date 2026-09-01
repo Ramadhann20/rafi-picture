@@ -1085,36 +1085,6 @@ export default function FinalSettlement({
               </p>
             </div>
 
-            <div>
-              <label
-                htmlFor="final-due-date"
-                className="font-label-sm text-label-sm text-on-surface-variant"
-              >
-                Due Date
-              </label>
-
-              <input
-                id="final-due-date"
-                type="date"
-                value={
-                  draft.dueAt ||
-                  ""
-                }
-                disabled={
-                  confirmed
-                }
-                onChange={
-                  (event) =>
-                    updateDraft({
-                      dueAt:
-                        event.target
-                          .value,
-                    })
-                }
-                className="mt-2 w-full rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none disabled:opacity-60"
-              />
-            </div>
-
             <div className="sm:col-span-2">
               <label
                 htmlFor="final-note"
@@ -1231,7 +1201,7 @@ export default function FinalSettlement({
             <div className="border-t border-outline-variant/30 p-4 md:p-6">
               <div className="mb-3 flex items-center justify-between gap-4">
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Review total, DP terbayar, sisa pelunasan, due date, dan data client.
+                  Review total, DP terbayar, sisa pelunasan, dan data client.
                 </p>
 
                 <a

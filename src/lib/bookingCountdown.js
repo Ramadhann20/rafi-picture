@@ -228,6 +228,12 @@ export function buildPaymentTimer({
 }) {
   if (!invoice?.id || !nowMs) return null;
 
+  const invoiceType = normalizeStatus(invoice?.type || "deposit");
+
+  if (invoiceType === "final") {
+    return null;
+  }
+
   const invoiceStatus = normalizeStatus(invoice?.status);
 
   if (["paid", "void", "superseded"].includes(invoiceStatus)) {
@@ -296,8 +302,7 @@ export function buildPaymentTimer({
   const overdueMs = Math.max(delta, 0);
   const duration = getDurationParts(Math.abs(delta));
 
-  const invoiceType = normalizeStatus(invoice?.type || "deposit");
-  const paymentLabel = invoiceType === "final" ? "Pelunasan" : "DP";
+  const paymentLabel = "DP";
 
   const rejectedCount = invoicePayments.filter(
     (payment) =>

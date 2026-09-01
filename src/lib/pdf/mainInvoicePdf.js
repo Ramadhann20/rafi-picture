@@ -250,12 +250,6 @@ export async function generateMainInvoicePdf({
         invoiceDate,
       ),
     ],
-    [
-      "Tgl. Jatuh Tempo",
-      formatSlashDate(
-        invoice?.dueAt,
-      ),
-    ],
   ].forEach(
     (
       [

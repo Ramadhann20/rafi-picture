@@ -843,7 +843,7 @@ function PaymentHistory({
                     colSpan={2}
                     className="px-6 py-4 text-right font-label-md text-label-md text-on-surface"
                   >
-                    Sisa Saldo
+                    Sisa yang Harus Dibayar
                   </td>
 
                   <td className="px-6 py-4 text-right font-label-md text-label-md text-error">
