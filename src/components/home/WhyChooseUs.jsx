@@ -1,30 +1,32 @@
+"use client";
+
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 const reasons = [
   {
     number: "01",
     icon: "photo_camera",
-    title: "HASIL FOTO BERKUALITAS",
-    description:
-      "Menghasilkan foto dengan detail yang tajam, komposisi yang tepat, dan warna yang natural.",
+    titleKey: "qualityPhotos",
+    descriptionKey: "qualityPhotosDescription",
   },
   {
     number: "02",
     icon: "auto_awesome",
-    title: "EDITING PROFESIONAL",
-    description:
-      "Setiap foto melalui proses editing untuk menghasilkan tampilan yang clean, estetik, dan konsisten.",
+    titleKey: "professionalEditing",
+    descriptionKey: "professionalEditingDescription",
   },
   {
     number: "03",
     icon: "verified_user",
-    title: "PELAYANAN PROFESIONAL",
-    description:
-      "Didukung fotografer berpengalaman dengan proses kerja yang terencana dan sesuai kebutuhan setiap klien.",
+    titleKey: "professionalService",
+    descriptionKey: "professionalServiceDescription",
   },
 ];
 
 export default function WhyChooseUs() {
+  const { translate } = useLanguage();
+
   return (
     <section
       className="bg-surface py-[120px]"
@@ -36,7 +38,7 @@ export default function WhyChooseUs() {
         </span>
 
         <h2 className="font-headline-lg text-headline-lg text-primary">
-          Mengapa Memilih Rafi Picture?
+          {translate("whyChooseUs")}
         </h2>
       </div>
 
@@ -59,11 +61,11 @@ export default function WhyChooseUs() {
             </p>
 
             <h3 className="mb-4 font-headline-md text-headline-md text-primary">
-              {item.title}
+              {translate(item.titleKey)}
             </h3>
 
             <p className="font-body-md text-body-md text-on-surface-variant">
-              {item.description}
+              {translate(item.descriptionKey)}
             </p>
           </article>
         ))}

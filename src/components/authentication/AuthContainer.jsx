@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 
 import OtpVerificationOverlay from "@/components/ui/OtpVerificationOverlay";
@@ -39,14 +40,12 @@ function GoogleIcon() {
 
 const MODE_COPY = {
   login: {
-    title: "Welcome Back",
-    description:
-      "Sign in to access your private gallery and manage your bookings.",
+    titleKey: "welcomeBack",
+    descriptionKey: "authLoginDescription",
   },
   register: {
-    title: "Join the Studio",
-    description:
-      "Create your account and keep every Rafi Picture moment in one place.",
+    titleKey: "joinStudio",
+    descriptionKey: "authRegisterDescription",
   },
 };
 
@@ -61,6 +60,7 @@ async function readJson(response) {
 export default function AuthContainer() {
   const router = useRouter();
   const { openOverlay } = useOverlay();
+  const { translate } = useLanguage();
 
   const {
     user,
@@ -147,22 +147,24 @@ export default function AuthContainer() {
     const username = `${firstName || ""} ${lastName || ""}`.trim();
 
     if (!firstName?.trim() || !lastName?.trim()) {
-      setRegisterError("First name and last name are required.");
+      setRegisterError(
+        translate("firstNameLastNameRequired"),
+      );
       return;
     }
 
     if (!normalizedEmail) {
-      setRegisterError("Email address is required.");
+      setRegisterError(translate("emailRequired"));
       return;
     }
 
     if (password.length < 8) {
-      setRegisterError("Password must contain at least 8 characters.");
+      setRegisterError(translate("passwordMinLength"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setRegisterError("Passwords do not match.");
+      setRegisterError(translate("passwordMismatch"));
       return;
     }
 
@@ -201,7 +203,9 @@ export default function AuthContainer() {
       });
     } catch (err) {
       console.error("OTP request failed:", err);
-      setRegisterError(err?.message || "Unable to send verification code.");
+      setRegisterError(
+        err?.message || translate("verificationFailed"),
+      );
     } finally {
       setRegisterFlowLoading(false);
     }
@@ -227,7 +231,7 @@ export default function AuthContainer() {
         [@media(max-height:640px)]:scale-[0.86]
       "
     >
-      <div className="mb-4 h-[82px]">
+      <div className="mb-6 min-h-[112px]">
         <div className="mb-1 flex h-4 items-center gap-2 md:hidden">
           <span className="h-px w-6 bg-primary/50" />
           <span className="font-label-sm text-[11px] uppercase tracking-[0.22em] text-primary/70">
@@ -246,11 +250,11 @@ export default function AuthContainer() {
           `}
         >
           <h3 className="font-headline-lg text-headline-lg leading-tight text-primary">
-            {copy.title}
+            {translate(copy.titleKey)}
           </h3>
 
           <p className="mt-1.5 max-w-sm font-body-md text-sm leading-5 text-on-surface-variant">
-            {copy.description}
+            {translate(copy.descriptionKey)}
           </p>
         </div>
       </div>
@@ -265,7 +269,7 @@ export default function AuthContainer() {
           }
         `}
       >
-        <div className="relative mb-4 grid grid-cols-2 overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-container/40 p-1">
+        <div className="relative mb-5 grid grid-cols-2 overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-container/40 p-1">
           <span
             aria-hidden="true"
             className={`
@@ -299,7 +303,7 @@ export default function AuthContainer() {
               }
             `}
           >
-            Sign In
+            {translate("signIn")}
           </button>
 
           <button
@@ -318,7 +322,7 @@ export default function AuthContainer() {
               }
             `}
           >
-            Create Account
+            {translate("createAccount")}
           </button>
         </div>
 
@@ -348,7 +352,7 @@ export default function AuthContainer() {
           <div className="h-px grow bg-outline-variant/30" />
 
           <span className="font-label-sm text-[10px] uppercase tracking-[0.18em] text-on-surface-variant/80">
-            Or continue with
+            {translate("orContinueWith")}
           </span>
 
           <div className="h-px grow bg-outline-variant/30" />
@@ -386,7 +390,7 @@ export default function AuthContainer() {
           </span>
 
           <span className="font-label-md text-sm font-medium">
-            {authLoading ? "Connecting..." : "Continue with Google"}
+            Google
           </span>
         </button>
 

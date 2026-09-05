@@ -1,9 +1,11 @@
 "use client";
 
 import AppIcon from "@/components/global/AppIcon";
+import { englishPackageTranslations } from "@/components/packages/PackageListing";
 import {
   normalizeEventLocation,
 } from "@/lib/location";
+import { useLanguage } from "@/context/LanguageContext";
 
 const EMPTY_VALUE = "Belum diisi";
 
@@ -244,6 +246,17 @@ export default function BookConfirm({
   selectedPackage,
   submitStatus,
 }) {
+  const { language, translate } = useLanguage();
+  const displayPackage = selectedPackage
+    ? englishPackageTranslations[selectedPackage.id] && language === "en"
+      ? {
+          ...selectedPackage,
+          description: englishPackageTranslations[selectedPackage.id].description,
+          serviceHighlights: englishPackageTranslations[selectedPackage.id].features,
+          features: englishPackageTranslations[selectedPackage.id].features,
+        }
+      : selectedPackage
+    : null;
   const personalData =
     formData?.personal ?? {};
   const eventData =
@@ -261,14 +274,11 @@ export default function BookConfirm({
         ?.amount,
     ) || 0;
 
-  const packageHighlights =
-    getPackageHighlights(
-      selectedPackage,
-    );
+  const packageHighlights = getPackageHighlights(displayPackage);
 
   const showPartnerName =
-    Boolean(selectedPackage) &&
-    selectedPackage.bookingSubjectType !==
+    Boolean(displayPackage) &&
+    displayPackage.bookingSubjectType !==
       "individual";
 
   const isSubmitting =
@@ -280,18 +290,15 @@ export default function BookConfirm({
     <div>
       <header className="mb-9">
         <p className="font-label-sm text-[10px] uppercase tracking-[0.24em] text-secondary">
-          Confirmation
+          {translate("confirmation")}
         </p>
 
         <h2 className="mt-1 font-headline-md text-headline-md text-on-surface">
-          Periksa Kembali Booking Anda
+          {translate("reviewBooking")}
         </h2>
 
         <p className="mt-2 max-w-2xl font-body-md text-body-md leading-relaxed text-on-surface-variant">
-          Pastikan detail paket, jadwal,
-          lokasi, dan informasi kontak sudah
-          sesuai sebelum permintaan booking
-          dikirim.
+          {translate("reviewBookingDescription")}
         </p>
       </header>
 
@@ -299,61 +306,61 @@ export default function BookConfirm({
       <section className="border-b border-outline-variant/35 pb-7">
         <SectionHeading
           icon="photo_camera"
-          title="Paket Dokumentasi"
-          description="Paket dan layanan yang dipilih untuk acara ini."
+          title={translate("packageDetails")}
+          description={translate("selectedPackageDescription")}
         />
 
-        {selectedPackage ? (
+        {displayPackage ? (
           <>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <p className="font-headline-md text-headline-md text-on-surface">
-                    {selectedPackage.name}
+                    {displayPackage.name}
                   </p>
 
-                  {selectedPackage.featured && (
+                  {displayPackage.featured && (
                     <span className="font-label-sm text-[10px] uppercase tracking-widest text-secondary">
-                      Most Popular
+                      {translate("mostPopular")}
                     </span>
                   )}
                 </div>
 
-                {selectedPackage.description && (
+                {displayPackage.description && (
                   <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
-                    {selectedPackage.description}
+                    {displayPackage.description}
                   </p>
                 )}
 
                 <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
                   {Number(
-                    selectedPackage.durationHours,
+                    displayPackage.durationHours,
                   ) > 0 && (
                     <span>
-                      {selectedPackage.durationHours} jam liputan
+                      {displayPackage.durationHours} {translate("hoursCoverage")}
                     </span>
                   )}
 
                   <span>
-                    {selectedPackage.bookingSubjectType ===
+                    {displayPackage.bookingSubjectType ===
                     "couple"
-                      ? "Couple / berpasangan"
-                      : selectedPackage.bookingSubjectType ===
+                      ? translate("subjectCouple")
+                      : displayPackage.bookingSubjectType ===
                           "individual"
-                        ? "Individual"
-                        : "Jenis subjek belum dikategorikan"}
+                        ? translate("subjectIndividual")
+                        : translate("subjectUnknown")}
                   </span>
                 </div>
               </div>
 
               <div className="shrink-0 sm:text-right">
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Harga Paket
+                  {translate("packagePrice")}
                 </p>
 
                 <p className="mt-1 font-headline-md text-headline-md text-primary">
                   {getPackagePrice(
-                    selectedPackage,
+                    displayPackage,
                   )}
                 </p>
               </div>
@@ -363,7 +370,7 @@ export default function BookConfirm({
               0 && (
               <div className="mt-6 border-t border-outline-variant/25 pt-5">
                 <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                  Layanan Termasuk
+                  {translate("includedServices")}
                 </p>
 
                 <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
@@ -394,7 +401,7 @@ export default function BookConfirm({
           </>
         ) : (
           <p className="font-body-md text-body-md text-error">
-            Paket belum dipilih.
+            {translate("packageRequired")}
           </p>
         )}
       </section>
@@ -403,27 +410,27 @@ export default function BookConfirm({
       <section className="border-b border-outline-variant/35 py-7">
         <SectionHeading
           icon="event"
-          title="Detail Acara"
-          description="Jadwal, lokasi, dan biaya perjalanan untuk booking ini."
+          title={translate("eventDetails")}
+          description={translate("eventDetailsDescription")}
         />
 
         <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
           <DetailRow
-            label="Tanggal Acara"
+            label={translate("eventDate")}
             value={formatEventDate(
               eventData.eventDate,
             )}
           />
 
           <DetailRow
-            label="Jam Acara"
+            label={translate("eventTime")}
             value={getEventTimeLabel(
               eventData,
             )}
           />
 
           <DetailRow
-            label="Lokasi Acara"
+            label={translate("eventLocation")}
             value={getDisplayValue(
               eventLocation.venueName,
             )}
@@ -431,7 +438,7 @@ export default function BookConfirm({
           />
 
           <DetailRow
-            label="Biaya Perjalanan"
+            label={translate("accommodationCost")}
             value={formatRupiah(
               travelCharge,
             )}
@@ -444,13 +451,13 @@ export default function BookConfirm({
       <section className="border-b border-outline-variant/35 py-7">
         <SectionHeading
           icon="person"
-          title="Data Pemesan"
-          description="Informasi yang digunakan tim untuk menghubungi Anda."
+          title={translate("personalDetails")}
+          description={translate("personalDetailsDescription")}
         />
 
         <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
           <DetailRow
-            label="Nama Lengkap"
+            label={translate("fullName")}
             value={getDisplayValue(
               personalData.fullName,
             )}
@@ -458,7 +465,7 @@ export default function BookConfirm({
 
           {showPartnerName && (
             <DetailRow
-              label="Nama Pasangan"
+              label={translate("partnerName")}
               value={getDisplayValue(
                 personalData.partnerName,
               )}
@@ -474,7 +481,7 @@ export default function BookConfirm({
           />
 
           <DetailRow
-            label="Nomor Telepon"
+            label={translate("phoneNumber")}
             value={getDisplayValue(
               personalData.phone,
             )}
@@ -495,12 +502,12 @@ export default function BookConfirm({
       <section className="border-b border-outline-variant/35 py-7">
         <SectionHeading
           icon="auto_awesome"
-          title="Vision & Catatan"
-          description="Konsep atau kebutuhan tambahan yang ingin disampaikan kepada tim."
+          title={translate("visionNotes")}
+          description={translate("visionNotesDescription")}
         />
 
         <DetailRow
-          label="Catatan Acara"
+          label={translate("eventNotes")}
           value={getDisplayValue(
             eventData.vision,
           )}

@@ -12,8 +12,6 @@ import CrewAssignment from "./sections/CrewAssignment";
 import BillingPayment from "./sections/BillingPayment";
 import FinalSettlement from "./sections/FinalSettlement";
 
-const REQUIRED_CREW_COUNT = 1;
-
 const BOOKING_STATUS = {
   pending: {
     label: "Pending Preparation",
@@ -64,6 +62,16 @@ function getInitialPreparation(booking) {
     crewCompleted: completed,
     billingCompleted: completed,
   };
+}
+
+function getRequiredCrewCount(booking) {
+  const configuredCount = Number(
+    booking?.package?.requiredCrewCount ?? booking?.package?.crewCount,
+  );
+
+  return Number.isInteger(configuredCount) && configuredCount > 0
+    ? configuredCount
+    : 1;
 }
 
 function createCrewDraft(booking, existingAssignment) {
@@ -181,6 +189,7 @@ export default function ScheduleOrder({
   ] = useState(null);
 
   const isPreparationMode = booking.status === "pending";
+  const requiredCrewCount = getRequiredCrewCount(booking);
 
   useEffect(() => {
     setPreparation(getInitialPreparation(booking));
@@ -227,7 +236,7 @@ export default function ScheduleOrder({
       ? existingAssignment.crewIds
       : [];
 
-  const hasCrewAssignment = displayedCrewIds.length >= REQUIRED_CREW_COUNT;
+  const hasCrewAssignment = displayedCrewIds.length === requiredCrewCount;
 
   const hasDepositInvoice =
     Boolean(depositDraft) && Number(depositDraft.amount) > 0;
@@ -350,7 +359,7 @@ export default function ScheduleOrder({
 
     if (!preparation.crewCompleted && !hasCrewAssignment) {
       setActionError(
-        `Select ${REQUIRED_CREW_COUNT} crew members before confirming this step.`,
+        `Select exactly ${requiredCrewCount} crew members before confirming this step.`,
       );
 
       return;
@@ -826,7 +835,7 @@ export default function ScheduleOrder({
             enabled={crewAssignmentEnabled}
             readOnly={!isPreparationMode || preparation.crewCompleted}
             showOnlySelected={!isPreparationMode}
-            requiredCrewCount={REQUIRED_CREW_COUNT}
+            requiredCrewCount={requiredCrewCount}
             allowFreelance={
               crewAssignmentEnabled &&
               !["completed", "cancelled"].includes(booking.status)
@@ -845,7 +854,7 @@ export default function ScheduleOrder({
                   ? "Crew confirmed locally. Billing preparation is now unlocked."
                   : hasCrewAssignment
                     ? "Confirm the selected production team."
-                    : `Select ${REQUIRED_CREW_COUNT} crew members before confirming this step.`
+                    : `Select exactly ${requiredCrewCount} crew members before confirming this step.`
               }
               disabled={!preparation.crewCompleted && !hasCrewAssignment}
               onClick={handleToggleCrew}

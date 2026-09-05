@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import PersonalDetail from "./phases/PersonalDetail";
+import { useLanguage } from "@/context/LanguageContext";
 import EventInfo from "./phases/EventInfo";
 import PackageOption from "./phases/PackageOption";
 import BookConfirm from "./phases/BookConfirm";
@@ -12,13 +13,6 @@ import {
   normalizeEventLocation,
 } from "@/lib/location";
 
-const phases = [
-  { id: "package", label: "Packages" },
-  { id: "event", label: "Event Info" },
-  { id: "personal", label: "Personal Details" },
-  { id: "confirm", label: "Confirm" },
-];
-
 function normalizeInitialPackageId(value) {
   if (Array.isArray(value)) {
     return String(value[0] ?? "").trim();
@@ -27,7 +21,72 @@ function normalizeInitialPackageId(value) {
   return String(value ?? "").trim();
 }
 
+function normalizeInitialPackageIds(value) {
+  const values = Array.isArray(value) ? value : [value];
+
+  return Array.from(
+    new Set(values.map((item) => String(item ?? "").trim()).filter(Boolean)),
+  );
+}
+
+function createEventData() {
+  return {
+    eventDate: "",
+    startTime: "",
+    endTime: "",
+    endTimeDayOffset: 0,
+    location: createEventLocation(),
+    vision: "",
+  };
+}
+
+function getPackageSessions(packageItem) {
+  if (Array.isArray(packageItem?.sessions) && packageItem.sessions.length > 0) {
+    return packageItem.sessions.map((session, index) => ({
+      id: String(session.id || `session-${index + 1}`),
+      name: String(session.name || `Session ${index + 1}`),
+      durationHours: Number(session.durationHours) || packageItem.durationHours || 0,
+    }));
+  }
+
+  if (packageItem?.packageCategoryId === "bundle") {
+    return [
+      { id: "pre-wedding", name: "Pre-Wedding", durationHours: packageItem.durationHours },
+      { id: "wedding", name: "Wedding", durationHours: packageItem.durationHours },
+    ];
+  }
+
+  return [
+    {
+      id: "main",
+      name: packageItem?.name || "Event",
+      durationHours: Number(packageItem?.durationHours) || 0,
+    },
+  ];
+}
+
+function createEventEntries(packageItems, previousEvents = []) {
+  return packageItems.flatMap((packageItem) =>
+    getPackageSessions(packageItem).map((session) => {
+      const key = `${packageItem.id}:${session.id}`;
+      const previous = previousEvents.find(
+        (eventItem) => `${eventItem.packageId}:${eventItem.sessionId}` === key,
+      );
+
+      return {
+        packageId: packageItem.id,
+        sessionId: session.id,
+        sessionName: session.name,
+        durationHours: session.durationHours,
+        data: previous?.data ?? createEventData(),
+      };
+    }),
+  );
+}
+
 function createInitialFormData(initialPackageId) {
+  const packageIds = normalizeInitialPackageIds(initialPackageId);
+
   return {
     personal: {
       fullName: "",
@@ -35,17 +94,16 @@ function createInitialFormData(initialPackageId) {
       email: "",
       phone: "",
       instagram: "",
+      useMyData: false,
     },
-    event: {
-      eventDate: "",
-      startTime: "",
-      endTime: "",
-      endTimeDayOffset: 0,
-      location: createEventLocation(),
-      vision: "",
-    },
+    event: createEventData(),
+    events: packageIds.map((packageId) => ({
+      packageId,
+      data: createEventData(),
+    })),
     package: {
-      packageId: normalizeInitialPackageId(initialPackageId),
+      packageId: packageIds[0] ?? "",
+      packageIds,
     },
   };
 }
@@ -66,8 +124,16 @@ export default function BookingProcess({
   packagesError = null,
   submitStatus = "idle",
   submitError = null,
+  accountData = null,
   onSubmitBooking,
 }) {
+  const { translate } = useLanguage();
+  const phases = [
+    { id: "package", label: translate("stepPackages") },
+    { id: "event", label: translate("stepEventInfo") },
+    { id: "personal", label: translate("stepPersonalDetails") },
+    { id: "confirm", label: translate("stepConfirm") },
+  ];
   const [currentPhase, setCurrentPhase] = useState(0);
   const [formData, setFormData] = useState(() =>
     createInitialFormData(initialPackageId)
@@ -84,10 +150,14 @@ export default function BookingProcess({
   const phaseFinishTimerRef = useRef(null);
 
   useEffect(() => {
-    const nextPackageId = normalizeInitialPackageId(initialPackageId);
+    const nextPackageIds = normalizeInitialPackageIds(initialPackageId);
+    const nextPackageId = nextPackageIds[0] ?? "";
 
     setFormData((previousData) => {
-      if (previousData.package.packageId === nextPackageId) {
+      if (
+        previousData.package.packageId === nextPackageId &&
+        previousData.package.packageIds?.join("|") === nextPackageIds.join("|")
+      ) {
         return previousData;
       }
 
@@ -96,7 +166,14 @@ export default function BookingProcess({
         package: {
           ...previousData.package,
           packageId: nextPackageId,
+          packageIds: nextPackageIds,
         },
+        events: nextPackageIds.map((packageId) => ({
+          packageId,
+          data:
+            previousData.events?.find((item) => item.packageId === packageId)?.data ??
+            createEventData(),
+        })),
       };
     });
   }, [initialPackageId]);
@@ -125,13 +202,35 @@ export default function BookingProcess({
     (currentPhase / (phases.length - 1)) * 100
   }%`;
 
-  const selectedPackage = useMemo(() => {
-    return (
-      packageOptions.find(
-        (item) => item.id === formData.package.packageId
-      ) ?? null
-    );
-  }, [formData.package.packageId, packageOptions]);
+  const selectedPackageIds = formData.package.packageIds ??
+    (formData.package.packageId ? [formData.package.packageId] : []);
+
+  const selectedPackages = selectedPackageIds
+    .map((packageId) => packageOptions.find((item) => item.id === packageId))
+    .filter(Boolean);
+
+  const selectedPackage = selectedPackages[0] ?? null;
+  const selectedPackageKey = selectedPackageIds.join("|");
+
+  useEffect(() => {
+    setFormData((previousData) => {
+      const nextEvents = createEventEntries(selectedPackages, previousData.events);
+      const previousKey = previousData.events
+        .map((eventItem) => `${eventItem.packageId}:${eventItem.sessionId}`)
+        .join("|");
+      const nextKey = nextEvents
+        .map((eventItem) => `${eventItem.packageId}:${eventItem.sessionId}`)
+        .join("|");
+
+      if (previousKey === nextKey) return previousData;
+
+      return {
+        ...previousData,
+        events: nextEvents,
+        event: nextEvents[0]?.data ?? createEventData(),
+      };
+    });
+  }, [selectedPackageKey, packageOptions]);
 
   /*
    * Backward compatibility:
@@ -211,58 +310,58 @@ export default function BookingProcess({
     const phone = formData.personal.phone.trim();
 
     if (!fullName) {
-      nextErrors.fullName = "Full name is required.";
+      nextErrors.fullName = translate("fullNameRequired");
     } else if (fullName.length < 2) {
       nextErrors.fullName =
-        "Full name must contain at least 2 characters.";
+        translate("fullNameMinLength");
     }
 
     if (!email) {
-      nextErrors.email = "Email is required.";
+      nextErrors.email = translate("emailRequired");
     } else if (!emailPattern.test(email)) {
-      nextErrors.email = "Please enter a valid email address.";
+      nextErrors.email = translate("validEmail");
     }
 
     if (!phone) {
-      nextErrors.phone = "Phone number is required.";
+      nextErrors.phone = translate("phoneRequired");
     } else if (!phonePattern.test(phone)) {
-      nextErrors.phone = "Please enter a valid phone number.";
+      nextErrors.phone = translate("validPhone");
     }
 
     return nextErrors;
   };
 
-  const getEventErrors = () => {
+  const getEventErrors = (eventData = formData.event) => {
     const nextErrors = {};
     const today = getLocalToday();
 
-    if (!formData.event.eventDate) {
-      nextErrors.eventDate = "Preferred date is required.";
-    } else if (formData.event.eventDate < today) {
+    if (!eventData.eventDate) {
+      nextErrors.eventDate = translate("eventDateRequired");
+    } else if (eventData.eventDate < today) {
       nextErrors.eventDate =
-        "Preferred date cannot be in the past.";
+        translate("eventDatePast");
     }
 
     if (
-      formData.event.eventDate &&
-      !formData.event.startTime
+      eventData.eventDate &&
+      !eventData.startTime
     ) {
       nextErrors.startTime =
-        "Jam mulai acara wajib dipilih.";
+        translate("startTimeRequired");
     }
 
     const eventLocation = normalizeEventLocation(
-      formData.event.location,
+      eventData.location,
     );
 
     if (!eventLocation.venueName.trim()) {
       nextErrors.location =
-        "Venue atau lokasi acara wajib diisi.";
+        translate("venueRequired");
     } else if (
       !isValidCoordinates(eventLocation.coordinates)
     ) {
       nextErrors.location =
-        "Pilih titik lokasi event pada peta.";
+        translate("mapLocationRequired");
     }
 
     return nextErrors;
@@ -271,11 +370,11 @@ export default function BookingProcess({
   const getPackageErrors = () => {
     const nextErrors = {};
 
-    if (!formData.package.packageId) {
-      nextErrors.packageId = "Please select a package.";
-    } else if (!selectedPackage) {
+    if (selectedPackageIds.length === 0) {
+      nextErrors.packageId = translate("packageRequired");
+    } else if (selectedPackages.length !== selectedPackageIds.length) {
       nextErrors.packageId =
-        "The selected package is no longer available.";
+        translate("packageUnavailableError");
     }
 
     return nextErrors;
@@ -360,7 +459,12 @@ export default function BookingProcess({
 
     if (currentPhase === 1) {
       section = "event";
-      nextErrors = getEventErrors();
+      nextErrors = Object.fromEntries(
+        formData.events.map((eventItem, index) => {
+          const eventErrors = getEventErrors(eventItem.data);
+          return [String(index), eventErrors];
+        }),
+      );
     }
 
     if (currentPhase === 2) {
@@ -377,12 +481,23 @@ export default function BookingProcess({
       [section]: nextErrors,
     }));
 
+    if (section === "event") {
+      return !Object.values(nextErrors).some(
+        (eventErrors) => Object.keys(eventErrors).length > 0,
+      );
+    }
+
     return Object.keys(nextErrors).length === 0;
   };
 
   const validateEntireForm = () => {
     const personalErrors = getPersonalErrors();
-    const eventErrors = getEventErrors();
+    const eventErrors = Object.fromEntries(
+      formData.events.map((eventItem, index) => [
+        String(index),
+        getEventErrors(eventItem.data),
+      ]),
+    );
     const packageErrors = getPackageErrors();
 
     const allErrors = {
@@ -398,7 +513,11 @@ export default function BookingProcess({
       return false;
     }
 
-    if (Object.keys(eventErrors).length > 0) {
+    if (
+      Object.values(eventErrors).some(
+        (errorsForEvent) => Object.keys(errorsForEvent).length > 0,
+      )
+    ) {
       transitionToPhase(1);
       return false;
     }
@@ -438,6 +557,53 @@ export default function BookingProcess({
     );
   };
 
+  const handlePackageSelection = (packageIds) => {
+    const normalizedIds = normalizeInitialPackageIds(packageIds);
+
+    setFormData((previousData) => {
+      const packagesForSelection = normalizedIds
+        .map((packageId) => packageOptions.find((item) => item.id === packageId))
+        .filter(Boolean);
+      const events = createEventEntries(packagesForSelection, previousData.events);
+
+      return {
+        ...previousData,
+        package: {
+          ...previousData.package,
+          packageId: normalizedIds[0] ?? "",
+          packageIds: normalizedIds,
+        },
+        events,
+        event: events[0]?.data ?? createEventData(),
+      };
+    });
+
+    setErrors((previousErrors) => ({
+      ...previousErrors,
+      package: {},
+      event: {},
+    }));
+  };
+
+  const updateEventData = (index, values) => {
+    setFormData((previousData) => {
+      const events = previousData.events.map((eventItem, eventIndex) =>
+        eventIndex === index
+          ? {
+              ...eventItem,
+              data: { ...eventItem.data, ...values },
+            }
+          : eventItem,
+      );
+
+      return {
+        ...previousData,
+        events,
+        event: events[0]?.data ?? previousData.event,
+      };
+    });
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     if (!validateEntireForm()) return;
@@ -464,6 +630,7 @@ export default function BookingProcess({
     await onSubmitBooking({
       formData,
       selectedPackage,
+      selectedPackages,
     });
   };
 
@@ -528,30 +695,44 @@ export default function BookingProcess({
           {currentPhase === 0 && (
             <PackageOption
               selectedPackageId={formData.package.packageId}
+              selectedPackageIds={selectedPackageIds}
               packageOptions={packageOptions}
               loading={packagesLoading}
               error={packagesError}
               errors={errors.package ?? {}}
-              onChange={(packageId) =>
-                updateFormSection("package", { packageId })
-              }
+              onChange={handlePackageSelection}
             />
           )}
 
           {currentPhase === 1 && (
-            <EventInfo
-              data={formData.event}
-              errors={errors.event ?? {}}
-              selectedPackage={selectedPackage}
-              onChange={(values) =>
-                updateFormSection("event", values)
-              }
-            />
+            <div className="space-y-stack-lg">
+              {formData.events.map((eventItem, index) => {
+                const packageItem = selectedPackages.find(
+                  (item) => item.id === eventItem.packageId,
+                );
+
+                if (!packageItem) return null;
+
+                return (
+                <EventInfo
+                  key={`${eventItem.packageId}:${eventItem.sessionId}`}
+                  data={eventItem.data}
+                  errors={errors.event?.[String(index)] ?? {}}
+                  selectedPackage={packageItem}
+                  sessionName={eventItem.sessionName}
+                  sessionIndex={index}
+                  packageIndex={index}
+                  onChange={(values) => updateEventData(index, values)}
+                />
+                );
+              })}
+            </div>
           )}
 
           {currentPhase === 2 && (
             <PersonalDetail
               data={formData.personal}
+              accountData={accountData}
               errors={errors.personal ?? {}}
               showPartnerName={showPartnerName}
               vision={formData.event.vision ?? ""}
@@ -569,6 +750,7 @@ export default function BookingProcess({
               <BookConfirm
                 formData={formData}
                 selectedPackage={selectedPackage}
+                selectedPackages={selectedPackages}
                 submitStatus={submitStatus}
               />
 
@@ -595,7 +777,7 @@ export default function BookingProcess({
               }
               className="flex items-center gap-2 font-label-md text-label-md text-on-surface-variant transition-all hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ← Previous
+              ← {translate("previousStep")}
             </button>
           ) : (
             <div />
@@ -613,7 +795,7 @@ export default function BookingProcess({
               }
               className="rounded-lg bg-primary px-10 py-3 font-label-md text-label-md text-on-primary transition-all hover:bg-opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Next Step →
+              {translate("next")} →
             </button>
           ) : (
             <button

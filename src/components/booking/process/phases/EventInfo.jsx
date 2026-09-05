@@ -9,12 +9,12 @@ import {
 import CalendarSchedule from "@/components/admin/schedules/calendar/CalendarSchedules";
 
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 import { useCollection } from "@/hooks/useCollection";
 
 import {
   AGENCY_LOCATION,
-  DISTANCE_CHARGE_POLICY,
   createEventLocation,
   formatDistanceKm,
   isValidCoordinates,
@@ -170,9 +170,13 @@ export default function EventInfo({
   data,
   errors = {},
   selectedPackage = null,
+  sessionName = "",
+  sessionIndex = 0,
+  packageIndex = 0,
   onChange,
 }) {
   const db = useDb();
+  const { translate, language } = useLanguage();
 
   const {
     openOverlay,
@@ -436,12 +440,15 @@ export default function EventInfo({
       eventLocation.venueName,
     coordinates =
       eventLocation.coordinates,
+    accommodationRequest =
+      eventLocation.accommodationRequest ?? 0,
   } = {}) => {
     onChange?.({
       location:
         createEventLocation({
           venueName,
           coordinates,
+          accommodationRequest,
         }),
     });
 
@@ -650,8 +657,14 @@ export default function EventInfo({
     <div>
       <header className="mb-8">
         <p className="font-label-sm text-[10px] uppercase tracking-[0.24em] text-secondary">
-          Event Information
+          {translate("eventInformation")} {sessionIndex + 1}
         </p>
+
+        {(sessionName || selectedPackage?.name) && (
+          <p className="mt-2 font-label-md text-label-md text-on-surface-variant">
+            {sessionName || selectedPackage.name}
+          </p>
+        )}
 
        
       </header>
@@ -659,16 +672,16 @@ export default function EventInfo({
       {/* DATE & TIME */}
       <section>
         <SubsectionHeading
-          eyebrow="Schedule"
-          title="Tanggal & Waktu"
-          description="Pilih tanggal acara terlebih dahulu. Setelah tanggal dipilih, tentukan jam mulai acara."
+          eyebrow={translate("schedule")}
+          title={translate("dateTime")}
+          description={translate("chooseDateDescription")}
         />
 
         <div className="max-w-2xl">
           <div className="flex min-h-14 items-center justify-between gap-5 border-b border-outline py-3">
             <div className="min-w-0">
               <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                Tanggal Acara
+                {translate("eventDate")}
               </p>
 
               {selectedDate ? (
@@ -685,7 +698,7 @@ export default function EventInfo({
                 </>
               ) : (
                 <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                  Belum dipilih
+                  {translate("notSelected")}
                 </p>
               )}
             </div>
@@ -698,8 +711,8 @@ export default function EventInfo({
               className="shrink-0 font-label-sm text-label-sm font-semibold text-secondary transition-colors hover:text-primary"
             >
               {selectedDate
-                ? "Ubah Tanggal"
-                : "Pilih Tanggal"}
+                ? translate("changeDate")
+                : translate("chooseDate")}
             </button>
           </div>
 
@@ -712,13 +725,13 @@ export default function EventInfo({
           {availabilityStatus ===
             "selected" && (
             <p className="mt-2 font-label-sm text-label-sm text-secondary">
-              Tanggal tersedia dan sudah dipilih.
+              {translate("dateAvailable")}
             </p>
           )}
 
           {schedulesError && (
             <p className="mt-2 font-label-sm text-label-sm text-error">
-              Data jadwal gagal dimuat. Silakan coba kembali.
+              {translate("scheduleLoadError")}
             </p>
           )}
 
@@ -729,7 +742,7 @@ export default function EventInfo({
                   htmlFor="event-start-time"
                   className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant"
                 >
-                  Jam Mulai
+                  {translate("startTime")}
                 </label>
 
                 <div className="mt-2 flex w-full min-w-0 border-b border-outline py-3 focus-within:border-primary">
@@ -756,7 +769,7 @@ export default function EventInfo({
 
               <div>
                 <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                  Selesai
+                  {translate("endTime")}
                 </p>
 
                 <div className="mt-2 min-h-12 border-b border-outline py-3">
@@ -773,19 +786,19 @@ export default function EventInfo({
                             data.endTimeDayOffset ||
                               0,
                           ) > 0
-                            ? " · hari berikutnya"
+                            ? ` · ${translate("nextDay")}`
                             : ""
                         }`
                       : durationHours > 0
-                        ? "Pilih jam mulai"
-                        : "Durasi paket belum tersedia"}
+                        ? translate("chooseStartTime")
+                        : translate("packageDurationUnavailable")}
                   </p>
                 </div>
 
                 <p className="mt-2 font-body-sm text-body-sm text-on-surface-variant/70">
                   {durationHours > 0
-                    ? `Durasi paket ${durationHours} jam.`
-                    : "Jam selesai akan dihitung setelah durasi paket tersedia."}
+                    ? `${translate("packageDuration")} ${durationHours} ${language === "en" ? "hours" : "jam"}.`
+                    : translate("endTimeDescription")}
                 </p>
               </div>
             </div>
@@ -798,9 +811,9 @@ export default function EventInfo({
       {/* LOCATION */}
       <section>
         <SubsectionHeading
-          eyebrow="Venue"
-          title="Lokasi Acara"
-          description="Isi nama venue atau alamat. Tombol Cari Lokasi bersifat opsional, kamu juga bisa memilih titik langsung pada peta."
+          eyebrow={translate("venue")}
+          title={translate("eventLocation")}
+          description={translate("locationDescription")}
         />
 
         <div className="max-w-3xl">
@@ -808,14 +821,14 @@ export default function EventInfo({
             htmlFor="event-location-search"
             className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant"
           >
-            Nama Venue / Alamat
+            {translate("venueAddress")}
           </label>
 
           <div className="mt-2 flex items-end gap-3 border-b border-outline focus-within:border-primary">
             <input
               id="event-location-search"
               className="min-w-0 flex-1 border-0 bg-transparent px-0 py-3 font-body-md text-body-md text-on-surface outline-none"
-              placeholder="Contoh: Hotel Savoy Homann Bandung"
+              placeholder={translate("venuePlaceholder")}
               type="search"
               autoComplete="street-address"
               value={
@@ -846,13 +859,13 @@ export default function EventInfo({
             >
               {locationSearchStatus ===
               "loading"
-                ? "Mencari..."
-                : "Cari Lokasi"}
+                ? translate("searching")
+                : translate("searchLocation")}
             </button>
           </div>
 
           <p className="mt-2 font-body-sm text-body-sm text-on-surface-variant/70">
-            Nama venue boleh berupa nama bebas. Yang wajib adalah nama lokasi terisi dan titik pada peta sudah dipilih.
+            {translate("locationHelp")}
           </p>
 
           {locationSearchStatus ===
@@ -861,7 +874,7 @@ export default function EventInfo({
               eventLocation.coordinates,
             ) && (
               <p className="mt-2 font-label-sm text-label-sm text-secondary">
-                Lokasi ditemukan. Titik peta sudah disesuaikan.
+                {translate("locationFound")}
               </p>
             )}
 
@@ -879,7 +892,7 @@ export default function EventInfo({
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                Titik Peta
+                {translate("mapPoint")}
               </p>
 
         
@@ -899,8 +912,8 @@ export default function EventInfo({
               >
                 {geolocationStatus ===
                 "loading"
-                  ? "Mencari lokasi..."
-                  : "Gunakan lokasi saya"}
+                  ? translate("searching")
+                  : translate("useMyLocation")}
               </button>
 
               {isValidCoordinates(
@@ -915,7 +928,7 @@ export default function EventInfo({
                   }
                   className="font-label-sm text-label-sm text-on-surface-variant transition-colors hover:text-error"
                 >
-                  Hapus titik
+                  {translate("removePoint")}
                 </button>
               )}
             </div>
@@ -933,19 +946,54 @@ export default function EventInfo({
             }
           />
 
-          {/* Clean travel summary without boxed cards */}
+          <div className="mt-5 max-w-md">
+            <label
+              htmlFor={`accommodation-request-${packageIndex}-${sessionIndex}`}
+              className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant"
+            >
+              {translate("accommodationRequest")}
+            </label>
+
+            <div className="mt-2 flex items-center gap-3 border-b border-outline py-3 focus-within:border-primary">
+              <span className="font-body-md text-body-md text-on-surface-variant">
+                Rp
+              </span>
+              <input
+                id={`accommodation-request-${packageIndex}-${sessionIndex}`}
+                type="text"
+                inputMode="numeric"
+                value={
+                  eventLocation.accommodationRequest
+                    ? new Intl.NumberFormat("id-ID").format(
+                        eventLocation.accommodationRequest,
+                      )
+                    : ""
+                }
+                onChange={(event) => {
+                  const numericValue = event.target.value.replace(/\D/g, "");
+                  updateEventLocation({
+                    accommodationRequest: Number(numericValue) || 0,
+                  });
+                }}
+                placeholder="0"
+                className="w-full border-0 bg-transparent p-0 font-body-md text-body-md text-on-surface outline-none"
+              />
+            </div>
+          </div>
+
+            {/* Accommodation summary uses the existing distance-charge policy. */}
           <div className="mt-5 flex flex-col gap-4 border-b border-outline-variant/35 pb-5 sm:flex-row sm:items-start sm:gap-10">
             <div>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Jarak dari {AGENCY_LOCATION.name}
+                {translate("distanceFrom")} {AGENCY_LOCATION.name}
               </p>
 
               <p className="mt-1 font-label-md text-label-md text-on-surface">
                 {distanceLabel
                   ? `${distanceLabel} km`
                   : agencyConfigured
-                    ? "Menunggu lokasi"
-                    : "Agency belum dikonfigurasi"}
+                    ? translate("waitingLocation")
+                    : translate("agencyNotConfigured")}
               </p>
             </div>
 
@@ -953,7 +1001,7 @@ export default function EventInfo({
 
             <div>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Biaya Perjalanan
+                {translate("accommodationCost")}
               </p>
 
               <p
@@ -969,33 +1017,9 @@ export default function EventInfo({
             </div>
           </div>
 
-          {distanceLabel && (
-            <p className="mt-3 max-w-3xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant/75">
-              Gratis hingga{" "}
-              <span className="font-medium text-on-surface">
-                {DISTANCE_CHARGE_POLICY.freeDistanceKm} km
-              </span>
-              . Setelah itu dikenakan{" "}
-              <span className="font-medium text-on-surface">
-                {formatCurrency(
-                  DISTANCE_CHARGE_POLICY.chargePerStep,
-                  DISTANCE_CHARGE_POLICY.currency,
-                )}
-              </span>{" "}
-              dan bertambah{" "}
-              <span className="font-medium text-on-surface">
-                {formatCurrency(
-                  DISTANCE_CHARGE_POLICY.chargePerStep,
-                  DISTANCE_CHARGE_POLICY.currency,
-                )}
-              </span>{" "}
-              untuk setiap kelipatan{" "}
-              <span className="font-medium text-on-surface">
-                {DISTANCE_CHARGE_POLICY.stepKm} km
-              </span>{" "}
-              berikutnya. Jarak dihitung secara garis lurus.
-            </p>
-          )}
+          <p className="mt-3 max-w-3xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant/75">
+            {translate("accommodationPolicyShort")}
+          </p>
 
           {errors.location && (
             <p className="mt-3 font-label-sm text-label-sm text-error">

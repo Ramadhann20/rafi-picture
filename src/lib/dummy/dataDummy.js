@@ -440,6 +440,18 @@ export const PACKAGES = [
       "Large & Small Frames",
       "Google Drive & Flashdisk",
     ],
+    sessions: [
+      {
+        id: "pre-wedding",
+        name: "Pre-Wedding",
+        durationHours: 8,
+      },
+      {
+        id: "wedding",
+        name: "Wedding",
+        durationHours: 8,
+      },
+    ],
     price: 6299000,
     durationHours: 8,
     status: "active",

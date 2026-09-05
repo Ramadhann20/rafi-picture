@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function LoginForm({ handleLogin, loading = false }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { translate } = useLanguage();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -20,13 +22,13 @@ export default function LoginForm({ handleLogin, loading = false }) {
           className="block font-label-sm text-label-sm text-on-surface-variant"
           htmlFor="login-email"
         >
-          Email Address
+          {translate("emailAddress")}
         </label>
 
         <input
           id="login-email"
           className="auth-input h-11 w-full rounded-xl border border-outline-variant/50 bg-surface px-3.5 py-0 font-body-md transition-colors focus:border-primary focus:placeholder-transparent focus:outline-none"
-          placeholder="name@example.com"
+          placeholder={translate("emailPlaceholder")}
           type="email"
           autoComplete="email"
           required
@@ -42,14 +44,14 @@ export default function LoginForm({ handleLogin, loading = false }) {
             className="block font-label-sm text-label-sm text-on-surface-variant"
             htmlFor="login-password"
           >
-            Password
+            {translate("password")}
           </label>
 
           <a
             className="font-label-sm text-label-sm text-primary/80 underline-offset-4 transition-colors hover:text-primary hover:underline"
             href="#"
           >
-            Forgot Password?
+            {translate("forgotPassword")}
           </a>
         </div>
 
@@ -78,7 +80,7 @@ export default function LoginForm({ handleLogin, loading = false }) {
           className="font-label-sm text-label-sm text-on-surface-variant"
           htmlFor="remember"
         >
-          Keep me signed in
+          {translate("keepSignedIn")}
         </label>
       </div>
 
@@ -87,7 +89,7 @@ export default function LoginForm({ handleLogin, loading = false }) {
         type="submit"
         disabled={loading}
       >
-        {loading ? "Signing In..." : "Sign In"}
+        {loading ? translate("signingIn") : translate("signIn")}
       </button>
     </form>
   );

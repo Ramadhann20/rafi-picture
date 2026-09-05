@@ -13,26 +13,27 @@ import ProfilePhotoEditor from "@/components/profile/ProfilePhotoEditor";
 import ProfileMenu from "./ProfileMenu";
 
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 
 const navLinks = [
   {
-    label: "Beranda",
+    key: "home",
     href: "/",
     icon: "dashboard",
   },
   {
-    label: "Portofolio",
+    key: "portfolio",
     href: "/portfolio",
     icon: "photo_camera",
   },
   {
-    label: "Paket",
+    key: "packages",
     href: "/packages",
     icon: "shopping_bag",
   },
   {
-    label: "Pemesanan",
+    key: "booking",
     href: "/booking",
     icon: "calendar_month",
   },
@@ -54,6 +55,11 @@ export default function Navbar() {
   } = useOverlay();
 
   const pathname = usePathname();
+  const {
+    language,
+    setLanguage,
+    translate,
+  } = useLanguage();
 
   const [isScrolled, setIsScrolled] =
     useState(false);
@@ -180,13 +186,25 @@ export default function Navbar() {
                         : "text-on-surface-variant hover:text-primary"
                     }`}
                   >
-                    {item.label}
+                    {translate(item.key)}
                   </Link>
                 );
               })}
           </div>
 
           <div className="hidden items-center md:flex">
+            <label className="mr-4 flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+              <span className="sr-only">{translate("language")}</span>
+              <select
+                value={language}
+                onChange={(event) => setLanguage(event.target.value)}
+                className="rounded-md border border-outline-variant bg-transparent px-2 py-1.5 text-on-surface outline-none focus:border-primary"
+                aria-label={translate("language")}
+              >
+                <option value="en">{translate("english")}</option>
+                <option value="id">{translate("indonesian")}</option>
+              </select>
+            </label>
             {loading || profileLoading ? (
               <SkeletonLoader className="h-12 w-[160px] rounded-lg" />
             ) : user ? (
@@ -200,7 +218,7 @@ export default function Navbar() {
                 href="/authentication"
                 className="rounded-lg bg-primary px-6 py-2.5 font-label-md text-on-primary transition-all hover:opacity-90 active:scale-95"
               >
-                Login
+                {translate("login")}
               </Link>
             )}
           </div>
@@ -401,6 +419,8 @@ function GuestProfile() {
 }
 
 function MobileNavLink({ item, pathname }) {
+  const { translate } = useLanguage();
+
   const isActive =
     item.href === "/"
       ? pathname === "/"
@@ -427,7 +447,7 @@ function MobileNavLink({ item, pathname }) {
       </span>
 
       <span className="flex-1 font-label-md text-label-md">
-        {item.label}
+        {translate(item.key)}
       </span>
 
       {isActive && (

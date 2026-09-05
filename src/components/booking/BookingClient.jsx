@@ -205,6 +205,16 @@ function normalizePackageRecord(packageRecord) {
     priceLabel:
       packageRecord?.priceLabel ?? idrFormatter.format(price),
     features,
+    sessions: Array.isArray(packageRecord?.sessions)
+      ? packageRecord.sessions
+          .map((session, index) => ({
+            id: String(session?.id || `session-${index + 1}`),
+            name: String(session?.name || `Session ${index + 1}`),
+            durationHours:
+              Number(session?.durationHours) || Number(packageRecord?.durationHours) || 0,
+          }))
+          .filter((session) => session.name)
+      : [],
     badge:
       packageRecord?.badge ??
       (packageRecord?.featured ? "Unggulan" : null),
@@ -522,6 +532,7 @@ export default function BookingClient({ packageId = null }) {
   const buildBookingPayload = ({
     formData,
     selectedPackage,
+    selectedPackages = [],
   }) => {
     if (!userId) {
       throw new Error(
@@ -544,6 +555,46 @@ export default function BookingClient({ packageId = null }) {
         "Paket belum dipilih.",
       );
     }
+
+    const packageRecords = selectedPackages.length
+      ? selectedPackages
+      : [selectedPackage];
+
+    const serializePackage = (packageItem) => ({
+      id: packageItem.id,
+      packageCode: packageItem.packageCode ?? null,
+      packageCategoryId: packageItem.packageCategoryId ?? null,
+      bookingSubjectType: packageItem.bookingSubjectType ?? null,
+      name: packageItem.name,
+      description: packageItem.description ?? null,
+      price: Number(packageItem.price) || 0,
+      durationHours: Number(packageItem.durationHours) || null,
+      requiredCrewCount:
+        Number(packageItem.requiredCrewCount ?? packageItem.crewCount) || 1,
+      crewRequirements: Array.isArray(packageItem.crewRequirements)
+        ? packageItem.crewRequirements
+        : [],
+      currency: packageItem.currency ?? "IDR",
+      priceLabel: packageItem.priceLabel ?? null,
+      features: packageItem.features ?? packageItem.serviceHighlights ?? [],
+    });
+
+    const eventRecords = (formData.events?.length
+      ? formData.events
+      : [{ packageId: selectedPackage.id, data: formData.event }]
+    ).map(({ packageId, sessionId = "main", sessionName = null, data }) => ({
+      packageId,
+      sessionId,
+      sessionName,
+      preferredDate: data.eventDate,
+      startTime: data.startTime || null,
+      endTime: data.endTime || null,
+      endTimeDayOffset: Number(data.endTimeDayOffset || 0) || 0,
+      location: normalizeEventLocation(data.location),
+      vision: data.vision?.trim() || null,
+    }));
+
+    const primaryEvent = eventRecords[0];
 
     return {
       client: {
@@ -571,58 +622,17 @@ export default function BookingClient({ packageId = null }) {
       },
 
       event: {
-        preferredDate:
-          formData.event.eventDate,
-
-        startTime:
-          formData.event.startTime ||
-          null,
-
-        endTime:
-          formData.event.endTime ||
-          null,
-
-        endTimeDayOffset:
-          Number(
-            formData.event.endTimeDayOffset ||
-            0,
-          ) || 0,
-
-        location: normalizeEventLocation(
-          formData.event.location,
-        ),
-
-        vision:
-          formData.event.vision?.trim() ||
-          null,
+        preferredDate: primaryEvent.preferredDate,
+        startTime: primaryEvent.startTime,
+        endTime: primaryEvent.endTime,
+        endTimeDayOffset: primaryEvent.endTimeDayOffset,
+        location: primaryEvent.location,
+        vision: primaryEvent.vision,
       },
 
-      package: {
-        id: selectedPackage.id,
-        packageCode: selectedPackage.packageCode ?? null,
-        packageCategoryId:
-          selectedPackage.packageCategoryId ?? null,
-        bookingSubjectType:
-          selectedPackage.bookingSubjectType ?? null,
-        name: selectedPackage.name,
-        description:
-          selectedPackage.description ?? null,
-        price: Number(selectedPackage.price) || 0,
-        durationHours:
-          Number(selectedPackage.durationHours) || null,
-
-        currency:
-          selectedPackage.currency ??
-          "IDR",
-
-        priceLabel:
-          selectedPackage.priceLabel ?? null,
-
-        features:
-          selectedPackage.features ??
-          selectedPackage.serviceHighlights ??
-          [],
-      },
+      package: serializePackage(selectedPackage),
+      packages: packageRecords.map(serializePackage),
+      events: eventRecords,
 
       status: "pending",
       source: "website_booking_form",
@@ -661,7 +671,7 @@ export default function BookingClient({ packageId = null }) {
     try {
       const bookingPayload =
         buildBookingPayload(
-          bookingDraft,
+            bookingDraft,
         );
 
       const bookingCode = generateCode({
@@ -1017,6 +1027,10 @@ export default function BookingClient({ packageId = null }) {
     <BookingProcess
       packageOptions={packageOptions}
       initialPackageId={initialPackageId}
+      accountData={{
+        fullName: user?.displayName ?? "",
+        email: user?.email ?? "",
+      }}
       packagesLoading={packagesLoading}
       packagesError={packagesError}
       submitStatus={submitStatus}

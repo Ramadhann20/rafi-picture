@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AppIcon from "@/components/global/AppIcon";
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 
 import { useRouter } from "next/navigation";
@@ -30,9 +31,215 @@ function normalizeCategory(row) {
   return {
     id: String(row?.id || ""),
     name: String(row?.name || "Kategori"),
+    slug: String(row?.slug || row?.name || "").toLowerCase(),
     icon: String(row?.icon || "photo_camera"),
     isActive: row?.isActive !== false,
     sortOrder: Number.isFinite(sortOrder) ? sortOrder : 999,
+  };
+}
+
+function getCategoryTranslationKey(category) {
+  const value = `${category?.slug || ""} ${category?.name || ""}`
+    .toLowerCase()
+    .replaceAll("_", " ");
+
+  if (
+    value.includes("pre-wed") ||
+    value.includes("prewed") ||
+    value.includes("pra-pernikahan")
+  ) {
+    return "categoryPreWedding";
+  }
+
+  if (value.includes("wedding") || value.includes("pernikahan")) {
+    return "categoryWedding";
+  }
+
+  if (value.includes("engagement") || value.includes("pertunangan")) {
+    return "categoryEngagement";
+  }
+
+  if (value.includes("bundle") || value.includes("bundel")) {
+    return "categoryBundle";
+  }
+
+  if (value.includes("event") || value.includes("acara")) {
+    return "categoryEvent";
+  }
+
+  return null;
+}
+
+export const englishPackageTranslations = {
+  "classic-a-wedding-package": {
+    description:
+      "A wedding photography package for essential coverage with a photographer and assistant photographer.",
+    features: [
+      "1 Photographer",
+      "1 Assistant Photographer",
+      "100 Edited Photos",
+      "All Data (Digital Files)",
+      "Google Drive & Flash Drive",
+      "Wedding Documentation",
+    ],
+  },
+  "classic-b-wedding-package": {
+    description:
+      "A wedding photography package with an album and frame for event documentation and selected printed outputs.",
+    features: [
+      "1 Photographer",
+      "1 Assistant Photographer",
+      "100 Edited Photos",
+      "10-Sheet Magazine Album",
+      "16RP + 1 Large Frame",
+      "Google Drive & Flash Drive",
+    ],
+  },
+  "bronze-wedding-package": {
+    description:
+      "A wedding photography and video package with a cinematic highlight, album, and frame for event documentation.",
+    features: [
+      "1 Photographer + 1 Assistant",
+      "1 Videographer",
+      "100 Edited Photos",
+      "2-3 Minute Wedding Cinematic Video",
+      "10-Sheet Magazine Album + Standard Box",
+      "16RP + 1 Large Frame",
+    ],
+  },
+  "silver-wedding-package": {
+    description:
+      "A wedding photography and video package with two photographers, cinematic video, teaser, an exclusive album, and frames.",
+    features: [
+      "2 Photographers + 1 Assistant",
+      "1 Videographer",
+      "100 Edited Photos",
+      "Wedding Cinematic + 1-Minute Teaser",
+      "10-Sheet Magazine Album + Exclusive Box",
+      "16RP + 2 Large Frames",
+    ],
+  },
+  "gold-wedding-package": {
+    description:
+      "A complete wedding package with a photo and video team, cinematic video, Instagram teaser, an exclusive single album, and frames.",
+    features: [
+      "2 Photographers + 1 Assistant",
+      "1 Videographer",
+      "Wedding Cinematic Video",
+      "1-Minute Instagram Teaser",
+      "10-Sheet Single Magazine Album + Exclusive Box",
+      "Large & Small Frames",
+    ],
+  },
+  "platinum-wedding-package": {
+    description:
+      "A premium wedding package with a photo and video team, cinematic video, Instagram teaser, an exclusive double album, and frames.",
+    features: [
+      "2 Photographers + 1 Assistant",
+      "1 Videographer",
+      "Wedding Cinematic Video",
+      "1-Minute Instagram Teaser",
+      "20-Sheet Double Magazine Album + Exclusive Box",
+      "Large & Small Frames",
+    ],
+  },
+  "prewedding-bronze": {
+    description:
+      "A pre-wedding photography-only package for one location with edited selections, frames, and all photo files via Google Drive.",
+    features: [
+      "Photos Only",
+      "1 Location",
+      "50 Edited Photos",
+      "2 16RP Large Frames",
+      "10 4R Frames",
+      "All Photo Files via Google Drive",
+    ],
+  },
+  "prewedding-silver": {
+    description:
+      "A pre-wedding photo and video package for one location with cinematic video, selected photos, frames, and files via Google Drive.",
+    features: [
+      "Photos & Video",
+      "1 Location",
+      "Cinematic Video",
+      "Up to 100 Selected Edited Photos",
+      "16RP + 4R Frames",
+      "All Photo Files via Google Drive",
+    ],
+  },
+  "engagement-bronze": {
+    description:
+      "A photo-based engagement documentation package with unlimited shooting during the session, selected photos, and all data via Google Drive.",
+    features: [
+      "Photography",
+      "Unlimited Shooting",
+      "Full Session",
+      "Selected Edited Photos",
+      "All Data via Google Drive",
+      "Engagement Documentation",
+    ],
+  },
+  "engagement-silver": {
+    description:
+      "An engagement photography and cinematic video package with unlimited shooting, selected photos, and all digital data.",
+    features: [
+      "Photography",
+      "Cinematic Video",
+      "Unlimited Shooting",
+      "Full Session",
+      "Selected Edited Photos",
+      "Google Drive & Flash Drive",
+    ],
+  },
+  "bronze-pengajian-siraman": {
+    description:
+      "A photography package for the Pengajian and Siraman ceremonies with edited results and all data via Google Drive.",
+    features: [
+      "1 Photographer",
+      "50 Edited Files",
+      "50 Edited Photos",
+      "All Data (Digital Files)",
+      "Google Drive",
+      "Pengajian & Siraman Documentation",
+    ],
+  },
+  "silver-pengajian-siraman": {
+    description:
+      "A photo and video package for the Pengajian and Siraman ceremonies with cinematic video and edited results.",
+    features: [
+      "1 Photographer",
+      "1 Videographer",
+      "Cinematic Video",
+      "100 Edited Files",
+      "50 Edited Photos",
+      "All Data via Google Drive",
+    ],
+  },
+  "prewedding-wedding-bundle": {
+    description:
+      "A Pre-Wedding and Wedding documentation bundle combining photography, cinematic video, an album, frames, and digital files.",
+    features: [
+      "Pre-Wedding Photo Session",
+      "Wedding Photography",
+      "Cinematic Video + 1-Minute Teaser",
+      "Single Magazine Album + Exclusive Box",
+      "Large & Small Frames",
+      "Google Drive & Flash Drive",
+    ],
+  },
+};
+
+function getLocalizedPackage(packageItem, language) {
+  const translation = englishPackageTranslations[packageItem.id];
+
+  if (language !== "en" || !translation) {
+    return packageItem;
+  }
+
+  return {
+    ...packageItem,
+    description: translation.description,
+    serviceHighlights: translation.features,
   };
 }
 
@@ -117,6 +324,7 @@ function LoadingCards() {
 
 export default function PackageListing() {
   const { colRef } = useDb();
+  const { language, translate } = useLanguage();
   const [activeCategoryId, setActiveCategoryId] = useState(ALL_CATEGORIES);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const router = useRouter();
@@ -161,25 +369,22 @@ export default function PackageListing() {
     [packageRows, categoryById],
   );
 
+  const effectiveCategoryId =
+    activeCategoryId === ALL_CATEGORIES ||
+    categories.some((category) => category.id === activeCategoryId)
+      ? activeCategoryId
+      : ALL_CATEGORIES;
+
   const visiblePackages = useMemo(
     () =>
-      activeCategoryId === ALL_CATEGORIES
+      effectiveCategoryId === ALL_CATEGORIES
         ? packages
         : packages.filter(
             (packageItem) =>
-              packageItem.packageCategoryId === activeCategoryId,
+              packageItem.packageCategoryId === effectiveCategoryId,
           ),
-    [packages, activeCategoryId],
+    [packages, effectiveCategoryId],
   );
-
-  useEffect(() => {
-    if (
-      activeCategoryId !== ALL_CATEGORIES &&
-      !categories.some((category) => category.id === activeCategoryId)
-    ) {
-      setActiveCategoryId(ALL_CATEGORIES);
-    }
-  }, [categories, activeCategoryId]);
 
   useEffect(() => {
     if (!selectedPackage) return undefined;
@@ -226,7 +431,7 @@ export default function PackageListing() {
                   : "text-on-surface-variant hover:text-primary"
               }`}
             >
-              Semua
+              {translate("all")}
             </button>
 
             {categories.map((category) => (
@@ -240,7 +445,9 @@ export default function PackageListing() {
                     : "text-on-surface-variant hover:text-primary"
                 }`}
               >
-                {category.name}
+                {getCategoryTranslationKey(category)
+                  ? translate(getCategoryTranslationKey(category))
+                  : category.name}
               </button>
             ))}
           </div>
@@ -250,17 +457,18 @@ export default function PackageListing() {
       {visiblePackages.length > 0 ? (
         <section className="grid grid-cols-1 gap-gutter md:grid-cols-2 lg:grid-cols-3">
           {visiblePackages.map((packageItem) => {
+            const localizedPackage = getLocalizedPackage(packageItem, language);
             const category = categoryById.get(packageItem.packageCategoryId);
             const cardDetails = [
-              ...(packageItem.durationHours > 0
+              ...(localizedPackage.durationHours > 0
                 ? [
                     {
                       icon: "calendar_month",
-                      text: `Liputan ${packageItem.durationHours} Jam`,
+                      text: `${translate("coverage")} ${localizedPackage.durationHours} ${language === "en" ? "Hours" : "Jam"}`,
                     },
                   ]
                 : []),
-              ...packageItem.serviceHighlights.map((highlight) => ({
+              ...localizedPackage.serviceHighlights.map((highlight) => ({
                 icon: "check_circle",
                 text: highlight,
               })),
@@ -281,8 +489,12 @@ export default function PackageListing() {
                   <div className="absolute left-4 top-4">
                     <span className="rounded-full bg-secondary-container/90 px-3 py-1 text-label-sm text-on-secondary-container backdrop-blur-sm">
                       {packageItem.featured
-                        ? "Paling Populer"
-                        : category?.name || "Paket"}
+                        ? translate("popular")
+                        : category
+                          ? getCategoryTranslationKey(category)
+                            ? translate(getCategoryTranslationKey(category))
+                            : category.name
+                          : translate("packageLabel")}
                     </span>
                   </div>
                 </div>
@@ -295,13 +507,17 @@ export default function PackageListing() {
                       </h2>
 
                       <p className="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">
-                        {category?.name || "Paket Fotografi"}
+                        {category
+                          ? getCategoryTranslationKey(category)
+                            ? translate(getCategoryTranslationKey(category))
+                            : category.name
+                          : translate("packages")}
                       </p>
                     </div>
 
                     <div className="shrink-0 pt-1 text-right">
                       <span className="mb-1 block font-label-sm text-label-sm text-on-surface-variant">
-                        Mulai dari
+                        {translate("startingFrom")}
                       </span>
 
                       <span className="font-headline-md text-headline-md font-bold leading-none text-primary">
@@ -311,8 +527,8 @@ export default function PackageListing() {
                   </div>
 
                   <p className="mb-5 line-clamp-3 font-body-md text-body-md leading-relaxed text-on-surface-variant">
-                    {packageItem.description ||
-                      "Paket fotografi yang dapat disesuaikan dengan kebutuhan acara Anda."}
+                    {localizedPackage.description ||
+                      translate("packageFallbackDescription")}
                   </p>
 
                   <ul className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-2 hide-scrollbar">
@@ -341,7 +557,7 @@ export default function PackageListing() {
                     }}
                     className="mt-8 w-full shrink-0 rounded-lg bg-primary py-4 font-label-md text-on-primary transition-all hover:bg-primary/90 active:scale-95"
                   >
-                    Lihat Detail
+                    {translate("viewDetail")}
                   </button>
                 </div>
               </article>
@@ -356,10 +572,10 @@ export default function PackageListing() {
             className="mb-3 text-on-surface-variant/60"
           />
           <p className="font-headline-md text-headline-md text-on-surface">
-            Belum ada paket tersedia
+            {translate("noPackages")}
           </p>
           <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-            Paket aktif pada kategori ini akan muncul secara otomatis.
+            {translate("noPackagesDescription")}
           </p>
         </div>
       )}
@@ -396,8 +612,16 @@ export default function PackageListing() {
             <div className="flex w-full flex-col justify-between overflow-y-auto bg-white p-8 hide-scrollbar md:w-1/2 md:p-12">
               <div>
                 <p className="mb-2 font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                  {categoryById.get(selectedPackage.packageCategoryId)?.name ||
-                    "Paket Fotografi"}
+                  {(() => {
+                    const category = categoryById.get(
+                      selectedPackage.packageCategoryId,
+                    );
+                    return category
+                      ? getCategoryTranslationKey(category)
+                        ? translate(getCategoryTranslationKey(category))
+                        : category.name
+                      : translate("packages");
+                  })()}
                 </p>
 
                 <h2
@@ -408,13 +632,13 @@ export default function PackageListing() {
                 </h2>
 
                 <p className="mb-8 font-body-lg text-body-lg text-on-surface-variant">
-                  {selectedPackage.description ||
-                    "Paket fotografi yang dapat disesuaikan dengan kebutuhan acara Anda."}
+                  {getLocalizedPackage(selectedPackage, language).description ||
+                    translate("packageFallbackDescription")}
                 </p>
 
                 <div className="mb-8 space-y-4">
                   <h3 className="border-b border-outline-variant pb-2 font-label-md text-label-md uppercase tracking-widest text-primary">
-                    Termasuk dalam Paket
+                    {translate("includedInPackage")}
                   </h3>
 
                   <div className="grid grid-cols-1 gap-4">
@@ -422,12 +646,12 @@ export default function PackageListing() {
                       <div className="grid grid-cols-[24px_1fr] items-start gap-x-4 text-on-surface-variant">
                         <AppIcon name="calendar_month" size={20} className="mt-[3px]" />
                         <span className="font-body-md text-body-md leading-relaxed">
-                          Liputan {selectedPackage.durationHours} Jam
+                          {translate("coverage")} {selectedPackage.durationHours} {language === "en" ? "Hours" : "Jam"}
                         </span>
                       </div>
                     )}
 
-                    {selectedPackage.serviceHighlights.map(
+                    {getLocalizedPackage(selectedPackage, language).serviceHighlights.map(
                       (highlight, index) => (
                         <div
                           key={`${selectedPackage.id}-modal-${index}`}
@@ -451,7 +675,7 @@ export default function PackageListing() {
               <div className="flex flex-col gap-6 border-t border-outline-variant pt-8 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <span className="block font-label-sm text-label-sm text-on-surface-variant">
-                    Investasi Mulai Dari
+                    {translate("investmentStartingFrom")}
                   </span>
                   <span className="font-display-lg text-headline-lg font-bold">
                     {formatCurrency(selectedPackage.price)}
@@ -466,7 +690,7 @@ export default function PackageListing() {
                     router.push(`/booking?packageId=${selectedPackage.id}`);
                   }}
                 >
-                  Reservasi Tanggal Anda
+                  {translate("reserveDate")}
                 </button>
               </div>
             </div>

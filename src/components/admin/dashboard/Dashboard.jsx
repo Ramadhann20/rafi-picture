@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import AppIcon from "@/components/global/AppIcon";
@@ -271,6 +271,10 @@ function calculateTrend(currentValue, previousValue) {
   return `${rounded >= 0 ? "+" : ""}${rounded}%`;
 }
 
+function escapeCsvCell(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
 /* =========================================================
    MONTHLY CHART HELPERS
 ========================================================= */
@@ -321,6 +325,11 @@ export default function Dashboard() {
   const db = useDb();
 
   const now = useMemo(() => new Date(), []);
+
+  const [reportPeriod, setReportPeriod] = useState(() => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const currentMonthStart = useMemo(() => startOfMonth(now), [now]);
 
@@ -497,6 +506,81 @@ export default function Dashboard() {
   const totalPaymentDistribution =
     paymentDistribution.paid + paymentDistribution.pending;
 
+  const reportRange = useMemo(() => {
+    const [year, month] = reportPeriod.split("-").map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = endOfMonth(start);
+
+    return { start, end };
+  }, [reportPeriod]);
+
+  const reportData = useMemo(() => {
+    const periodBookings = bookings.filter((booking) =>
+      isDateInRange(
+        getBookingCreatedDate(booking),
+        reportRange.start,
+        reportRange.end,
+      ),
+    );
+
+    const periodBookingIds = new Set(periodBookings.map((booking) => booking.id));
+    const revenue = normalizedPayments
+      .filter(
+        (payment) =>
+          isDateInRange(payment.normalizedDate, reportRange.start, reportRange.end) &&
+          PAID_PAYMENT_STATUSES.has(payment.normalizedStatus) &&
+          payment.normalizedCurrency === DASHBOARD_CURRENCY &&
+          (!payment.bookingId || periodBookingIds.has(payment.bookingId)),
+      )
+      .reduce((total, payment) => total + payment.normalizedAmount, 0);
+
+    const clients = new Set(
+      periodBookings
+        .map((booking) => booking.client?.uid ?? booking.client?.email)
+        .filter(Boolean),
+    );
+
+    const packageCounts = periodBookings.reduce((counts, booking) => {
+      const packageName = booking.package?.name || "Unknown package";
+      counts.set(packageName, (counts.get(packageName) || 0) + 1);
+      return counts;
+    }, new Map());
+
+    const packageRows = [...packageCounts.entries()].sort(
+      (first, second) => second[1] - first[1],
+    );
+
+    return {
+      revenue,
+      clientCount: clients.size,
+      packageRows,
+      mostSelectedPackage: packageRows[0]?.[0] || "-",
+    };
+  }, [bookings, normalizedPayments, reportRange]);
+
+  function downloadReport() {
+    const rows = [
+      ["Report Period", reportPeriod],
+      ["Total Revenue", formatCurrency(reportData.revenue)],
+      ["Total Clients", reportData.clientCount],
+      ["Most Selected Package", reportData.mostSelectedPackage],
+      [],
+      ["Package", "Selections"],
+      ...reportData.packageRows,
+    ];
+    const csv = rows
+      .map((row) => row.map((value) => escapeCsvCell(value)).join(","))
+      .join("\n");
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `studio-report-${reportPeriod}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const fulfilledPercentage =
     totalPaymentDistribution > 0
       ? Math.round((paymentDistribution.paid / totalPaymentDistribution) * 100)
@@ -646,7 +730,7 @@ export default function Dashboard() {
           </p>
 
           <h1 className="font-headline-lg text-headline-lg tracking-tight text-primary">
-            Studio Dashboard
+            Dashboard
           </h1>
 
           <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
@@ -704,6 +788,84 @@ export default function Dashboard() {
             </p>
           </article>
         ))}
+      </section>
+
+      <section className="mb-stack-lg glass-panel rounded-xl p-stack-md">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
+              Report
+            </p>
+            <h2 className="mt-1 font-headline-md text-headline-md text-primary">
+              Booking Report
+            </h2>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="font-label-sm text-label-sm text-on-surface-variant">
+              Report Period
+              <input
+                type="month"
+                value={reportPeriod}
+                onChange={(event) => setReportPeriod(event.target.value)}
+                className="mt-1 block rounded-lg border border-outline-variant bg-transparent px-3 py-2 font-body-md text-body-md text-on-surface"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={downloadReport}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary"
+            >
+              <AppIcon name="download" size={18} />
+              Download Report
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <SummaryCard
+            label="Total Revenue"
+            value={formatCurrency(reportData.revenue)}
+          />
+          <SummaryCard
+            label="Total Clients"
+            value={reportData.clientCount}
+          />
+          <SummaryCard
+            label="Most Selected Package"
+            value={reportData.mostSelectedPackage}
+          />
+        </div>
+
+        {reportData.packageRows.length > 0 && (
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-outline-variant/30">
+                  <th className="px-3 py-3 font-label-md text-label-md text-on-surface-variant">
+                    Package
+                  </th>
+                  <th className="px-3 py-3 text-right font-label-md text-label-md text-on-surface-variant">
+                    Selections
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportData.packageRows.map(([packageName, count]) => (
+                  <tr key={packageName} className="border-b border-outline-variant/15">
+                    <td className="px-3 py-3 font-body-md text-body-md text-on-surface">
+                      {packageName}
+                    </td>
+                    <td className="px-3 py-3 text-right font-label-md text-label-md text-on-surface">
+                      {count}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* =====================================================

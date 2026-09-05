@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { englishPackageTranslations } from "@/components/packages/PackageListing";
 import SkeletonLoader from "@/components/global/SkeletonLoader";
 import { useOverlay } from "@/context/ui/OverlayContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useDb } from "@/context/DbContext";
 import { useCollection } from "@/hooks/useCollection";
 
@@ -13,6 +15,19 @@ const COLLECTIONS = {
 };
 
 const ALL_CATEGORY_ID = "all";
+
+function getLocalizedPackage(packageItem, language) {
+  const translation = englishPackageTranslations[packageItem?.id];
+
+  if (language !== "en" || !translation) return packageItem;
+
+  return {
+    ...packageItem,
+    description: translation.description,
+    serviceHighlights: translation.features,
+    features: translation.features,
+  };
+}
 
 function formatCurrency(value) {
   const price = Number(value);
@@ -72,6 +87,7 @@ function sortCategories(first, second) {
 
 export default function PackageOption({
   selectedPackageId,
+  selectedPackageIds = [],
   packageOptions = [],
   loading = false,
   error = null,
@@ -79,6 +95,12 @@ export default function PackageOption({
   onChange,
 }) {
   const { openOverlay, closeOverlay } = useOverlay();
+  const { language, translate } = useLanguage();
+  const activePackageIds = selectedPackageIds.length
+    ? selectedPackageIds
+    : selectedPackageId
+      ? [selectedPackageId]
+      : [];
 
   const selectedPackage = useMemo(() => {
     return (
@@ -89,9 +111,18 @@ export default function PackageOption({
     );
   }, [packageOptions, selectedPackageId]);
 
+  const localizedSelectedPackage = selectedPackage
+    ? getLocalizedPackage(selectedPackage, language)
+    : null;
+
   function handleSelectPackage(packageId) {
+    if (activePackageIds.includes(packageId)) {
+      closeOverlay();
+      return;
+    }
+
     if (typeof onChange === "function") {
-      onChange(packageId);
+      onChange([...activePackageIds, packageId]);
     }
 
     closeOverlay();
@@ -105,6 +136,7 @@ export default function PackageOption({
         <PackagePickerOverlay
           packageOptions={packageOptions}
           selectedPackageId={selectedPackageId}
+          selectedPackageIds={activePackageIds}
           onSelect={handleSelectPackage}
           onClose={closeOverlay}
         />
@@ -113,7 +145,7 @@ export default function PackageOption({
   }
 
   const selectedPackageUnavailable =
-    Boolean(selectedPackageId) &&
+    activePackageIds.length > 0 &&
     !selectedPackage &&
     !loading;
 
@@ -121,16 +153,15 @@ export default function PackageOption({
     <div>
       <header className="mb-stack-md">
         <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Package
+          {translate("packages")}
         </p>
 
         <h2 className="font-headline-md text-headline-md text-on-surface">
-          Rencana Paket Anda
+          {translate("yourPackagePlan")}
         </h2>
 
         <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          Pilih paket dokumentasi yang sesuai dengan
-          jenis acara dan kebutuhan Anda.
+          {translate("choosePackageDescription")}
         </p>
       </header>
 
@@ -138,13 +169,60 @@ export default function PackageOption({
         <SelectedPackageSkeleton />
       ) : error ? (
         <PackageMessage error>
-          Paket tidak dapat dimuat. Silakan coba kembali.
+          {translate("packageLoadError")}
         </PackageMessage>
-      ) : selectedPackage ? (
-        <SelectedPackageCard
-          packageItem={selectedPackage}
-          onChangePackage={openPackagePicker}
-        />
+      ) : localizedSelectedPackage ? (
+        <>
+          <SelectedPackageCard
+            packageItem={localizedSelectedPackage}
+            onChangePackage={openPackagePicker}
+          />
+
+          <div className="mt-5 space-y-3">
+            <p className="font-label-md text-label-md uppercase tracking-wider text-secondary">
+              {translate("selectedPackages")}
+            </p>
+
+            {activePackageIds.map((packageId, index) => {
+              const packageItem = packageOptions.find(
+                (item) => item.id === packageId,
+              );
+
+              if (!packageItem) return null;
+
+              return (
+                <div
+                  key={packageId}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-outline-variant/30 bg-surface-container-low px-4 py-3"
+                >
+                  <span className="font-body-md text-body-md text-on-surface">
+                    {index + 1}. {packageItem.name}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChange?.(
+                        activePackageIds.filter((id) => id !== packageId),
+                      )
+                    }
+                    className="font-label-sm text-label-sm text-error hover:underline"
+                  >
+                    {translate("removePackage")}
+                  </button>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={openPackagePicker}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary px-4 py-2.5 font-label-md text-label-md text-primary hover:bg-surface-container-low"
+            >
+              + {translate("addAnotherPackage")}
+            </button>
+          </div>
+        </>
       ) : (
         <EmptyPackageCard
           unavailable={selectedPackageUnavailable}
@@ -169,6 +247,7 @@ function SelectedPackageCard({
   packageItem,
   onChangePackage,
 }) {
+  const { translate } = useLanguage();
   const highlights = getPackageFeatures(packageItem);
   const visibleHighlights = highlights.slice(0, 5);
   const coverUrl = packageItem?.cover?.url;
@@ -201,12 +280,12 @@ function SelectedPackageCard({
           <div className="absolute inset-0 bg-gradient-to-t from-primary/45 via-transparent to-transparent" />
 
           <span className="absolute left-4 top-4 rounded-full bg-primary px-3 py-1 font-label-sm text-[10px] font-bold uppercase tracking-widest text-on-primary shadow-sm">
-            Selected
+            {translate("selected")}
           </span>
 
           {packageItem.featured && (
             <span className="absolute bottom-4 left-4 rounded-full bg-surface-bright/90 px-3 py-1 font-label-sm text-[10px] font-bold uppercase tracking-widest text-primary backdrop-blur-md">
-              Most Popular
+              {translate("mostPopular")}
             </span>
           )}
         </div>
@@ -215,7 +294,7 @@ function SelectedPackageCard({
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="mb-1 font-label-sm text-label-sm uppercase tracking-wider text-secondary">
-                Paket pilihan Anda
+                {translate("selectedPackage")}
               </p>
 
               <h3 className="font-headline-md text-headline-md leading-tight text-on-surface">
@@ -225,7 +304,7 @@ function SelectedPackageCard({
 
             <div className="shrink-0 sm:text-right">
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Mulai dari
+                {translate("startingFrom")}
               </p>
 
               <p className="font-headline-sm text-headline-sm text-primary">
@@ -249,7 +328,7 @@ function SelectedPackageCard({
               />
 
               <span>
-                {packageItem.durationHours} jam liputan
+                {packageItem.durationHours} {translate("hoursCoverage")}
               </span>
             </div>
           )}
@@ -282,7 +361,7 @@ function SelectedPackageCard({
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-outline px-5 py-2.5 font-label-md text-label-md text-on-surface transition-colors hover:border-primary hover:bg-surface-container-low hover:text-primary"
             >
               <AppIcon name="swap_horiz" size={19} />
-              Ganti Paket
+              {translate("changePackage")}
             </button>
           </div>
         </div>
@@ -296,6 +375,7 @@ function EmptyPackageCard({
   disabled,
   onOpen,
 }) {
+  const { translate } = useLanguage();
   return (
     <div className="flex min-h-80 flex-col items-center justify-center rounded-xl border-2 border-dashed border-outline-variant/60 bg-surface-container-low/30 p-8 text-center">
       <span className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container">
@@ -303,13 +383,13 @@ function EmptyPackageCard({
       </span>
 
       <h3 className="font-headline-md text-headline-md text-on-surface">
-        Belum ada paket yang dipilih
+        {translate("noPackageSelected")}
       </h3>
 
       <p className="mt-2 max-w-md font-body-md text-body-md text-on-surface-variant">
         {unavailable
-          ? "Paket dari URL tidak ditemukan atau sudah tidak aktif. Silakan pilih paket lainnya."
-          : "Lihat daftar paket berdasarkan kategori, harga, durasi, dan layanan yang tersedia."}
+          ? translate("packageUnavailable")
+          : translate("choosePackageDescriptionShort")}
       </p>
 
       <button
@@ -319,7 +399,7 @@ function EmptyPackageCard({
         className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary shadow-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <AppIcon name="photo_camera" size={19} />
-        Pilih Paket
+        {translate("choosePackage")}
       </button>
     </div>
   );
@@ -328,6 +408,7 @@ function EmptyPackageCard({
 function PackagePickerOverlay({
   packageOptions,
   selectedPackageId,
+  selectedPackageIds = [],
   onSelect,
   onClose,
 }) {
@@ -359,6 +440,7 @@ function PackagePickerOverlay({
       categoriesLoading={categoriesLoading}
       categoriesError={categoriesError}
       selectedPackageId={selectedPackageId}
+      selectedPackageIds={selectedPackageIds}
       onSelect={onSelect}
       onClose={onClose}
     />
@@ -371,9 +453,11 @@ function PackagePickerContent({
   categoriesLoading,
   categoriesError,
   selectedPackageId,
+  selectedPackageIds = [],
   onSelect,
   onClose,
 }) {
+  const { language, translate } = useLanguage();
   
   const [activeCategoryId, setActiveCategoryId] =
     useState(ALL_CATEGORY_ID);
@@ -452,26 +536,25 @@ function PackagePickerContent({
         <header className="flex items-start justify-between gap-5 px-5 pb-3 pt-5 md:px-8 md:pt-7">
           <div>
             <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-              Packages
+              {translate("packages")}
             </p>
 
             <h2
               id="package-picker-title"
               className="font-headline-md text-headline-md text-primary"
             >
-              Pilih Paket Dokumentasi
+              {translate("choosePackage")}
             </h2>
 
             <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-              Bandingkan paket berdasarkan kategori,
-              harga, durasi, dan layanan yang tersedia.
+              {translate("choosePackageDescriptionShort")}
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup pilihan paket"
+            aria-label={translate("close")}
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
           >
             <AppIcon name="close" size={24} />
@@ -483,7 +566,7 @@ function PackagePickerContent({
           className="hide-scrollbar flex overflow-x-auto px-2 md:px-5"
         >
           <CategoryTab
-            label="Semua"
+            label={translate("all")}
             count={packageOptions.length}
             active={
               activeCategoryId === ALL_CATEGORY_ID
@@ -532,18 +615,17 @@ function PackagePickerContent({
             role="alert"
             className="mb-5 rounded-xl border border-error/25 bg-error-container px-5 py-4 font-body-md text-body-md text-on-surface"
           >
-            Kategori tidak dapat dimuat. Semua paket
-            masih dapat dipilih.
+            {translate("categoryLoadError")}
           </div>
         )}
 
         <div className="mb-5 flex items-center justify-between gap-4">
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Menampilkan{" "}
+            {translate("showing")}{" "}
             <strong className="font-label-md text-on-surface">
               {filteredPackages.length}
             </strong>{" "}
-            paket
+            {translate("packages").toLowerCase()}
           </p>
         </div>
 
@@ -557,14 +639,11 @@ function PackagePickerContent({
               (packageItem) => (
                 <PackageSelectionCard
                   key={packageItem.id}
-                  packageItem={packageItem}
+                  packageItem={getLocalizedPackage(packageItem, language)}
                   categoryName={getCategoryName(
                     packageItem.packageCategoryId,
                   )}
-                  selected={
-                    selectedPackageId ===
-                    packageItem.id
-                  }
+                  selected={selectedPackageIds.includes(packageItem.id)}
                   onSelect={() =>
                     onSelect(packageItem.id)
                   }
@@ -574,7 +653,7 @@ function PackagePickerContent({
           </div>
         ) : (
           <PackageMessage>
-            Belum ada paket aktif dalam kategori ini.
+            {translate("noPackages")}
           </PackageMessage>
         )}
       </div>

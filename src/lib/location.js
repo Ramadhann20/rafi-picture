@@ -200,6 +200,7 @@ export function calculateDistanceCharge(
 export function createEventLocation({
   venueName = "",
   coordinates = null,
+  accommodationRequest = 0,
   agencyLocation = AGENCY_LOCATION,
 } = {}) {
   const normalizedEventCoordinates =
@@ -222,6 +223,7 @@ export function createEventLocation({
   return {
     venueName: String(venueName ?? "").trimStart(),
     coordinates: normalizedEventCoordinates,
+    accommodationRequest: Math.max(Number(accommodationRequest) || 0, 0),
 
     distance: {
       straightLineKm,
@@ -321,6 +323,7 @@ export function normalizeEventLocation(value) {
   const normalized = createEventLocation({
     venueName: value?.venueName ?? "",
     coordinates: value?.coordinates ?? null,
+    accommodationRequest: value?.accommodationRequest ?? 0,
   });
 
   const storedDistance = Number(

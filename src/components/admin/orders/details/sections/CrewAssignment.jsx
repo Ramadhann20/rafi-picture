@@ -507,8 +507,11 @@ export default function CrewAssignment({
       return;
     }
 
-    // `requiredCrewCount` adalah jumlah minimum, bukan batas maksimum.
-    // Ini memungkinkan admin menambahkan freelance sebagai crew tambahan.
+    if (selectedCrewIds.length >= requiredCrewCount) {
+      setActionError(`Exactly ${requiredCrewCount} crew members are required.`);
+      return;
+    }
+
     onSelectedCrewIdsChange?.([...selectedCrewIds, crew.id]);
   };
 
@@ -743,7 +746,7 @@ export default function CrewAssignment({
               <p className="font-label-sm text-label-sm text-on-surface-variant">
                 Assigned:{" "}
                 <span className="font-bold text-on-surface">
-                  {selectedCrewIds.length} Crew · minimum {requiredCrewCount}
+                  {selectedCrewIds.length} / {requiredCrewCount} Crew
                 </span>
               </p>
 

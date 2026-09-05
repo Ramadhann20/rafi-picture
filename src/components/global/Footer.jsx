@@ -1,9 +1,12 @@
 "use client";
 
+"use client";
+
 import Link from "next/link";
 
 import TermsOfAgreementOverlay from "@/components/ui/TermsOfAgreementOverlay";
 import { useOverlay } from "@/context/ui/OverlayContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 import {
   openInstagram,
@@ -15,6 +18,7 @@ const linkClassName =
 
 export default function Footer() {
   const { openOverlay } = useOverlay();
+  const { translate } = useLanguage();
 
   const handleOpenTerms = () => {
     openOverlay({
@@ -32,7 +36,7 @@ export default function Footer() {
 
   const handleWhatsApp = () => {
     openWhatsAppAdmin(
-      "Halo Rafi Picture, saya ingin bertanya mengenai layanan Rafi Picture.",
+      translate("contactMessage"),
     );
   };
 
@@ -49,40 +53,38 @@ export default function Footer() {
           </Link>
 
           <p className="mt-4 max-w-sm font-body-md text-body-md leading-relaxed text-on-surface-variant">
-            Dokumentasi fotografi untuk wedding, prewedding,
-            engagement, dan berbagai momen spesial dengan hasil
-            yang natural, estetik, dan berkarakter.
+            {translate("footerDescription")}
           </p>
         </div>
 
         {/* NAVIGATION */}
         <nav aria-label="Navigasi footer">
           <h4 className="mb-4 font-label-md text-label-md uppercase tracking-wider text-primary">
-            Navigasi
+            {translate("navigation")}
           </h4>
 
           <ul className="space-y-3">
             <li>
               <Link className={linkClassName} href="/">
-                Beranda
+                {translate("home")}
               </Link>
             </li>
 
             <li>
               <Link className={linkClassName} href="/portfolio">
-                Portofolio
+                {translate("portfolio")}
               </Link>
             </li>
 
             <li>
               <Link className={linkClassName} href="/packages">
-                Paket
+                {translate("packages")}
               </Link>
             </li>
 
             <li>
               <Link className={linkClassName} href="/booking">
-                Booking
+                {translate("booking")}
               </Link>
             </li>
           </ul>
@@ -91,7 +93,7 @@ export default function Footer() {
         {/* CONTACT */}
         <div>
           <h4 className="mb-4 font-label-md text-label-md uppercase tracking-wider text-primary">
-            Terhubung
+            {translate("connect")}
           </h4>
 
           <ul className="space-y-3">
@@ -101,7 +103,7 @@ export default function Footer() {
                 onClick={handleWhatsApp}
                 className={`${linkClassName} text-left`}
               >
-                Hubungi Kami
+                {translate("contactUs")}
               </button>
             </li>
 
@@ -120,7 +122,7 @@ export default function Footer() {
         {/* INFORMATION */}
         <div>
           <h4 className="mb-4 font-label-md text-label-md uppercase tracking-wider text-primary">
-            Informasi
+            {translate("information")}
           </h4>
 
           <button
@@ -128,12 +130,11 @@ export default function Footer() {
             onClick={handleOpenTerms}
             className={`${linkClassName} text-left`}
           >
-            Syarat & Ketentuan
+            {translate("terms")}
           </button>
 
           <p className="mt-4 max-w-[260px] font-body-sm text-body-sm leading-relaxed text-on-surface-variant/70">
-            Ketentuan booking, pembayaran, durasi layanan, dan
-            kebijakan layanan Rafi Picture.
+            {translate("termsDescription")}
           </p>
         </div>
       </div>
@@ -141,7 +142,7 @@ export default function Footer() {
       <div className="border-t border-outline-variant/10 px-margin-mobile py-7 md:px-margin-desktop">
         <div className="mx-auto flex max-w-container-max flex-col gap-2 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <p className="font-label-sm text-label-sm text-on-surface-variant">
-            © 2026 Rafi Picture Studio. Hak cipta dilindungi.
+            © 2026 Rafi Picture Studio. {translate("copyright")}
           </p>
 
           <p className="font-label-sm text-label-sm text-on-surface-variant/70">

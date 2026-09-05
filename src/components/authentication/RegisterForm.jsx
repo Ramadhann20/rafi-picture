@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function RegisterForm({
   handleRegister,
@@ -11,6 +12,7 @@ export default function RegisterForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const { translate } = useLanguage();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -33,13 +35,13 @@ export default function RegisterForm({
             className="block font-label-sm text-label-sm text-on-surface-variant"
             htmlFor="register-first-name"
           >
-            First Name
+            {translate("firstName")}
           </label>
 
           <input
             id="register-first-name"
             className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
-            placeholder="Alex"
+            placeholder={translate("firstNamePlaceholder")}
             type="text"
             autoComplete="given-name"
             required
@@ -54,13 +56,13 @@ export default function RegisterForm({
             className="block font-label-sm text-label-sm text-on-surface-variant"
             htmlFor="register-last-name"
           >
-            Last Name
+            {translate("lastName")}
           </label>
 
           <input
             id="register-last-name"
             className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
-            placeholder="Sterling"
+            placeholder={translate("lastNamePlaceholder")}
             type="text"
             autoComplete="family-name"
             required
@@ -76,13 +78,13 @@ export default function RegisterForm({
           className="block font-label-sm text-label-sm text-on-surface-variant"
           htmlFor="register-email"
         >
-          Email Address
+          {translate("emailAddress")}
         </label>
 
         <input
           id="register-email"
           className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
-          placeholder="name@example.com"
+          placeholder={translate("emailPlaceholder")}
           type="email"
           autoComplete="email"
           required
@@ -97,13 +99,13 @@ export default function RegisterForm({
           className="block font-label-sm text-label-sm text-on-surface-variant"
           htmlFor="register-password"
         >
-          Create Password
+          {translate("createPassword")}
         </label>
 
         <input
           id="register-password"
           className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
-          placeholder="Min. 8 characters"
+          placeholder={translate("passwordPlaceholder")}
           type="password"
           autoComplete="new-password"
           minLength={8}
@@ -119,13 +121,13 @@ export default function RegisterForm({
           className="block font-label-sm text-label-sm text-on-surface-variant"
           htmlFor="register-confirm-password"
         >
-          Confirm Password
+          {translate("confirmPassword")}
         </label>
 
         <input
           id="register-confirm-password"
           className="auth-input h-10 w-full rounded-xl border border-outline-variant/50 bg-surface px-3 py-0 font-body-md transition-colors focus:border-primary focus:outline-none"
-          placeholder="Repeat password"
+          placeholder={translate("repeatPasswordPlaceholder")}
           type="password"
           autoComplete="new-password"
           minLength={8}
@@ -141,7 +143,9 @@ export default function RegisterForm({
         type="submit"
         disabled={loading}
       >
-        {loading ? "Sending Verification Code..." : "Create Account"}
+        {loading
+          ? translate("sendingVerification")
+          : translate("createAccount")}
       </button>
     </form>
   );

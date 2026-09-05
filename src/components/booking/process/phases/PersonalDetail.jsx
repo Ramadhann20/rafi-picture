@@ -1,37 +1,67 @@
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function PersonalDetail({
   data,
+  accountData = null,
   errors = {},
   showPartnerName = false,
   vision = "",
   onChange,
   onVisionChange,
 }) {
+  const { translate } = useLanguage();
+  function handleUseMyData(event) {
+    const useMyData = event.target.checked;
+
+    onChange({
+      useMyData,
+      ...(useMyData
+        ? {
+            fullName: accountData?.fullName?.trim() || data.fullName,
+            email: accountData?.email?.trim() || data.email,
+          }
+        : {}),
+    });
+  }
+
   return (
     <div>
       <header className="mb-8">
         <p className="font-label-sm text-[10px] uppercase tracking-[0.24em] text-secondary">
-          Personal Information
+          {translate("personalInformation")}
         </p>
 
         <h2 className="mt-1 font-headline-md text-headline-md text-on-surface">
-          Data Pemesan
+          {translate("customerData")}
         </h2>
 
         <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
-          Isi data yang dapat dihubungi oleh tim Rafi Picture terkait booking dan kebutuhan acara.
+          {translate("personalDescription")}
         </p>
       </header>
+
+      <label className="mb-7 flex w-fit cursor-pointer items-center gap-3 rounded-lg border border-outline-variant/50 bg-surface-container-low px-4 py-3">
+        <input
+          type="checkbox"
+          checked={Boolean(data.useMyData)}
+          onChange={handleUseMyData}
+          className="h-4 w-4 rounded border-outline text-primary focus:ring-primary/20"
+        />
+        <span className="font-label-md text-label-md text-on-surface">
+          {translate("useMyData")}
+        </span>
+      </label>
 
       <div className="space-y-7">
         {/* ROW 1: Full Name + Partner Name only for couple */}
         <div className="grid grid-cols-1 gap-x-8 gap-y-7 md:grid-cols-2">
           <Field
-            label="Nama Lengkap"
+            label={translate("fullName")}
             error={errors.fullName}
           >
             <input
               className="w-full border-x-0 border-t-0 border-b border-outline bg-transparent px-0 py-3 font-body-md text-body-md text-on-surface transition-colors outline-none focus:border-primary"
-              placeholder="Nama lengkap"
+              placeholder={translate("fullNamePlaceholder")}
               type="text"
               autoComplete="name"
               value={data.fullName}
@@ -46,12 +76,12 @@ export default function PersonalDetail({
 
           {showPartnerName && (
             <Field
-              label="Nama Pasangan"
+              label={translate("partnerName")}
               optional
             >
               <input
                 className="w-full border-x-0 border-t-0 border-b border-outline bg-transparent px-0 py-3 font-body-md text-body-md text-on-surface transition-colors outline-none focus:border-primary"
-                placeholder="Nama pasangan"
+                placeholder={translate("partnerNamePlaceholder")}
                 type="text"
                 autoComplete="off"
                 value={data.partnerName}
@@ -69,7 +99,7 @@ export default function PersonalDetail({
         {/* ROW 2: Email always starts on the next row */}
         <div className="grid grid-cols-1 gap-x-8 gap-y-7 md:grid-cols-2">
           <Field
-            label="Email"
+            label={translate("emailAddress")}
             error={errors.email}
           >
             <input
@@ -88,12 +118,12 @@ export default function PersonalDetail({
           </Field>
 
           <Field
-            label="Nomor Telepon"
+            label={translate("phoneNumber")}
             error={errors.phone}
           >
             <input
               className="w-full border-x-0 border-t-0 border-b border-outline bg-transparent px-0 py-3 font-body-md text-body-md text-on-surface transition-colors outline-none focus:border-primary"
-              placeholder="08xxxxxxxxxx"
+              placeholder={translate("phonePlaceholder")}
               type="tel"
               autoComplete="tel"
               value={data.phone}
@@ -138,20 +168,20 @@ export default function PersonalDetail({
 
       <section>
         <p className="font-label-sm text-[10px] uppercase tracking-[0.22em] text-secondary">
-          Additional Notes
+          {translate("additionalNotes")}
         </p>
 
         <h3 className="mt-1 font-headline-md text-headline-md text-on-surface">
-          Tell Us About Your Vision
+          {translate("tellVision")}
         </h3>
 
         <p className="mt-1.5 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
-          Ceritakan konsep, suasana, atau kebutuhan khusus yang kamu inginkan. Bagian ini opsional.
+          {translate("visionDescription")}
         </p>
 
         <textarea
           className="mt-5 min-h-28 w-full resize-y border-x-0 border-t-0 border-b border-outline bg-transparent px-0 py-3 font-body-md text-body-md text-on-surface transition-colors outline-none focus:border-primary"
-          placeholder="Contoh: konsep intimate, tone hangat, fokus candid keluarga..."
+          placeholder={translate("visionPlaceholder")}
           rows={4}
           value={vision}
           onChange={(event) =>
@@ -178,7 +208,7 @@ function Field({
 
         {optional && (
           <span className="ml-2 normal-case tracking-normal text-on-surface-variant/55">
-            (Optional)
+            ({translate("optional")})
           </span>
         )}
       </label>
