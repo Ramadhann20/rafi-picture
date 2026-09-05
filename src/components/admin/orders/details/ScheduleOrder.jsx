@@ -64,14 +64,41 @@ function getInitialPreparation(booking) {
   };
 }
 
-function getRequiredCrewCount(booking) {
+function getCrewRequirement(booking) {
+  const packageItem = booking?.package ?? {};
   const configuredCount = Number(
-    booking?.package?.requiredCrewCount ?? booking?.package?.crewCount,
+    packageItem.requiredCrewCount ?? packageItem.crewCount,
   );
 
-  return Number.isInteger(configuredCount) && configuredCount > 0
-    ? configuredCount
-    : 1;
+  if (Number.isInteger(configuredCount) && configuredCount > 0) {
+    return { count: configuredCount, isConfigured: true };
+  }
+
+  const requirementSources = [
+    ...(Array.isArray(packageItem.crewRequirements)
+      ? packageItem.crewRequirements
+      : []),
+    ...(Array.isArray(packageItem.features) ? packageItem.features : []),
+    ...(Array.isArray(packageItem.serviceHighlights)
+      ? packageItem.serviceHighlights
+      : []),
+  ];
+  const requirementText = requirementSources.join(" ");
+  const rolePattern = /(photographer|videographer|assistant(?:\s+photographer)?)/gi;
+  const matches = [...requirementText.matchAll(rolePattern)];
+
+  if (matches.length === 0) {
+    return { count: 1, isConfigured: false };
+  }
+
+  const count = matches.reduce((total, match) => {
+    const prefix = requirementText.slice(0, match.index);
+    const countMatch = prefix.match(/(\d+)\s*$/);
+
+    return total + (Number(countMatch?.[1]) || 1);
+  }, 0);
+
+  return { count, isConfigured: true };
 }
 
 function createCrewDraft(booking, existingAssignment) {
@@ -189,7 +216,9 @@ export default function ScheduleOrder({
   ] = useState(null);
 
   const isPreparationMode = booking.status === "pending";
-  const requiredCrewCount = getRequiredCrewCount(booking);
+  const crewRequirement = getCrewRequirement(booking);
+  const requiredCrewCount = crewRequirement.count;
+  const allowUnlimitedCrew = !crewRequirement.isConfigured;
 
   useEffect(() => {
     setPreparation(getInitialPreparation(booking));
@@ -236,7 +265,9 @@ export default function ScheduleOrder({
       ? existingAssignment.crewIds
       : [];
 
-  const hasCrewAssignment = displayedCrewIds.length === requiredCrewCount;
+  const hasCrewAssignment = allowUnlimitedCrew
+    ? displayedCrewIds.length > 0
+    : displayedCrewIds.length === requiredCrewCount;
 
   const hasDepositInvoice =
     Boolean(depositDraft) && Number(depositDraft.amount) > 0;
@@ -359,7 +390,9 @@ export default function ScheduleOrder({
 
     if (!preparation.crewCompleted && !hasCrewAssignment) {
       setActionError(
-        `Select exactly ${requiredCrewCount} crew members before confirming this step.`,
+        allowUnlimitedCrew
+          ? "Select at least one crew member before confirming this step."
+          : `Select exactly ${requiredCrewCount} crew members before confirming this step.`,
       );
 
       return;
@@ -836,6 +869,7 @@ export default function ScheduleOrder({
             readOnly={!isPreparationMode || preparation.crewCompleted}
             showOnlySelected={!isPreparationMode}
             requiredCrewCount={requiredCrewCount}
+            allowUnlimitedSelection={allowUnlimitedCrew}
             allowFreelance={
               crewAssignmentEnabled &&
               !["completed", "cancelled"].includes(booking.status)
@@ -854,7 +888,9 @@ export default function ScheduleOrder({
                   ? "Crew confirmed locally. Billing preparation is now unlocked."
                   : hasCrewAssignment
                     ? "Confirm the selected production team."
-                    : `Select exactly ${requiredCrewCount} crew members before confirming this step.`
+                    : allowUnlimitedCrew
+                      ? "Select at least one crew member before confirming this step."
+                      : `Select exactly ${requiredCrewCount} crew members before confirming this step.`
               }
               disabled={!preparation.crewCompleted && !hasCrewAssignment}
               onClick={handleToggleCrew}

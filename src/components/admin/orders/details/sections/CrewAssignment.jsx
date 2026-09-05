@@ -340,6 +340,7 @@ export default function CrewAssignment({
   showOnlySelected = false,
 
   requiredCrewCount = 1,
+  allowUnlimitedSelection = false,
 
   allowFreelance = false,
   onAddFreelance,
@@ -507,7 +508,7 @@ export default function CrewAssignment({
       return;
     }
 
-    if (selectedCrewIds.length >= requiredCrewCount) {
+    if (!allowUnlimitedSelection && selectedCrewIds.length >= requiredCrewCount) {
       setActionError(`Exactly ${requiredCrewCount} crew members are required.`);
       return;
     }
