@@ -206,7 +206,7 @@ export default function Sidebar() {
             </span>
 
             <span className="whitespace-nowrap text-xs text-on-surface-variant">
-              {translate("adminStudio")} · {translate("changePhoto")}
+              {translate("adminStudio")}
             </span>
           </div>
         </button>

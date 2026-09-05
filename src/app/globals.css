@@ -115,6 +115,16 @@
 /* =========================
    CALENDAR UTILITIES
 ========================= */
+.calendar-picker-white {
+  color-scheme: dark;
+}
+
+.calendar-picker-white::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}
+
 @utility calendar-month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -254,6 +264,28 @@ body {
 .text-secondary,
 .text-error {
   color: #f3f9ff !important;
+}
+
+button.hero-cta-button {
+  background-color: #ffffff !important;
+  color: #061d2b !important;
+  border: 1px solid #ffffff !important;
+  opacity: 1 !important;
+}
+
+button.hero-cta-button:hover {
+  background-color: #dfeeff !important;
+  color: #061d2b !important;
+}
+
+.hero-copy-title {
+  color: #ffffff !important;
+  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.72) !important;
+}
+
+.hero-copy-description {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.78) !important;
 }
 
 button,

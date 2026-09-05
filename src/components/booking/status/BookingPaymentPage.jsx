@@ -834,7 +834,7 @@ function PaymentHistory({
                         <span
                           className={`inline-flex rounded px-2 py-1 font-label-sm text-[11px] ${statusConfig.badgeClass}`}
                         >
-                          {translate(statusConfig.labelKey)}
+                          {translate("transactionSuccessful")}
                         </span>
                       </td>
                     </tr>

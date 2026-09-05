@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import ExcelJS from "exceljs";
 
 import AppIcon from "@/components/global/AppIcon";
 import { useDb } from "@/context/DbContext";
@@ -180,6 +181,14 @@ function formatMonthRange(date) {
   return `${formatter.format(monthStart)} - ${formatter.format(monthEnd)}`;
 }
 
+function parseMonthInput(value) {
+  const [year, month] = String(value).split("-").map(Number);
+
+  if (!year || !month) return new Date();
+
+  return new Date(year, month - 1, 1);
+}
+
 /* =========================================================
    GENERAL HELPERS
 ========================================================= */
@@ -286,10 +295,6 @@ function calculateTrend(currentValue, previousValue) {
   return `${rounded >= 0 ? "+" : ""}${rounded}%`;
 }
 
-function escapeCsvCell(value) {
-  return `"${String(value ?? "").replaceAll('"', '""')}"`;
-}
-
 /* =========================================================
    MONTHLY CHART HELPERS
 ========================================================= */
@@ -347,13 +352,29 @@ export default function Dashboard() {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
   });
 
-  const currentMonthStart = useMemo(() => startOfMonth(now), [now]);
+  const selectedMonth = useMemo(
+    () => parseMonthInput(reportPeriod),
+    [reportPeriod],
+  );
 
-  const currentMonthEnd = useMemo(() => endOfMonth(now), [now]);
+  const currentMonthStart = useMemo(
+    () => startOfMonth(selectedMonth),
+    [selectedMonth],
+  );
+
+  const currentMonthEnd = useMemo(
+    () => endOfMonth(selectedMonth),
+    [selectedMonth],
+  );
 
   const previousMonthDate = useMemo(
-    () => new Date(now.getFullYear(), now.getMonth() - 1, 1),
-    [now],
+    () =>
+      new Date(
+        selectedMonth.getFullYear(),
+        selectedMonth.getMonth() - 1,
+        1,
+      ),
+    [selectedMonth],
   );
 
   const previousMonthStart = useMemo(
@@ -574,25 +595,124 @@ export default function Dashboard() {
     };
   }, [bookings, normalizedPayments, reportRange]);
 
-  function downloadReport() {
-    const rows = [
-      ["Report Period", reportPeriod],
-      ["Total Revenue", formatCurrency(reportData.revenue)],
+  async function downloadReport() {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "Rafi Picture";
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const worksheet = workbook.addWorksheet("Laporan", {
+      views: [{ showGridLines: false }],
+    });
+
+    worksheet.columns = [
+      { width: 30 },
+      { width: 24 },
+      { width: 18 },
+      { width: 18 },
+    ];
+
+    worksheet.mergeCells("A1:D1");
+    worksheet.getCell("A1").value = "RAFI PICTURE";
+    worksheet.getCell("A1").font = {
+      name: "Arial",
+      size: 18,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    worksheet.getCell("A1").alignment = {
+      vertical: "middle",
+      horizontal: "left",
+    };
+    worksheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF003300" },
+    };
+    worksheet.getRow(1).height = 34;
+
+    worksheet.mergeCells("A2:D2");
+    worksheet.getCell("A2").value = "LAPORAN ADMINISTRASI BOOKING";
+    worksheet.getCell("A2").font = {
+      name: "Arial",
+      size: 14,
+      bold: true,
+      color: { argb: "FF003300" },
+    };
+
+    worksheet.mergeCells("A3:D3");
+    worksheet.getCell("A3").value = `Periode Laporan: ${formatMonthRange(
+      selectedMonth,
+    )}`;
+    worksheet.getCell("A3").font = {
+      name: "Arial",
+      size: 11,
+      color: { argb: "FF405466" },
+    };
+
+    worksheet.getRow(5).values = [
+      "Ringkasan",
+      "Nilai",
+      null,
+      null,
+    ];
+    worksheet.mergeCells("B5:D5");
+    worksheet.getRow(5).font = { name: "Arial", bold: true, color: { argb: "FFFFFFFF" } };
+    worksheet.getRow(5).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1D86FF" },
+    };
+
+    const summaryRows = [
+      ["Total Revenue", reportData.revenue],
       ["Total Clients", reportData.clientCount],
       ["Most Selected Package", reportData.mostSelectedPackage],
-      [],
-      ["Package", "Selections"],
-      ...reportData.packageRows,
     ];
-    const csv = rows
-      .map((row) => row.map((value) => escapeCsvCell(value)).join(","))
-      .join("\n");
+
+    summaryRows.forEach((row, index) => {
+      const excelRow = worksheet.getRow(6 + index);
+      excelRow.values = row;
+      excelRow.font = { name: "Arial", size: 11 };
+      excelRow.border = {
+        bottom: { style: "thin", color: { argb: "FFDCE3EA" } },
+      };
+    });
+
+    worksheet.getCell("B6").numFmt = '[$-id-ID]"Rp. " #,##0';
+    worksheet.getCell("B6").alignment = { horizontal: "right" };
+    worksheet.getCell("B7").alignment = { horizontal: "right" };
+
+    worksheet.getRow(11).values = ["Paket", "Jumlah Dipilih"];
+    worksheet.getRow(11).font = { name: "Arial", bold: true, color: { argb: "FFFFFFFF" } };
+    worksheet.getRow(11).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF003300" },
+    };
+
+    reportData.packageRows.forEach(([packageName, count], index) => {
+      const excelRow = worksheet.getRow(12 + index);
+      excelRow.values = [packageName, count];
+      excelRow.font = { name: "Arial", size: 11 };
+      excelRow.border = {
+        bottom: { style: "thin", color: { argb: "FFDCE3EA" } },
+      };
+      excelRow.getCell(2).alignment = { horizontal: "right" };
+    });
+
+    worksheet.getCell("A1").alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.views = [{ showGridLines: false, state: "frozen", ySplit: 11 }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
     const url = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+      new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
     );
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `studio-report-${reportPeriod}.csv`;
+    anchor.download = `laporan-rafi-picture-${reportPeriod}.xlsx`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -642,17 +762,14 @@ export default function Dashboard() {
     ];
   }, [
     bookings.length,
-    currentMonthBookings.length,
     monthlyRevenue,
     pendingPayments.length,
-    previousMonthBookings.length,
-    previousMonthlyRevenue,
     upcomingAssignments.length,
     translate,
   ]);
 
   const bookingBars = useMemo(() => {
-    const buckets = createMonthBuckets(now, MONTH_COUNT);
+    const buckets = createMonthBuckets(selectedMonth, MONTH_COUNT);
 
     const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
@@ -675,9 +792,10 @@ export default function Dashboard() {
         bucket.total === 0 ? 4 : Math.max(10, (bucket.total / maxTotal) * 100),
 
       active:
-        bucket.year === now.getFullYear() && bucket.month === now.getMonth(),
+        bucket.year === selectedMonth.getFullYear() &&
+        bucket.month === selectedMonth.getMonth(),
     }));
-  }, [bookings, now]);
+  }, [bookings, selectedMonth]);
 
   const latestBookings = useMemo(() => {
     return [...bookings]
@@ -757,11 +875,29 @@ export default function Dashboard() {
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="flex items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-2.5 text-on-surface-variant">
-            <AppIcon name="calendar_month" size={19} />
+            <AppIcon
+              name="calendar_month"
+              size={19}
+              className="text-white"
+              title={translate("reportPeriod")}
+            />
 
             <span className="font-label-md text-label-md">
-              {formatMonthRange(now)}
+              {formatMonthRange(selectedMonth)}
             </span>
+
+            <label className="sr-only" htmlFor="dashboard-month-picker">
+              {translate("reportPeriod")}
+            </label>
+
+            <input
+              id="dashboard-month-picker"
+              type="month"
+              value={reportPeriod}
+              onChange={(event) => setReportPeriod(event.target.value)}
+              aria-label={translate("reportPeriod")}
+              className="calendar-picker-white rounded-md border border-outline-variant bg-surface px-2 py-1.5 font-label-sm text-label-sm text-on-surface outline-none focus:border-primary"
+            />
           </div>
         </div>
       </header>
@@ -825,7 +961,7 @@ export default function Dashboard() {
                 type="month"
                 value={reportPeriod}
                 onChange={(event) => setReportPeriod(event.target.value)}
-                className="mt-1 block rounded-lg border border-outline-variant bg-transparent px-3 py-2 font-body-md text-body-md text-on-surface"
+                className="calendar-picker-white mt-1 block rounded-lg border border-outline-variant bg-transparent px-3 py-2 font-body-md text-body-md text-on-surface"
               />
             </label>
 

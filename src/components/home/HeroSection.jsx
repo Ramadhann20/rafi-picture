@@ -13,7 +13,7 @@ export default function HeroSection() {
       <div className="absolute inset-0 z-0">
         <Image
           className="w-full h-full object-cover"
-          src={"/RafiPicture.png"}
+          src={"/RafiPicture.jpeg"}
           alt="A cinematic wide-angle wedding photograph capturing a couple in a sun-drenched meadow during golden hour."
           width={800}
           height={700}
@@ -22,18 +22,18 @@ export default function HeroSection() {
 
       <div className="relative z-10 w-full max-w-4xl px-margin-mobile text-center">
         <div className=" p-stack-lg md:p-16 rounded-xl animate-fade-in">
-          <h1 className="font-display-lg text-display-lg text-white mb-6 text-shadow-subtle leading-tight">
+          <h1 className="hero-copy-title font-display-lg text-display-lg text-white mb-6 text-shadow-subtle leading-tight">
             {translate("heroTitle")}
           </h1>
-          <p className="font-body-lg text-body-lg text-white/90 mb-stack-md max-w-2xl mx-auto font-medium">
+          <p className="hero-copy-description font-body-lg text-body-lg text-white/90 mb-stack-md max-w-2xl mx-auto font-medium">
             {translate("heroDescription")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => router.push("/packages")} className="bg-white text-[#061d2b] px-8 py-4 rounded-lg font-label-md hover:bg-[#dfeeff] transition-all shadow-lg shadow-black/20">
+            <button onClick={() => router.push("/packages")} className="hero-cta-button bg-white text-[#061d2b] px-8 py-4 rounded-lg font-label-md hover:bg-[#dfeeff] transition-all shadow-lg shadow-black/20">
               {translate("viewPackages")}
             </button>
-            <button onClick={() => router.push("/booking")} className="border border-white/70 text-white px-8 py-4 rounded-lg font-label-md hover:bg-white/10 transition-all backdrop-blur-sm">
+            <button onClick={() => router.push("/booking")} className="hero-cta-button bg-white text-[#061d2b] px-8 py-4 rounded-lg font-label-md hover:bg-[#dfeeff] transition-all shadow-lg shadow-black/20">
               {translate("bookNow")}
             </button>
           </div>

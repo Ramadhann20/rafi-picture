@@ -193,18 +193,11 @@ export default function Navbar() {
           </div>
 
           <div className="hidden items-center md:flex">
-            <label className="mr-4 flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
-              <span className="sr-only">{translate("language")}</span>
-              <select
-                value={language}
-                onChange={(event) => setLanguage(event.target.value)}
-                className="rounded-md border border-white/30 bg-transparent px-2 py-1.5 text-white outline-none focus:border-[#58d7ff]"
-                aria-label={translate("language")}
-              >
-                <option value="en">{translate("english")}</option>
-                <option value="id">{translate("indonesian")}</option>
-              </select>
-            </label>
+            <LanguageSwitcher
+              language={language}
+              setLanguage={setLanguage}
+              translate={translate}
+            />
             {loading || profileLoading ? (
               <SkeletonLoader className="h-12 w-[160px] rounded-lg" />
             ) : user ? (
@@ -314,6 +307,15 @@ export default function Navbar() {
               />
             ))}
           </div>
+
+          <div className="mt-6 border-t border-outline-variant/20 pt-5">
+            <LanguageSwitcher
+              language={language}
+              setLanguage={setLanguage}
+              translate={translate}
+              mobile
+            />
+          </div>
         </nav>
 
         <div className="border-t border-outline-variant/20 p-4">
@@ -355,6 +357,56 @@ export default function Navbar() {
         </div>
       </aside>
     </>
+  );
+}
+
+function LanguageSwitcher({
+  language,
+  setLanguage,
+  translate,
+  mobile = false,
+}) {
+  return (
+    <div
+      className={
+        mobile
+          ? "w-full"
+          : "mr-4"
+      }
+      aria-label={translate("language")}
+    >
+      <p className="mb-2 font-label-sm text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+        {translate("language")}
+      </p>
+
+      <div className="flex items-center gap-1 rounded-lg border border-white/25 bg-black/20 p-1">
+        <button
+          type="button"
+          onClick={() => setLanguage("en")}
+          aria-pressed={language === "en"}
+          className={`flex-1 rounded-md px-3 py-2 font-label-sm text-[11px] font-semibold transition-colors ${
+            language === "en"
+              ? "bg-[#58d7ff] text-[#061d2b] shadow-sm"
+              : "text-white hover:bg-white/15"
+          }`}
+        >
+          {translate("english")}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setLanguage("id")}
+          aria-pressed={language === "id"}
+          className={`flex-1 rounded-md px-3 py-2 font-label-sm text-[11px] font-semibold transition-colors ${
+            language === "id"
+              ? "bg-[#58d7ff] text-[#061d2b] shadow-sm"
+              : "text-white hover:bg-white/15"
+          }`}
+        >
+          {translate("indonesian")}
+        </button>
+      </div>
+    </div>
   );
 }
 
