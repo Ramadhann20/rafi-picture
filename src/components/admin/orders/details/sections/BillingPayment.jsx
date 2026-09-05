@@ -551,6 +551,7 @@ function BillingPreparation({
   onReviewPdfPreview,
   onInvoiceDraftChange,
 }) {
+  const { translate } = useLanguage();
   const suggestedDeposit =
     Math.round(bookingTotal * 0.3);
 
@@ -657,7 +658,7 @@ function BillingPreparation({
           </h3>
 
           <p className="mt-2 max-w-md font-body-md text-body-md text-on-surface-variant">
-            Create a local deposit draft based on the current booking total. This does not write anything to Firestore.
+            {translate("createDepositDraftDescription")}
           </p>
 
           <button
@@ -672,7 +673,7 @@ function BillingPreparation({
               name="add"
               size={19}
             />
-            Create Deposit Draft
+            {translate("createDepositDraft")}
           </button>
         </article>
       ) : (
@@ -1011,6 +1012,7 @@ function InvoiceReadOnlyCard({
   invoice,
   currency,
 }) {
+  const { translate } = useLanguage();
   const statusConfig =
     INVOICE_STATUS[
       invoice.status
@@ -1121,6 +1123,7 @@ function PaymentRow({
   defaultCurrency,
   onOpenPayment,
 }) {
+  const { translate } = useLanguage();
   const normalizedStatus =
     String(
       payment.status ??

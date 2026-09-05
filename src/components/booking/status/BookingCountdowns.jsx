@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   buildPaymentTimer,
   getDurationParts,
@@ -15,10 +16,10 @@ function pad(value) {
   return String(Math.max(0, Number(value) || 0)).padStart(2, "0");
 }
 
-function formatEventDateTime(value) {
+function formatEventDateTime(value, language = "id") {
   if (!value) return "-";
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "id-ID", {
     weekday: "long",
     day: "2-digit",
     month: "long",
@@ -29,10 +30,10 @@ function formatEventDateTime(value) {
   }).format(value);
 }
 
-function formatDeadline(value) {
+function formatDeadline(value, language = "id") {
   if (!value) return "-";
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "id-ID", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -51,11 +52,12 @@ function formatCurrency(value, currency = "IDR") {
 }
 
 function CountdownDigits({ duration, danger = false }) {
+  const { translate } = useLanguage();
   const items = [
-    { key: "days", value: duration.days, label: "Hari" },
-    { key: "hours", value: duration.hours, label: "Jam" },
-    { key: "minutes", value: duration.minutes, label: "Menit" },
-    { key: "seconds", value: duration.seconds, label: "Detik" },
+    { key: "days", value: duration.days, label: translate("days") },
+    { key: "hours", value: duration.hours, label: translate("hours") },
+    { key: "minutes", value: duration.minutes, label: translate("minutes") },
+    { key: "seconds", value: duration.seconds, label: translate("seconds") },
   ];
 
   return (
@@ -91,6 +93,7 @@ function CountdownDigits({ duration, danger = false }) {
 }
 
 function EventCountdownCard({ booking, nowMs }) {
+  const { translate, language } = useLanguage();
   const normalizedBookingStatus = normalizeStatus(booking?.status);
 
   if (["cancelled", "completed"].includes(normalizedBookingStatus)) {
@@ -117,18 +120,20 @@ function EventCountdownCard({ booking, nowMs }) {
 
           <div>
             <p className="font-label-sm text-label-sm uppercase tracking-[0.16em] text-secondary">
-              Menuju Hari Acara
+              {translate("towardEventDay")}
             </p>
 
             <h2 className="mt-1 font-headline-sm text-headline-sm text-on-surface">
-              {hasArrived ? "Hari acara telah tiba" : "Hitung mundur acara"}
+              {hasArrived
+                ? translate("eventDayArrived")
+                : translate("eventCountdown")}
             </h2>
           </div>
         </div>
 
         {!hasArrived && (
           <span className="hidden rounded-full bg-primary/5 px-3 py-1 font-label-sm text-label-sm text-primary sm:inline-flex">
-            Live
+            {translate("live")}
           </span>
         )}
       </div>
@@ -144,8 +149,8 @@ function EventCountdownCard({ booking, nowMs }) {
 
         <p className="font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
           {hasArrived
-            ? "Waktu mulai acara sudah tercapai. Detail status booking tetap mengikuti proses operasional Rafi Picture."
-            : `Acara dimulai ${formatEventDateTime(eventStart)}.`}
+            ? translate("eventStartReached")
+            : `${translate("eventStarts")} ${formatEventDateTime(eventStart, language)}.`}
         </p>
       </div>
     </article>
@@ -153,6 +158,7 @@ function EventCountdownCard({ booking, nowMs }) {
 }
 
 function PaymentCountdownCard({ invoice, payments, nowMs }) {
+  const { translate, language } = useLanguage();
   const timer = useMemo(
     () => buildPaymentTimer({ invoice, payments, nowMs }),
     [invoice, payments, nowMs],
@@ -177,18 +183,18 @@ function PaymentCountdownCard({ invoice, payments, nowMs }) {
   const currency = invoice?.currency ?? "IDR";
 
   const title = frozen
-    ? `Bukti ${paymentLabel} Menunggu Verifikasi`
+    ? `${paymentLabel} ${translate("awaitingVerification")}`
     : overdue
-      ? `Pembayaran ${paymentLabel} Terlambat`
-      : `Batas Pembayaran ${paymentLabel}`;
+      ? `${paymentLabel} ${translate("overdue")}`
+      : `${translate("paymentDeadline")} ${paymentLabel}`;
 
   const description = frozen
     ? overdue
-      ? "Waktu keterlambatan dibekukan pada saat bukti pembayaran dikirim dan akan dilanjutkan dari posisi yang sama jika bukti ditolak admin."
-      : "Countdown dibekukan pada saat bukti pembayaran dikirim selama menunggu verifikasi admin."
+      ? translate("frozenOverdueDescription")
+      : translate("frozenDescription")
     : overdue
-      ? "Tenggat sudah terlewati. Timer keterlambatan terus berjalan sampai bukti pembayaran berikutnya dikirim."
-      : "Selesaikan pembayaran dan kirim bukti transfer sebelum tenggat yang ditentukan admin.";
+      ? translate("overdueDescription")
+      : translate("paymentDeadlineDescription");
 
   return (
     <article
@@ -220,10 +226,10 @@ function PaymentCountdownCard({ invoice, payments, nowMs }) {
               }`}
             >
               {frozen
-                ? "Timer Dibekukan"
+                ? translate("timerFrozen")
                 : overdue
-                  ? "Overdue"
-                  : "Tenggat Pembayaran"}
+                  ? translate("overdue")
+                  : translate("paymentDeadline")}
             </p>
 
             <h2
@@ -238,7 +244,7 @@ function PaymentCountdownCard({ invoice, payments, nowMs }) {
 
         {rejectedCount > 0 && !frozen && (
           <span className="hidden rounded-full bg-error-container px-3 py-1 font-label-sm text-label-sm text-error sm:inline-flex">
-            Bukti sebelumnya ditolak
+            {translate("previousProofRejected")}
           </span>
         )}
       </div>
@@ -271,7 +277,7 @@ function PaymentCountdownCard({ invoice, payments, nowMs }) {
             overdue ? "text-error/80" : "text-on-surface-variant"
           }`}
         >
-          Tenggat admin: {formatDeadline(deadline)}
+          {translate("adminDeadline")}: {formatDeadline(deadline, language)}
         </p>
 
         {rejectedCount > 0 && !frozen && (

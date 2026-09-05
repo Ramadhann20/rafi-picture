@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import BookingCountdowns from "./BookingCountdowns";
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
@@ -14,31 +15,31 @@ const ALLOWED_FILE_TYPES = new Set([
 
 const BOOKING_PAYMENT_STATUS = {
   approved: {
-    label: "Menunggu Pembayaran",
+    labelKey: "awaitingPayment",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   confirmed: {
-    label: "Menunggu Verifikasi",
+    labelKey: "awaitingVerification",
     badgeClass:
       "bg-primary-container text-on-primary-container",
   },
 
   in_progress: {
-    label: "Pembayaran Terverifikasi",
+    labelKey: "paymentVerified",
     badgeClass:
       "bg-primary text-on-primary",
   },
 
   completed: {
-    label: "Selesai",
+    labelKey: "paymentComplete",
     badgeClass:
       "bg-primary text-on-primary",
   },
 
   cancelled: {
-    label: "Dibatalkan",
+    labelKey: "cancelledStatus",
     badgeClass:
       "bg-error-container text-error",
   },
@@ -70,7 +71,7 @@ const PAYMENT_STATUS = {
   },
 
   rejected: {
-    label: "DITOLAK",
+    labelKey: "rejected",
     badgeClass:
       "bg-error-container text-error",
   },
@@ -110,12 +111,12 @@ function toDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function formatDate(value) {
+function formatDate(value, language = "id") {
   const date = toDate(value);
 
   if (!date) return "-";
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "id-ID", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -259,6 +260,7 @@ export default function BookingPaymentPage({
   ],
   onSubmitPayment,
 }) {
+  const { translate } = useLanguage();
   const inputRef = useRef(null);
 
   const [proofFile, setProofFile] = useState(null);
@@ -308,8 +310,7 @@ export default function BookingPaymentPage({
     isFinalPayment &&
     canUpload
       ? {
-          label:
-            "Menunggu Pelunasan",
+          labelKey: "finalPaymentWaiting",
           badgeClass:
             "bg-secondary-container text-on-secondary-container",
         }
@@ -427,7 +428,7 @@ export default function BookingPaymentPage({
         setCopiedValue(null);
       }, 1800);
     } catch {
-      setFormError("Nomor rekening gagal disalin.");
+      setFormError(translate("copiedAccountError"));
     }
   };
 
@@ -495,11 +496,11 @@ export default function BookingPaymentPage({
       <header className="mb-stack-lg flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-            Penagihan & Pembayaran
+            {translate("billingAndPayments")}
           </p>
 
           <h1 className="mt-2 font-headline-lg text-headline-lg text-on-surface">
-            Kelola Pembayaran Anda
+            {translate("manageYourPayment")}
           </h1>
 
           <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
@@ -507,8 +508,8 @@ export default function BookingPaymentPage({
               booking.client,
             )},{" "}
             {isFinalPayment
-              ? "selesaikan pembayaran pelunasan dan unggah bukti transfer untuk menyelesaikan kewajiban pembayaran booking."
-              : "selesaikan pembayaran DP dan unggah bukti transfer untuk melanjutkan booking."}
+              ? translate("completeFinalUpload")
+              : translate("completeDepositUpload")}
           </p>
         </div>
 
@@ -521,7 +522,7 @@ export default function BookingPaymentPage({
           />
 
           <span className="font-label-md text-label-md">
-            Status: {displayStatusConfig.label}
+            {translate("paymentStatus")}: {translate(displayStatusConfig.labelKey)}
           </span>
         </div>
       </header>
@@ -566,9 +567,9 @@ export default function BookingPaymentPage({
             formError={formError}
             submitting={submitting}
             paymentLabel={
-              isFinalPayment
-                ? "Pelunasan"
-                : "DP"
+                isFinalPayment
+                  ? translate("remainingPayment")
+                  : translate("depositInvoice")
             }
             inputRef={inputRef}
             onFileChange={handleInputChange}
@@ -595,6 +596,7 @@ function InvoiceCard({
   invoiceType,
   currency,
 }) {
+  const { language, translate } = useLanguage();
   const invoicePdf =
     getInvoicePdf(invoice);
 
@@ -607,21 +609,21 @@ function InvoiceCard({
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-headline-md text-headline-md text-on-surface">
-            {booking.package?.name ?? "Paket Layanan"}
+            {booking.package?.name ?? translate("servicePackage")}
           </h2>
 
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-            Faktur {invoice?.invoiceNumber ?? invoice?.id ?? "-"}
+            {translate("invoiceLabel")} {invoice?.invoiceNumber ?? invoice?.id ?? "-"}
           </p>
         </div>
 
         <div className="text-left sm:text-right">
           <p className="font-label-sm text-label-sm text-secondary">
-            Tanggal Terbit
+            {translate("issuedDate")}
           </p>
 
           <p className="mt-1 font-body-md text-body-md text-on-surface">
-            {formatDate(invoice?.issuedAt ?? invoice?.createdAt)}
+            {formatDate(invoice?.issuedAt ?? invoice?.createdAt, language)}
           </p>
         </div>
       </div>
@@ -646,7 +648,7 @@ function InvoiceCard({
       <div className="mb-stack-md space-y-3">
         <div className="flex items-center justify-between gap-5">
           <span className="font-headline-md text-headline-md text-on-surface">
-            Total Biaya
+            {translate("totalCost")}
           </span>
 
           <span className="font-headline-md text-headline-md text-on-surface">
@@ -658,8 +660,8 @@ function InvoiceCard({
           <span className="font-label-md text-label-md">
             {invoiceType ===
             "final"
-              ? "Pelunasan yang Harus Dibayar"
-              : "DP yang Harus Dibayar"}
+              ? translate("finalPaymentDue")
+              : translate("depositDue")}
           </span>
 
           <span className="font-label-md text-label-md">
@@ -674,7 +676,7 @@ function InvoiceCard({
       {invoicePdf && (
         <div className="mb-stack-md border-y border-outline-variant/25 py-4">
           <p className="mb-3 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-            File Invoice
+            {translate("invoiceFile")}
           </p>
 
           <a
@@ -703,8 +705,8 @@ function InvoiceCard({
                 {" • "}
                 {invoiceType ===
                 "final"
-                  ? "Invoice Pelunasan"
-                  : "Invoice Down Payment"}
+                  ? translate("finalInvoiceLabel")
+                  : translate("depositInvoiceLabel")}
               </p>
             </div>
 
@@ -714,7 +716,7 @@ function InvoiceCard({
                 size={18}
               />
               <span className="hidden sm:inline">
-                Lihat PDF
+                {translate("viewPdf")}
               </span>
             </div>
           </a>
@@ -731,8 +733,8 @@ function InvoiceCard({
         <p className="font-label-sm text-label-sm text-on-surface-variant">
           {invoiceType ===
           "final"
-            ? "Setelah pelunasan diverifikasi, sistem akan menerbitkan kuitansi pembayaran 100% dan mengirimkannya melalui email."
-            : "Booking akan diamankan setelah pembayaran DP diverifikasi oleh admin. Simpan bukti transfer sampai proses verifikasi selesai."}
+            ? translate("finalVerifiedNotice")
+            : translate("depositVerifiedNotice")}
         </p>
       </div>
     </article>
@@ -744,10 +746,11 @@ function PaymentHistory({
   currency,
   remainingBalance,
 }) {
+  const { translate } = useLanguage();
   return (
     <section className="space-y-stack-sm">
       <h2 className="font-label-md text-label-md uppercase tracking-wider text-secondary">
-        Riwayat Transaksi
+        {translate("transactionHistory")}
       </h2>
 
       <div className="glass-panel overflow-hidden rounded-xl">
@@ -762,11 +765,11 @@ function PaymentHistory({
             </div>
 
             <p className="mt-4 font-label-md text-label-md text-on-surface">
-              Belum ada transaksi
+              {translate("noTransactions")}
             </p>
 
             <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-              Riwayat pembayaran akan muncul setelah bukti transfer dikirim.
+              {translate("transactionHistoryEmpty")}
             </p>
           </div>
         ) : (
@@ -775,19 +778,19 @@ function PaymentHistory({
               <thead className="bg-surface-container-high/50">
                 <tr>
                   <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                    Referensi
+                    {translate("reference")}
                   </th>
 
                   <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                    Metode
+                    {translate("method")}
                   </th>
 
                   <th className="px-6 py-4 text-right font-label-md text-label-md text-on-surface-variant">
-                    Jumlah
+                    {translate("quantity")}
                   </th>
 
                   <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                    Status
+                    {translate("paymentStatus")}
                   </th>
                 </tr>
               </thead>
@@ -831,7 +834,7 @@ function PaymentHistory({
                         <span
                           className={`inline-flex rounded px-2 py-1 font-label-sm text-[11px] ${statusConfig.badgeClass}`}
                         >
-                          {statusConfig.label}
+                          {translate(statusConfig.labelKey)}
                         </span>
                       </td>
                     </tr>
@@ -843,7 +846,7 @@ function PaymentHistory({
                     colSpan={2}
                     className="px-6 py-4 text-right font-label-md text-label-md text-on-surface"
                   >
-                    Sisa yang Harus Dibayar
+                    {translate("remainingDue")}
                   </td>
 
                   <td className="px-6 py-4 text-right font-label-md text-label-md text-error">
@@ -865,7 +868,7 @@ function PaymentHistory({
           className="inline-flex cursor-not-allowed items-center gap-2 font-label-md text-label-md text-on-surface-variant opacity-50"
         >
           <AppIcon name="download" size={18} />
-          Unduh Kuitansi
+          {translate("downloadReceipt")}
         </button>
       </div>
     </section>
@@ -877,10 +880,11 @@ function BankTransferCard({
   copiedValue,
   onCopy,
 }) {
+  const { translate } = useLanguage();
   return (
     <article className="glass-panel rounded-xl border border-outline-variant/30 p-stack-md">
       <h2 className="mb-stack-sm font-headline-md text-headline-md text-on-surface">
-        Transfer Bank
+        {translate("bankTransfer")}
       </h2>
 
       <div className="space-y-4">
@@ -904,7 +908,9 @@ function BankTransferCard({
             </p>
 
             <span className="absolute right-4 top-4 rounded-md bg-surface-container-high px-2 py-1 font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary">
-              {copiedValue === account.accountNumber ? "Tersalin" : "Salin"}
+              {copiedValue === account.accountNumber
+                ? translate("copied")
+                : translate("copy")}
             </span>
           </button>
         ))}
@@ -930,6 +936,7 @@ function PaymentUploadCard({
   onDragLeave,
   onSubmit,
 }) {
+  const { translate } = useLanguage();
   if (underReview) {
     return (
       <article className="glass-panel rounded-xl border border-outline-variant/30 p-stack-md">
@@ -940,12 +947,11 @@ function PaymentUploadCard({
 
           <div>
             <p className="font-headline-md text-headline-md text-on-surface">
-              Bukti Pembayaran Terkirim
+              {translate("paymentProofSent")}
             </p>
 
             <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-              Admin sedang meninjau bukti transfer Anda. Form upload akan
-              tersedia kembali apabila pembayaran ditolak.
+              {translate("paymentProofReview")}
             </p>
           </div>
         </div>
@@ -965,12 +971,11 @@ function PaymentUploadCard({
 
           <div>
             <p className="font-headline-md text-headline-md text-on-surface">
-              Upload Tidak Tersedia
+              {translate("uploadUnavailable")}
             </p>
 
             <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-              Bukti transfer hanya dapat dikirim ketika status booking
-              sudah disetujui.
+              {translate("uploadOnlyApproved")}
             </p>
           </div>
         </div>
@@ -981,7 +986,7 @@ function PaymentUploadCard({
   return (
     <article className="glass-panel rounded-xl border border-outline-variant/30 p-stack-md">
       <h2 className="mb-stack-sm font-label-md text-label-md uppercase tracking-wider text-secondary">
-        Unggah Bukti Pembayaran
+        {translate("uploadPaymentProof")}
       </h2>
 
       <div
@@ -1023,11 +1028,11 @@ function PaymentUploadCard({
         ) : (
           <div>
             <p className="font-label-md text-label-md font-bold text-on-surface">
-              Klik untuk unggah atau seret dan lepas
+              {translate("clickOrDropUpload")}
             </p>
 
             <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
-              PNG, JPG, atau JPEG — maksimal 5 MB
+              {translate("imageRequirements")}
             </p>
           </div>
         )}
@@ -1048,7 +1053,7 @@ function PaymentUploadCard({
           className="mt-3 inline-flex items-center gap-2 font-label-sm text-label-sm text-error"
         >
           <AppIcon name="delete" size={16} />
-          Hapus file
+          {translate("removeFile")}
         </button>
       )}
 
@@ -1071,18 +1076,18 @@ function PaymentUploadCard({
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-4 font-label-md text-label-md text-on-primary transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? (
-            "Mengirim Bukti Pembayaran..."
+            translate("sendingPaymentProof")
           ) : (
             <>
               <AppIcon name="check" size={19} />
-              Konfirmasi Bukti Pembayaran
+              {translate("confirmPaymentProof")}
             </>
           )}
         </button>
 
         {!proofFile && (
           <p className="text-center font-label-sm text-label-sm text-on-surface-variant">
-            Tombol konfirmasi aktif setelah foto bukti pembayaran dipilih.
+            {translate("selectProofToEnable")}
           </p>
         )}
       </form>
