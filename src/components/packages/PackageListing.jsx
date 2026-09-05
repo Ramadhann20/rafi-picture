@@ -478,7 +478,7 @@ export default function PackageListing() {
               <article
                 key={packageItem.id}
                 onClick={() => setSelectedPackage(packageItem)}
-                className="package-card group flex min-h-[760px] cursor-pointer flex-col overflow-hidden rounded-xl bg-white ambient-shadow transition-all duration-500 hover:-translate-y-2"
+                className="package-card group flex min-h-[760px] cursor-pointer flex-col overflow-hidden rounded-xl bg-surface-container-lowest ambient-shadow transition-all duration-500 hover:-translate-y-2"
               >
                 <div className="relative h-[300px] shrink-0 overflow-hidden">
                   <PackageImage
@@ -609,7 +609,7 @@ export default function PackageListing() {
               </button>
             </div>
 
-            <div className="flex w-full flex-col justify-between overflow-y-auto bg-white p-8 hide-scrollbar md:w-1/2 md:p-12">
+            <div className="flex w-full flex-col justify-between overflow-y-auto bg-surface-container-lowest p-8 hide-scrollbar md:w-1/2 md:p-12">
               <div>
                 <p className="mb-2 font-label-sm text-label-sm uppercase tracking-widest text-secondary">
                   {(() => {

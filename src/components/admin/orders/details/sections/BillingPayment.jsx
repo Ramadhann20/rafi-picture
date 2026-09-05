@@ -906,7 +906,7 @@ function BillingPreparation({
                   </a>
                 </div>
 
-                <div className="overflow-hidden rounded-lg border border-outline-variant/40 bg-white">
+                <div className="overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-container-lowest">
                   <object
                     data={pdfPreview.url}
                     type="application/pdf"

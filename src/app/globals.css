@@ -6,40 +6,40 @@
 ========================= */
 @theme {
   /* Background */
-  --color-background: #f3f3f4;
-  --color-surface: #f9f9f9;
+  --color-background: #003300;
+  --color-surface: #0b1b2f;
 
   /* Surface scale */
-  --color-surface-bright: #ffffff;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f3f3f4;
-  --color-surface-container: #eeeeee;
-  --color-surface-container-high: #e8e8e8;
-  --color-surface-container-highest: #e2e2e2;
-  --color-surface-variant: #e2e2e2;
+  --color-surface-bright: #18314d;
+  --color-surface-container-lowest: rgba(7, 18, 24, 0.76);
+  --color-surface-container-low: rgba(12, 29, 38, 0.82);
+  --color-surface-container: rgba(18, 35, 48, 0.86);
+  --color-surface-container-high: rgba(24, 50, 72, 0.9);
+  --color-surface-container-highest: rgba(38, 71, 94, 0.96);
+  --color-surface-variant: rgba(111, 143, 174, 0.82);
 
   /* Primary */
-  --color-primary: #000000;
-  --color-primary-container: #1c1b1b;
-  --color-on-primary: #ffffff;
-  --color-on-primary-container: #ffffff;
+  --color-primary: #58d7ff;
+  --color-primary-container: #1d86ff;
+  --color-on-primary: #061d2b;
+  --color-on-primary-container: #edfaff;
 
   /* Secondary */
-  --color-secondary: #5e604d;
-  --color-secondary-container: #e1e1c9;
-  --color-on-secondary-container: #636451;
+  --color-secondary: #9ee8c2;
+  --color-secondary-container: rgba(158, 232, 194, 0.18);
+  --color-on-secondary-container: #ebfff7;
 
   /* System */
-  --color-error: #ba1a1a;
-  --color-error-container: #ffdad6;
+  --color-error: #ff7a7a;
+  --color-error-container: rgba(120, 24, 24, 0.42);
 
   /* Border */
-  --color-outline: #747878;
-  --color-outline-variant: #c4c7c7;
+  --color-outline: rgba(185, 213, 240, 0.54);
+  --color-outline-variant: rgba(148, 184, 219, 0.34);
 
   /* Text */
-  --color-on-surface: #1a1c1c;
-  --color-on-surface-variant: #444748;
+  --color-on-surface: #f3f9ff;
+  --color-on-surface-variant: #dcecff;
 
   /* Fonts */
   --font-body-md: Inter, sans-serif;
@@ -130,26 +130,26 @@
    GLASS SYSTEM (FIXED CONSISTENT)
 ========================= */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(8, 20, 34, 0.76);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(196, 199, 199, 0.45);
-  box-shadow: 0 24px 60px -32px rgba(26, 28, 28, 0.28);
+  border: 1px solid rgba(185, 213, 240, 0.28);
+  box-shadow: 0 24px 60px -32px rgba(2, 10, 18, 0.56);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(10, 29, 42, 0.72);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(196, 199, 199, 0.35);
-  box-shadow: 0 40px 80px -40px rgba(26, 28, 28, 0.18);
+  border: 1px solid rgba(180, 206, 233, 0.22);
+  box-shadow: 0 40px 80px -40px rgba(2, 12, 20, 0.5);
 }
 
 /* =========================
    AUTH
 ========================= */
 .auth-gradient {
-  background: radial-gradient(circle at top right, #f5f5dc 0%, #f9f9f9 100%);
+  background: linear-gradient(135deg, rgba(0, 51, 0, 0.9) 0%, rgba(0, 0, 255, 0.76) 100%);
 }
 
 .auth-input {
@@ -219,6 +219,59 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* =========================
+   GLOBAL THEME OVERRIDE
+========================= */
+html,
+body {
+  background: linear-gradient(135deg, #003300 0%, #0000ff 100%) !important;
+  background-attachment: fixed;
+  color: #f3f9ff !important;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.bg-white,
+.bg-surface,
+.bg-surface-container,
+.bg-surface-container-low,
+.bg-surface-container-lowest,
+.bg-surface-container-high,
+.bg-surface-container-highest,
+.bg-surface-bright,
+.bg-surface-variant {
+  background-color: rgba(9, 24, 36, 0.7) !important;
+}
+
+.text-on-surface,
+.text-on-surface-variant,
+.text-white,
+.text-primary,
+.text-secondary,
+.text-error {
+  color: #f3f9ff !important;
+}
+
+button,
+select,
+input,
+textarea,
+label,
+span,
+li,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+a {
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.12);
 }
 
 /* =========================

@@ -12,7 +12,7 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 
 export default function HomePage() {
   return (
-    <main>
+    <main className="bg-surface">
       <ActionButtonWrapper />
 
       <HeroSection />

@@ -43,7 +43,7 @@ export default function Testimonials() {
   const handlePrev = () => setCurrentIndex((value) => (value > 0 ? value - 1 : testimonials.length - 1));
 
   return (
-    <section className="py-[120px] bg-secondary-container/20">
+    <section className="py-[120px] bg-surface-container-low/80">
       <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
         <div className="text-center mb-[80px]">
           <span className="font-label-md text-label-md text-secondary uppercase tracking-widest mb-4 block">
@@ -86,7 +86,7 @@ export default function Testimonials() {
 
 function TestimonialCard({ item }) {
   return (
-    <div className="min-w-full md:min-w-[calc(50%-16px)] glass-panel p-stack-lg rounded-xl flex flex-col md:flex-row gap-8 items-center bg-white/50">
+    <div className="min-w-full md:min-w-[calc(50%-16px)] glass-panel p-stack-lg rounded-xl flex flex-col md:flex-row gap-8 items-center bg-surface-container-low/70">
       <div className="w-24 h-24 rounded-full overflow-hidden shrink-0">
         <img className="w-full h-full object-cover" src={item.image} alt={item.alt} />
       </div>

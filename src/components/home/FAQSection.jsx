@@ -34,7 +34,7 @@ export default function FAQSection() {
   };
 
   return (
-    <section className="py-[120px] bg-white" id="booking">
+    <section className="py-[120px] bg-surface" id="booking">
       <div className="max-w-3xl mx-auto px-margin-mobile">
         <h2 className="font-headline-lg text-headline-lg text-primary mb-stack-lg text-center">
           Frequently Asked Questions

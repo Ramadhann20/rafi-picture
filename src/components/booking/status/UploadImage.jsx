@@ -75,7 +75,7 @@ export default function UploadImage({ onSubmit, onCancel }) {
   };
 
   return (
-    <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-outline-variant/20 overflow-hidden fade-in-up">
+    <div className="w-full max-w-lg bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/20 overflow-hidden fade-in-up">
       <div className="p-gutter">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-headline-md text-headline-md text-primary">
@@ -103,7 +103,7 @@ export default function UploadImage({ onSubmit, onCancel }) {
             <div className="w-full">
               {isImageFile &&
                 previewUrl && (
-                <div className="w-full h-[260px] bg-white">
+                <div className="w-full h-[260px] bg-surface-container-lowest">
                   <img
                     src={previewUrl}
                     alt="Selected payment proof preview"
@@ -112,7 +112,7 @@ export default function UploadImage({ onSubmit, onCancel }) {
                 </div>
               )}
 
-              <div className="border-t border-outline-variant/30 px-4 py-3 bg-white">
+              <div className="border-t border-outline-variant/30 px-4 py-3 bg-surface-container-lowest">
                 <p className="font-label-sm text-label-sm text-on-surface-variant break-all">
                   {selectedFile.name}
                 </p>

@@ -76,7 +76,7 @@ export default function PackageCards() {
           <article
             key={item.title}
             onClick={() => setSelectedPackage(item)}
-            className="package-card group bg-white overflow-hidden rounded-xl ambient-shadow cursor-pointer transition-all duration-500 hover:-translate-y-2 h-[760px] flex flex-col"
+            className="package-card group bg-surface-container-lowest overflow-hidden rounded-xl ambient-shadow cursor-pointer transition-all duration-500 hover:-translate-y-2 h-[760px] flex flex-col"
           >
             {/* Image Area */}
             <div className="h-[300px] shrink-0 overflow-hidden relative">
@@ -98,21 +98,21 @@ export default function PackageCards() {
               {/* Title and Price */}
               <div className="min-h-[120px] flex justify-between items-start gap-6">
                 <div className="min-w-0">
-                  <h3 className="font-headline-md text-headline-md text-primary mb-2 leading-tight">
+                  <h3 className="font-headline-md text-headline-md text-white mb-2 leading-tight">
                     {item.title}
                   </h3>
 
-                  <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">
+                  <p className="font-label-sm text-label-sm text-slate-200 uppercase tracking-widest">
                     {item.subtitle}
                   </p>
                 </div>
 
                 <div className="text-right shrink-0 pt-1">
-                  <span className="block font-label-sm text-label-sm text-on-surface-variant mb-1">
+                  <span className="block font-label-sm text-label-sm text-slate-200 mb-1">
                     Mulai dari
                   </span>
 
-                  <span className="font-headline-md text-headline-md font-bold text-primary leading-none">
+                  <span className="font-headline-md text-headline-md font-bold text-[#58d7ff] leading-none">
                     {item.price}
                   </span>
                 </div>
@@ -123,7 +123,7 @@ export default function PackageCards() {
                 {item.features.map((feature) => (
                   <li
                     key={feature.text}
-                    className="grid grid-cols-[24px_1fr] gap-x-3 items-start text-on-surface-variant"
+                    className="grid grid-cols-[24px_1fr] gap-x-3 items-start text-slate-100/90"
                   >
                     {/* <MaterialIcon className="text-[20px] leading-none mt-[3px]">
                       {feature.icon}
@@ -141,7 +141,7 @@ export default function PackageCards() {
               <button
                 type="button"
                 onClick={(event) => event.stopPropagation()}
-                className="mt-8 shrink-0 w-full bg-primary text-on-primary py-4 rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-95"
+                className="mt-8 shrink-0 w-full bg-[#58d7ff] text-[#061d2b] py-4 rounded-lg font-label-md hover:bg-[#9ee8c2] transition-all active:scale-95 shadow-lg shadow-black/20"
               >
                 Pesan Paket
               </button>
@@ -179,7 +179,7 @@ export default function PackageCards() {
             </div>
 
             {/* Modal Content */}
-            <div className="w-full md:w-1/2 p-8 md:p-12 bg-white flex flex-col justify-between overflow-y-auto hide-scrollbar">
+            <div className="w-full md:w-1/2 p-8 md:p-12 bg-surface-container-lowest flex flex-col justify-between overflow-y-auto hide-scrollbar">
               <div>
                 <h2 className="font-display-lg text-headline-lg mb-4">
                   {selectedPackage.title}

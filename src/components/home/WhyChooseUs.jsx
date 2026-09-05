@@ -33,11 +33,11 @@ export default function WhyChooseUs() {
       id="about"
     >
       <div className="mx-auto mb-[80px] max-w-container-max px-margin-mobile text-center md:px-margin-desktop">
-        <span className="mb-4 block font-label-md text-label-md uppercase tracking-widest text-secondary">
+        <span className="mb-4 block font-label-md text-label-md uppercase tracking-widest text-[#9ee8c2]">
           Rafi Picture
         </span>
 
-        <h2 className="font-headline-lg text-headline-lg text-primary">
+        <h2 className="font-headline-lg text-headline-lg text-white">
           {translate("whyChooseUs")}
         </h2>
       </div>
@@ -48,23 +48,23 @@ export default function WhyChooseUs() {
             key={item.number}
             className="group text-center"
           >
-            <div className="ambient-shadow mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white transition-colors duration-300 group-hover:bg-primary">
+            <div className="ambient-shadow mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/25 transition-colors duration-300 group-hover:bg-[#58d7ff]">
               <AppIcon
                 name={item.icon}
                 size={28}
-                className="text-primary transition-colors duration-300 group-hover:text-white"
+                className="text-white transition-colors duration-300 group-hover:text-[#061d2b]"
               />
             </div>
 
-            <p className="mb-3 font-label-sm text-label-sm uppercase tracking-[0.18em] text-secondary">
+            <p className="mb-3 font-label-sm text-label-sm uppercase tracking-[0.18em] text-[#9ee8c2]">
               {item.number}
             </p>
 
-            <h3 className="mb-4 font-headline-md text-headline-md text-primary">
+            <h3 className="mb-4 font-headline-md text-headline-md text-white">
               {translate(item.titleKey)}
             </h3>
 
-            <p className="font-body-md text-body-md text-on-surface-variant">
+            <p className="font-body-md text-body-md text-slate-100/85">
               {translate(item.descriptionKey)}
             </p>
           </article>

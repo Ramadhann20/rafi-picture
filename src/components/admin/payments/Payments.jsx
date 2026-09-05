@@ -1120,8 +1120,8 @@ export default function Payments() {
 
                     {sortDirection ===
                     "desc"
-                      ? "Newest First"
-                      : "Oldest First"}
+                      ? translate("newestFirst")
+                      : translate("oldestFirst")}
                   </button>
                 </div>
               </div>
@@ -1255,7 +1255,7 @@ export default function Payments() {
                       {isSelected && (
                         <div className="mt-5 flex justify-end border-t border-outline-variant/20 pt-4">
                           <span className="border-b border-primary pb-0.5 font-label-sm text-label-sm font-bold text-primary">
-                            Review payment
+                            {translate("reviewPayment")}
                           </span>
                         </div>
                       )}
@@ -1275,12 +1275,11 @@ export default function Payments() {
                   </span>
 
                   <h2 className="font-headline-md text-headline-md text-on-surface">
-                    No payments found
+                    {translate("noPaymentsFound")}
                   </h2>
 
                   <p className="mt-2 max-w-md font-body-md text-body-md text-on-surface-variant">
-                    Client payment submissions will appear here
-                    after a proof has been uploaded.
+                    {translate("noPaymentsFoundDescription")}
                   </p>
                 </div>
               )}
@@ -1308,7 +1307,7 @@ export default function Payments() {
                     <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-outline-variant/20 bg-surface-container-lowest/95 px-6 py-5 backdrop-blur-xl sm:px-8">
                       <div className="min-w-0">
                         <p className="mb-1 font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                          Verification Detail
+                          {translate("verificationDetail")}
                         </p>
 
                         <h2 className="truncate font-headline-md text-headline-md text-on-surface">

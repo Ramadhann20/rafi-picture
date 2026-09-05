@@ -23,7 +23,7 @@ const journeySteps = [
 
 export default function ServiceFlow() {
   return (
-    <section className="py-[120px] bg-white overflow-hidden">
+    <section className="py-[120px] bg-surface overflow-hidden">
       <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
         <h2 className="font-headline-lg text-headline-lg text-primary mb-[80px] text-center">
           Your Journey With Us

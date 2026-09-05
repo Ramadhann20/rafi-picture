@@ -51,24 +51,24 @@ export default function FeaturedPortfolioClient({
 
   return (
     <section
-      className="bg-white py-[120px]"
+      className="bg-surface py-[120px]"
       id="portfolio"
     >
       <div className="mx-auto max-w-container-max px-margin-mobile md:px-margin-desktop">
         <div className="mb-stack-lg flex flex-col items-end justify-between gap-6 md:flex-row">
           <div>
-            <span className="mb-4 block font-label-md text-label-md uppercase tracking-widest text-secondary">
+            <span className="mb-4 block font-label-md text-label-md uppercase tracking-widest text-[#9ee8c2]">
               Portofolio Pilihan
             </span>
 
-            <h2 className="font-headline-lg text-headline-lg text-primary">
+            <h2 className="font-headline-lg text-headline-lg text-white">
               Cerita dalam Setiap Frame
             </h2>
           </div>
 
           <Link
             href="/portfolio"
-            className="border-b border-primary pb-1 font-label-md text-label-md text-primary transition-all hover:opacity-70"
+            className="border-b border-[#58d7ff] pb-1 font-label-md text-label-md text-[#58d7ff] transition-all hover:opacity-70"
           >
             Lihat Galeri Lengkap
           </Link>

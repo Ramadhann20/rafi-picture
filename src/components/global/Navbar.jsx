@@ -182,8 +182,8 @@ export default function Navbar() {
                     href={item.href}
                     className={`font-label-md transition-all duration-300 ${
                       isActive
-                        ? "border-b-2 border-primary pb-1 text-primary"
-                        : "text-on-surface-variant hover:text-primary"
+                        ? "border-b-2 border-[#58d7ff] pb-1 text-[#58d7ff]"
+                        : "text-slate-200 hover:text-[#58d7ff]"
                     }`}
                   >
                     {translate(item.key)}
@@ -198,7 +198,7 @@ export default function Navbar() {
               <select
                 value={language}
                 onChange={(event) => setLanguage(event.target.value)}
-                className="rounded-md border border-outline-variant bg-transparent px-2 py-1.5 text-on-surface outline-none focus:border-primary"
+                className="rounded-md border border-white/30 bg-transparent px-2 py-1.5 text-white outline-none focus:border-[#58d7ff]"
                 aria-label={translate("language")}
               >
                 <option value="en">{translate("english")}</option>
@@ -216,7 +216,7 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/authentication"
-                className="rounded-lg bg-primary px-6 py-2.5 font-label-md text-on-primary transition-all hover:opacity-90 active:scale-95"
+                className="rounded-lg bg-[#58d7ff] px-6 py-2.5 font-label-md text-[#061d2b] transition-all hover:bg-[#9ee8c2] active:scale-95 shadow-lg shadow-black/20"
               >
                 {translate("login")}
               </Link>
@@ -439,7 +439,7 @@ function MobileNavLink({ item, pathname }) {
       <span
         className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
           isActive
-            ? "bg-white/10"
+            ? "bg-surface-container-high/30"
             : "bg-surface-container group-hover:bg-surface-container-high"
         }`}
       >
