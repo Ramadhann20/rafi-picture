@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import AppIcon from "@/components/global/AppIcon";
 import SkeletonLoader from "@/components/global/SkeletonLoader";
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 import { CODE_PREFIXES, generateCode } from "@/lib/codefication";
 
@@ -172,6 +173,7 @@ function PackageCardSkeleton() {
 }
 
 export default function PackageManagement() {
+  const { translate } = useLanguage();
   const {
     addDoc,
     colRef,
@@ -372,14 +374,13 @@ export default function PackageManagement() {
         <div className="flex flex-col gap-stack-md lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-              Packages
+              {translate("packages")}
             </p>
             <h1 className="font-display-lg text-display-lg text-primary">
-              Package Management
+              {translate("packageManagement")}
             </h1>
             <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-              Manage package categories, pricing, coverage duration, service
-              highlights, visibility, and client-facing information.
+              {translate("packageManagementDescription")}
             </p>
           </div>
 
@@ -390,13 +391,13 @@ export default function PackageManagement() {
             className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary shadow-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <AppIcon name="add" size={20} />
-            New Package
+            {translate("newPackage")}
           </button>
         </div>
       </header>
 
       <nav
-        aria-label="Package categories"
+        aria-label={translate("packageCategories")}
         className="hide-scrollbar mb-stack-md flex overflow-x-auto border-b border-outline-variant/30"
       >
         {categoriesLoading ? (

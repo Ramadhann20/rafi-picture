@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import AppIcon from "@/components/global/AppIcon";
 import { auth } from "@/lib/firebase-config";
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 import { cleanupCompletedFreelanceCrews } from "@/lib/crewFreelance";
 
@@ -18,37 +19,37 @@ const REQUIRED_CREW_COUNT = 1;
 
 const BOOKING_STATUS = {
   pending: {
-    label: "Pending Review",
+    labelKey: "pendingReview",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   approved: {
-    label: "Approved · Awaiting Payment",
+    labelKey: "approvedAwaitingPayment",
     badgeClass:
       "bg-primary-container text-on-primary-container",
   },
 
   confirmed: {
-    label: "Payment Under Review",
+    labelKey: "paymentUnderReview",
     badgeClass:
       "bg-primary text-on-primary",
   },
 
   in_progress: {
-    label: "In Progress",
+    labelKey: "inProgress",
     badgeClass:
       "bg-surface-container-highest text-on-surface",
   },
 
   completed: {
-    label: "Completed",
+    labelKey: "completed",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   cancelled: {
-    label: "Cancelled",
+    labelKey: "cancelled",
     badgeClass:
       "bg-error-container text-error",
   },
@@ -463,6 +464,7 @@ function getDefaultInvoiceDueDate(
 
 export default function Orders() {
   const db = useDb();
+  const { translate } = useLanguage();
 
   /* ---------------------------------------------------------
      FIRESTORE DATA
@@ -717,33 +719,33 @@ export default function Orders() {
     return [
       {
         id: "total",
-        label: "Total Requests",
+        label: translate("totalOrders"),
         value: bookings.length,
         cardClass: "",
       },
       {
         id: "pending",
-        label: "Pending Review",
+        label: translate("pendingReview"),
         value: countByStatus("pending"),
         cardClass:
           "border-l-4 border-l-secondary",
       },
       {
         id: "approved",
-        label: "Approved",
+        label: translate("approvedAwaitingPayment"),
         value: countByStatus("approved"),
         cardClass:
           "border-l-4 border-l-primary",
       },
       {
         id: "completed",
-        label: "Completed",
+        label: translate("completed"),
         value: countByStatus("completed"),
         cardClass:
           "border-l-4 border-l-outline",
       },
     ];
-  }, [bookings]);
+  }, [bookings, translate]);
 
   /* ---------------------------------------------------------
      SEARCH AND FILTER
@@ -1715,17 +1717,15 @@ const handleAdvancedFilter = () => {
         <div className="flex flex-col gap-stack-md lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-              Bookings
+              {translate("bookings")}
             </p>
 
             <h1 className="font-display-lg text-display-lg text-primary">
-              Booking Management
+              {translate("bookingManagement")}
             </h1>
 
             <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-              Review incoming booking requests,
-              monitor their status, and manage
-              photography orders.
+              {translate("bookingManagementDescription")}
             </p>
           </div>
         </div>
@@ -1736,7 +1736,7 @@ const handleAdvancedFilter = () => {
       ===================================================== */}
 
       <section
-        aria-label="Booking summary"
+        aria-label={translate("bookingSummary")}
         className="mb-stack-md grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-4 xl:gap-gutter"
       >
         {bookingStats.map((stat) => (
@@ -1762,7 +1762,7 @@ const handleAdvancedFilter = () => {
       ===================================================== */}
 
       <section
-        aria-label="Booking filters"
+        aria-label={translate("bookingFilters")}
         className="glass-panel flex flex-col gap-4 rounded-t-xl p-4 lg:flex-row lg:items-center lg:justify-between"
       >
         <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
@@ -1779,7 +1779,7 @@ const handleAdvancedFilter = () => {
               onChange={
                 handleSearchChange
               }
-              placeholder="Search client, package, or location..."
+              placeholder={translate("searchClientPackageLocation")}
               className="w-full rounded-lg border-none bg-surface-container-low py-2.5 pl-10 pr-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
@@ -1789,11 +1789,11 @@ const handleAdvancedFilter = () => {
             onChange={
               handleStatusChange
             }
-            aria-label="Filter booking status"
+            aria-label={translate("filterBookingStatus")}
             className="min-w-48 rounded-lg border-none bg-surface-container-low px-4 py-2.5 font-label-sm text-label-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="all">
-              All Statuses
+              {translate("allStatuses")}
             </option>
 
             {Object.entries(
@@ -1807,7 +1807,7 @@ const handleAdvancedFilter = () => {
                   key={statusValue}
                   value={statusValue}
                 >
-                  {statusConfig.label}
+                  {translate(statusConfig.labelKey)}
                 </option>
               )
             )}
@@ -1820,8 +1820,8 @@ const handleAdvancedFilter = () => {
             onClick={
               handleAdvancedFilter
             }
-            aria-label="Open advanced filters"
-            title="Advanced filters"
+            aria-label={translate("advancedFilters")}
+            title={translate("advancedFilters")}
             className="rounded-lg p-2.5 text-on-surface-variant transition-colors hover:bg-surface-variant/60 hover:text-primary"
           >
             <AppIcon
@@ -1833,8 +1833,8 @@ const handleAdvancedFilter = () => {
           <button
             type="button"
             onClick={handleDownload}
-            aria-label="Download booking data"
-            title="Download data"
+            aria-label={translate("downloadData")}
+            title={translate("downloadData")}
             className="rounded-lg p-2.5 text-on-surface-variant transition-colors hover:bg-surface-variant/60 hover:text-primary"
           >
             <AppIcon
@@ -1855,32 +1855,32 @@ const handleAdvancedFilter = () => {
             <thead>
               <tr className="border-b border-outline-variant/30 bg-surface-container-high/50 text-left">
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                  Client
+                  {translate("client")}
                 </th>
-
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                  Package
+                  {translate("package")}
                 </th>
-
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                  Event Date
+                  {translate("eventDate")}
                 </th>
-
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                  Status
+                  {translate("amount")}
                 </th>
-
+                <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
+                  {translate("status")}
+                </th>
                 <th className="px-6 py-4 text-right font-label-md text-label-md text-on-surface-variant">
-                  Detail
+                  {translate("action")}
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-outline-variant/20">
+            <tbody>
+
               {bookingsLoading && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-stack-lg text-center"
                   >
                     <p className="font-body-md text-body-md text-on-surface-variant">
@@ -1999,7 +1999,7 @@ const handleAdvancedFilter = () => {
                             className={`inline-flex rounded-full px-3 py-1 font-label-sm text-label-sm ${statusConfig.badgeClass}`}
                           >
                             {
-                              statusConfig.label
+                              translate(statusConfig.labelKey)
                             }
                           </span>
                         </td>

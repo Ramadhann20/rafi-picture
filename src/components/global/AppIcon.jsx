@@ -28,6 +28,7 @@ import {
   MdHelpOutline,
   MdHourglassTop,
   MdInfoOutline,
+  MdInventory2,
   MdLocationOn,
   MdLock,
   MdLogout,
@@ -96,6 +97,7 @@ const iconRegistry = {
   hourglass_top: MdHourglassTop,
   info: MdInfoOutline,
   info_outline: MdInfoOutline,
+  inventory_2: MdInventory2,
   location_on: MdLocationOn,
   lock: MdLock,
   lock_person:

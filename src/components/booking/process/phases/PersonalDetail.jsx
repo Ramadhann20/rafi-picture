@@ -20,7 +20,10 @@ export default function PersonalDetail({
             fullName: accountData?.fullName?.trim() || data.fullName,
             email: accountData?.email?.trim() || data.email,
           }
-        : {}),
+        : {
+            fullName: "",
+            email: "",
+          }),
     });
   }
 
@@ -201,6 +204,8 @@ function Field({
   error = null,
   children,
 }) {
+  const { translate } = useLanguage();
+
   return (
     <div>
       <label className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">

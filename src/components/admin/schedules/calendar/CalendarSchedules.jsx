@@ -8,6 +8,7 @@ import {
 import AppIcon from "@/components/global/AppIcon";
 
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 
 import {
@@ -27,15 +28,15 @@ const WEEK_DAYS = [
 const FILTER_OPTIONS = [
   {
     id: "all",
-    label: "Tampilkan Semua",
+    labelKey: "showAll",
   },
   {
     id: "bookings",
-    label: "Tampilkan Pesanan",
+    labelKey: "showBookings",
   },
   {
     id: "schedules",
-    label: "Tampilkan Terjadwal",
+    labelKey: "showSchedules",
   },
 ];
 
@@ -434,6 +435,7 @@ export default function CalendarSchedule({
   onEventClick,
 }) {
   const db = useDb();
+  const { translate } = useLanguage();
 
   const [
     activeDate,
@@ -661,7 +663,7 @@ export default function CalendarSchedule({
                           : "text-on-surface-variant group-hover:text-on-surface"
                       }`}
                     >
-                      {filter.label}
+                      {translate(filter.labelKey)}
 
                       <span className="ml-1 opacity-60">
                         (

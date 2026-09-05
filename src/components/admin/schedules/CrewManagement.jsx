@@ -6,20 +6,21 @@ import AppIcon from "@/components/global/AppIcon";
 import CrewDetails, { CREW_ROLE_OPTIONS } from "./CrewDetails";
 
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 import { useCollection } from "@/hooks/useCollection";
 
 const CREW_STATUS = {
   available: {
-    label: "Available",
+    labelKey: "available",
     badgeClass: "bg-secondary-container text-on-secondary-container",
   },
   assigned: {
-    label: "Assigned",
+    labelKey: "assigned",
     badgeClass: "bg-primary-container text-on-primary-container",
   },
   unavailable: {
-    label: "Unavailable",
+    labelKey: "unavailable",
     badgeClass: "bg-surface-container-high text-on-surface-variant",
   },
 };
@@ -112,6 +113,7 @@ function isTemporaryCrew(member) {
 
 export default function CrewManagement() {
   const db = useDb();
+  const { translate } = useLanguage();
   const { openOverlay, closeOverlay } = useOverlay();
 
   const {
@@ -208,27 +210,27 @@ export default function CrewManagement() {
       studioCrew.filter((member) => member.status === status).length;
 
     return [
-      { id: "total", label: "Total Crew", value: studioCrew.length, cardClass: "" },
+      { id: "total", label: translate("totalCrew"), value: studioCrew.length, cardClass: "" },
       {
         id: "available",
-        label: "Available",
+        label: translate("available"),
         value: countByStatus("available"),
         cardClass: "border-l-4 border-l-secondary",
       },
       {
         id: "assigned",
-        label: "Currently Assigned",
+        label: translate("currentlyAssigned"),
         value: countByStatus("assigned"),
         cardClass: "border-l-4 border-l-primary",
       },
       {
         id: "upcoming",
-        label: "Upcoming Assignments",
+        label: translate("upcomingAssignments"),
         value: upcomingAssignments.length,
         cardClass: "border-l-4 border-l-outline",
       },
     ];
-  }, [studioCrew, upcomingAssignments]);
+  }, [studioCrew, upcomingAssignments, translate]);
 
   async function saveStudioCrew(member, payload) {
     if (member?.id) {
@@ -319,13 +321,13 @@ export default function CrewManagement() {
         <div className="flex flex-col gap-stack-md lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-              Crew
+              {translate("crew")}
             </p>
             <h1 className="font-display-lg text-display-lg text-primary">
-              Crew Management
+              {translate("crewManagement")}
             </h1>
             <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-              Kelola anggota studio, role, status kerja, dan assignment crew.
+              {translate("crewManagementDescription")}
             </p>
           </div>
 
@@ -335,13 +337,13 @@ export default function CrewManagement() {
             className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary shadow-sm transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
           >
             <AppIcon name="person_add" size={20} />
-            New Crew Member
+            {translate("newCrewMember")}
           </button>
         </div>
       </header>
 
       <section
-        aria-label="Crew summary"
+        aria-label={translate("crewSummary")}
         className="mb-stack-md grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-4 xl:gap-gutter"
       >
         {crewStats.map((stat) => (
@@ -365,10 +367,10 @@ export default function CrewManagement() {
             id="crew-table-title"
             className="font-headline-md text-headline-md text-on-surface"
           >
-            Studio Crew
+            {translate("studioCrew")}
           </h2>
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-            Klik icon titik tiga untuk melihat Crew Details, mengubah role, status, dan assignment.
+            {translate("studioCrewDescription")}
           </p>
         </header>
 
@@ -377,11 +379,11 @@ export default function CrewManagement() {
             <table className="w-full min-w-[820px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container-low/50">
-                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">Member</th>
-                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">Role</th>
-                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">Contact</th>
-                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">Status</th>
-                  <th className="px-6 py-4 text-right font-label-md text-label-md text-on-surface-variant">Details</th>
+                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">{translate("member")}</th>
+                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">{translate("role")}</th>
+                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">{translate("contact")}</th>
+                  <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">{translate("status")}</th>
+                  <th className="px-6 py-4 text-right font-label-md text-label-md text-on-surface-variant">{translate("details")}</th>
                 </tr>
               </thead>
 
@@ -448,7 +450,7 @@ export default function CrewManagement() {
                         <span
                           className={`inline-flex rounded-full px-3 py-1 font-label-sm text-label-sm ${statusConfig.badgeClass}`}
                         >
-                          {statusConfig.label}
+                          {translate(statusConfig.labelKey)}
                         </span>
                       </td>
 

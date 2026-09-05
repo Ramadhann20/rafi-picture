@@ -219,12 +219,12 @@ export const englishPackageTranslations = {
     description:
       "A Pre-Wedding and Wedding documentation bundle combining photography, cinematic video, an album, frames, and digital files.",
     features: [
-      "Pre-Wedding Photo Session",
-      "Wedding Photography",
-      "Cinematic Video + 1-Minute Teaser",
-      "Single Magazine Album + Exclusive Box",
-      "Large & Small Frames",
-      "Google Drive & Flash Drive",
+      "PREWEDDING: Duration max 4 hours for outdoor (conditional)",
+      "Prewedding edited selected photos, 16RP + big frame 2 pcs, 4R + frame 10 pcs",
+      "Prewedding cinematic video and all photo files via Google Drive",
+      "WEDDING: Photo, cinematic video + 1-minute teaser cinematic video",
+      "Single magazine album + exclusive box, all data via Google Drive & Flashdisk",
+      "16RP + 2 large frames, 4R + 5 small frames, duration up to 6 hours",
     ],
   },
 };

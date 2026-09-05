@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import AppIcon from "@/components/global/AppIcon";
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 
 const DASHBOARD_CURRENCY = "IDR";
@@ -255,6 +256,20 @@ function formatCurrency(value, currency = DASHBOARD_CURRENCY) {
   }).format(amount);
 }
 
+function SummaryCard({ label, value }) {
+  return (
+    <article className="rounded-lg border border-outline-variant/35 bg-surface-container-low p-5">
+      <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words font-headline-sm text-headline-sm text-primary">
+        {value}
+      </p>
+    </article>
+  );
+}
+
 function calculateTrend(currentValue, previousValue) {
   if (currentValue === 0 && previousValue === 0) {
     return null;
@@ -323,6 +338,7 @@ function getMonthKey(value) {
 
 export default function Dashboard() {
   const db = useDb();
+  const { translate } = useLanguage();
 
   const now = useMemo(() => new Date(), []);
 
@@ -593,7 +609,7 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     return [
       {
-        label: "Total Orders",
+        label: translate("totalOrders"),
         value: bookings.length,
         icon: "shopping_bag",
         trend: null,
@@ -601,7 +617,7 @@ export default function Dashboard() {
       },
 
       {
-        label: "Upcoming Schedules",
+        label: translate("upcomingSchedules"),
         value: upcomingAssignments.length,
         icon: "calendar_month",
         trend: null,
@@ -609,7 +625,7 @@ export default function Dashboard() {
       },
 
       {
-        label: "Monthly Revenue",
+        label: translate("monthlyRevenue"),
         value: formatCurrency(monthlyRevenue),
         icon: "payments",
         trend: null,
@@ -617,7 +633,7 @@ export default function Dashboard() {
       },
 
       {
-        label: "Pending Payments",
+        label: translate("pendingPayments"),
         value: pendingPayments.length,
         icon: "receipt",
         trend: null,
@@ -632,6 +648,7 @@ export default function Dashboard() {
     previousMonthBookings.length,
     previousMonthlyRevenue,
     upcomingAssignments.length,
+    translate,
   ]);
 
   const bookingBars = useMemo(() => {
@@ -677,13 +694,13 @@ export default function Dashboard() {
 
   const paymentSummary = [
     {
-      label: "Verified",
+      label: translate("verified"),
       value: formatCurrency(paymentDistribution.paid),
       dotClass: "bg-primary",
     },
 
     {
-      label: "Pending",
+      label: translate("pending"),
       value: formatCurrency(paymentDistribution.pending),
       dotClass: "bg-error",
     },
@@ -707,11 +724,11 @@ export default function Dashboard() {
         <AppIcon name="block" size={32} className="mx-auto text-error" />
 
         <h1 className="mt-4 font-headline-md text-headline-md text-error">
-          Failed to load dashboard
+          {translate("failedToLoadDashboard")}
         </h1>
 
         <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-          Booking, assignment, or payment data could not be loaded.
+          {translate("dashboardDataUnavailable")}
         </p>
       </section>
     );
@@ -726,15 +743,15 @@ export default function Dashboard() {
       <header className="mb-stack-lg flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-            Overview
+            {translate("adminOverview")}
           </p>
 
           <h1 className="font-headline-lg text-headline-lg tracking-tight text-primary">
-            Dashboard
+            {translate("dashboard")}
           </h1>
 
           <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-            Live summary from bookings, crew schedules, and payments.
+            {translate("dashboardDescription")}
           </p>
         </div>
 
@@ -794,16 +811,16 @@ export default function Dashboard() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-              Report
+              {translate("report")}
             </p>
             <h2 className="mt-1 font-headline-md text-headline-md text-primary">
-              Booking Report
+              {translate("bookingReport")}
             </h2>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <label className="font-label-sm text-label-sm text-on-surface-variant">
-              Report Period
+              {translate("reportPeriod")}
               <input
                 type="month"
                 value={reportPeriod}
@@ -818,22 +835,22 @@ export default function Dashboard() {
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-label-md text-label-md text-on-primary"
             >
               <AppIcon name="download" size={18} />
-              Download Report
+              {translate("downloadReport")}
             </button>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <SummaryCard
-            label="Total Revenue"
+            label={translate("totalRevenue")}
             value={formatCurrency(reportData.revenue)}
           />
           <SummaryCard
-            label="Total Clients"
+            label={translate("totalClients")}
             value={reportData.clientCount}
           />
           <SummaryCard
-            label="Most Selected Package"
+            label={translate("mostSelectedPackage")}
             value={reportData.mostSelectedPackage}
           />
         </div>
@@ -844,10 +861,10 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b border-outline-variant/30">
                   <th className="px-3 py-3 font-label-md text-label-md text-on-surface-variant">
-                    Package
+                    {translate("package")}
                   </th>
                   <th className="px-3 py-3 text-right font-label-md text-label-md text-on-surface-variant">
-                    Selections
+                    {translate("selections")}
                   </th>
                 </tr>
               </thead>
@@ -877,16 +894,16 @@ export default function Dashboard() {
           <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-headline-md text-headline-md text-primary">
-                Monthly Bookings
+                {translate("monthlyBookings")}
               </h2>
 
               <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                Booking requests submitted during the last six months.
+                {translate("monthlyBookingsDescription")}
               </p>
             </div>
 
             <span className="font-label-sm text-label-sm text-on-surface-variant">
-              Last {MONTH_COUNT} months
+              {translate("lastMonths")}
             </span>
           </div>
 

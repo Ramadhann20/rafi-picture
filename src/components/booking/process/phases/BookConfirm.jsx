@@ -7,7 +7,7 @@ import {
 } from "@/lib/location";
 import { useLanguage } from "@/context/LanguageContext";
 
-const EMPTY_VALUE = "Belum diisi";
+const EMPTY_VALUE = "-";
 
 function getDisplayValue(value) {
   const normalizedValue =
@@ -18,7 +18,7 @@ function getDisplayValue(value) {
   );
 }
 
-function formatEventDate(value) {
+function formatEventDate(value, language = "id") {
   if (!value) return EMPTY_VALUE;
 
   const date =
@@ -35,7 +35,7 @@ function formatEventDate(value) {
   }
 
   return new Intl.DateTimeFormat(
-    "id-ID",
+    language === "en" ? "en-US" : "id-ID",
     {
       weekday: "long",
       day: "2-digit",
@@ -145,6 +145,7 @@ function normalizeInstagram(value) {
 
 function getEventTimeLabel(
   eventData,
+  nextDayLabel,
 ) {
   if (
     !eventData?.startTime
@@ -163,7 +164,7 @@ function getEventTimeLabel(
       eventData.endTimeDayOffset ||
         0,
     ) > 0
-      ? " (hari berikutnya)"
+      ? ` (${nextDayLabel})`
       : ""
   }`;
 }
@@ -200,6 +201,7 @@ function DetailRow({
   label,
   value,
   optional = false,
+  optionalLabel = "Optional",
   fullWidth = false,
   multiline = false,
 }) {
@@ -219,7 +221,7 @@ function DetailRow({
 
         {optional && (
           <span className="ml-2 normal-case tracking-normal text-on-surface-variant/55">
-            Optional
+            {optionalLabel}
           </span>
         )}
       </p>
@@ -419,6 +421,7 @@ export default function BookConfirm({
             label={translate("eventDate")}
             value={formatEventDate(
               eventData.eventDate,
+              language,
             )}
           />
 
@@ -426,6 +429,7 @@ export default function BookConfirm({
             label={translate("eventTime")}
             value={getEventTimeLabel(
               eventData,
+              translate("nextDay"),
             )}
           />
 
@@ -470,6 +474,7 @@ export default function BookConfirm({
                 personalData.partnerName,
               )}
               optional
+              optionalLabel={translate("optional")}
             />
           )}
 
@@ -493,6 +498,7 @@ export default function BookConfirm({
               personalData.instagram,
             )}
             optional
+              optionalLabel={translate("optional")}
             fullWidth
           />
         </div>
@@ -512,6 +518,7 @@ export default function BookConfirm({
             eventData.vision,
           )}
           optional
+          optionalLabel={translate("optional")}
           fullWidth
           multiline
         />
@@ -528,21 +535,21 @@ export default function BookConfirm({
 
           <div>
             <h3 className="font-label-md text-label-md text-on-surface">
-              Sebelum Mengirim Booking
+              {translate("beforeSubmitBooking")}
             </h3>
 
             <ul className="mt-3 space-y-2 font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
               <li>
-                Pengiriman formulir belum menjamin ketersediaan tanggal acara.
+                {translate("beforeSubmitAvailability")}
               </li>
               <li>
-                Tim akan meninjau jadwal, lokasi, dan kebutuhan acara terlebih dahulu.
+                {translate("beforeSubmitReview")}
               </li>
               <li>
-                Harga paket dapat berubah jika terdapat kebutuhan tambahan.
+                {translate("beforeSubmitPrice")}
               </li>
               <li>
-                Tim akan menghubungi Anda melalui email atau nomor telepon yang dicantumkan.
+                {translate("beforeSubmitContact")}
               </li>
             </ul>
           </div>
@@ -557,7 +564,7 @@ export default function BookConfirm({
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
 
           <p className="font-label-md text-label-md text-on-surface-variant">
-            Mengirim permintaan booking...
+            {translate("submittingBooking")}
           </p>
         </div>
       )}
@@ -575,11 +582,11 @@ export default function BookConfirm({
 
           <div>
             <p className="font-label-md text-label-md text-on-surface">
-              Permintaan booking berhasil dikirim.
+              {translate("bookingSentSuccess")}
             </p>
 
             <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-              Data telah diterima dan akan ditinjau oleh tim.
+              {translate("bookingWillBeReviewed")}
             </p>
           </div>
         </div>

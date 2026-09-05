@@ -1,59 +1,55 @@
 "use client";
 
 import AppIcon from "@/components/global/AppIcon";
+import { englishPackageTranslations } from "@/components/packages/PackageListing";
+import { useLanguage } from "@/context/LanguageContext";
 import BookingCountdowns from "./BookingCountdowns";
 
 const STATUS_CONFIG = {
   pending: {
-    label: "Menunggu Review",
-    title: "Inquiry Berhasil Dikirim",
-    description:
-      "Permintaan booking Anda sudah diterima. Tim Rafi Picture akan meninjau jadwal, lokasi, paket, dan kebutuhan acara terlebih dahulu.",
+    labelKey: "statusPendingLabel",
+    titleKey: "statusPendingTitle",
+    descriptionKey: "statusPendingDescription",
     icon: "hourglass_top",
     accentClass: "text-secondary",
   },
 
   approved: {
-    label: "Disetujui",
-    title: "Booking Disetujui",
-    description:
-      "Permintaan booking Anda sudah disetujui. Silakan lanjutkan ke tahap pembayaran deposit.",
+    labelKey: "statusApprovedLabel",
+    titleKey: "statusApprovedTitle",
+    descriptionKey: "statusApprovedDescription",
     icon: "verified",
     accentClass: "text-primary",
   },
 
   confirmed: {
-    label: "Pembayaran Dikirim",
-    title: "Pembayaran Sedang Ditinjau",
-    description:
-      "Bukti pembayaran sudah diterima dan sedang diverifikasi oleh admin Rafi Picture.",
+    labelKey: "statusConfirmedLabel",
+    titleKey: "statusConfirmedTitle",
+    descriptionKey: "statusConfirmedDescription",
     icon: "check_circle",
     accentClass: "text-primary",
   },
 
   in_progress: {
-    label: "Dalam Proses",
-    title: "Booking Sedang Berjalan",
-    description:
-      "Booking Anda sudah aktif dan tim sedang mempersiapkan layanan sesuai detail acara.",
+    labelKey: "statusInProgressLabel",
+    titleKey: "statusInProgressTitle",
+    descriptionKey: "statusInProgressDescription",
     icon: "pending_actions",
     accentClass: "text-secondary",
   },
 
   completed: {
-    label: "Selesai",
-    title: "Booking Selesai",
-    description:
-      "Seluruh proses booking telah selesai. Terima kasih telah menggunakan layanan Rafi Picture.",
+    labelKey: "statusCompletedLabel",
+    titleKey: "statusCompletedTitle",
+    descriptionKey: "statusCompletedDescription",
     icon: "task_alt",
     accentClass: "text-primary",
   },
 
   cancelled: {
-    label: "Dibatalkan",
-    title: "Booking Dibatalkan",
-    description:
-      "Booking ini telah dibatalkan. Hubungi tim Rafi Picture jika Anda membutuhkan informasi lebih lanjut.",
+    labelKey: "statusCancelledLabel",
+    titleKey: "statusCancelledTitle",
+    descriptionKey: "statusCancelledDescription",
     icon: "cancel",
     accentClass: "text-error",
   },
@@ -90,13 +86,13 @@ function toDate(value) {
     : date;
 }
 
-function formatDate(value) {
+function formatDate(value, language = "id") {
   const date = toDate(value);
 
   if (!date) return EMPTY_VALUE;
 
   return new Intl.DateTimeFormat(
-    "id-ID",
+    language === "en" ? "en-US" : "id-ID",
     {
       weekday: "long",
       day: "2-digit",
@@ -106,13 +102,13 @@ function formatDate(value) {
   ).format(date);
 }
 
-function formatDateTime(value) {
+function formatDateTime(value, language = "id") {
   const date = toDate(value);
 
   if (!date) return EMPTY_VALUE;
 
   return new Intl.DateTimeFormat(
-    "id-ID",
+    language === "en" ? "en-US" : "id-ID",
     {
       day: "2-digit",
       month: "short",
@@ -187,7 +183,7 @@ function getLocationLabel(location) {
   );
 }
 
-function getEventTimeLabel(event) {
+function getEventTimeLabel(event, nextDayLabel) {
   if (!event?.startTime) {
     return EMPTY_VALUE;
   }
@@ -200,7 +196,7 @@ function getEventTimeLabel(event) {
     Number(
       event.endTimeDayOffset || 0,
     ) > 0
-      ? " (hari berikutnya)"
+      ? ` (${nextDayLabel})`
       : ""
   }`;
 }
@@ -357,6 +353,7 @@ function DetailItem({
   accent = false,
   multiline = false,
 }) {
+  const { translate } = useLanguage();
   const displayValue =
     value === undefined ||
     value === null ||
@@ -377,7 +374,7 @@ function DetailItem({
 
         {optional && (
           <span className="ml-2 normal-case tracking-normal text-on-surface-variant/50">
-            Optional
+            {translate("optional")}
           </span>
         )}
       </p>
@@ -474,11 +471,13 @@ export default function BookingStatus({
   payments = [],
   receipt = null,
 }) {
+  const { language, translate } = useLanguage();
+
   if (!booking) {
     return (
       <section className="flex min-h-100 items-center justify-center px-margin-mobile">
         <p className="font-body-md text-body-md text-on-surface-variant">
-          Data booking tidak tersedia.
+          {translate("bookingDataUnavailable")}
         </p>
       </section>
     );
@@ -500,6 +499,18 @@ export default function BookingStatus({
     booking.event ?? {};
   const selectedPackage =
     booking.package ?? {};
+  const packageTranslation =
+    language === "en"
+      ? englishPackageTranslations[selectedPackage.id]
+      : null;
+  const displayPackage = packageTranslation
+    ? {
+        ...selectedPackage,
+        description: packageTranslation.description,
+        features: packageTranslation.features,
+        serviceHighlights: packageTranslation.features,
+      }
+    : selectedPackage;
 
   const eventLocation =
     typeof event.location ===
@@ -518,7 +529,7 @@ export default function BookingStatus({
   const packagePrice =
     Math.max(
       Number(
-        selectedPackage.price,
+        displayPackage.price,
       ) || 0,
       0,
     );
@@ -529,11 +540,11 @@ export default function BookingStatus({
 
   const packageFeatures =
     getPackageFeatures(
-      selectedPackage,
+      displayPackage,
     );
 
   const showPartnerName =
-    selectedPackage
+    displayPackage
       .bookingSubjectType ===
     "couple";
 
@@ -591,12 +602,9 @@ export default function BookingStatus({
     isFinalPaymentUnderReview
       ? {
           ...statusConfig,
-          label:
-            "Pelunasan Dikirim",
-          title:
-            "Pelunasan Sedang Ditinjau",
-          description:
-            "Bukti pembayaran pelunasan sudah diterima dan sedang diverifikasi oleh admin Rafi Picture.",
+          labelKey: "statusFinalPaymentLabel",
+          titleKey: "statusFinalPaymentTitle",
+          descriptionKey: "statusFinalPaymentDescription",
           icon:
             "check_circle",
           accentClass:
@@ -605,12 +613,9 @@ export default function BookingStatus({
       : isFullyPaid
         ? {
             ...statusConfig,
-            label:
-              "Lunas",
-            title:
-              "Pembayaran Sudah Lunas",
-            description:
-              "Seluruh pembayaran booking sudah terverifikasi. Invoice dan kuitansi pembayaran tersedia pada bagian Dokumen Pembayaran.",
+            labelKey: "statusPaidLabel",
+            titleKey: "statusPaidTitle",
+            descriptionKey: "statusPaidDescription",
             icon:
               "verified",
             accentClass:
@@ -640,15 +645,15 @@ export default function BookingStatus({
         <p
           className={`font-label-sm text-label-sm uppercase tracking-[0.2em] ${displayConfig.accentClass}`}
         >
-          {displayConfig.label}
+          {translate(displayConfig.labelKey)}
         </p>
 
         <h1 className="mt-2 font-headline-lg text-headline-lg tracking-tight text-on-surface">
-          {displayConfig.title}
+          {translate(displayConfig.titleKey)}
         </h1>
 
         <p className="mx-auto mt-3 max-w-2xl font-body-md text-body-md leading-relaxed text-on-surface-variant">
-          {displayConfig.description}
+          {translate(displayConfig.descriptionKey)}
         </p>
 
         {(isFinalPaymentUnderReview ||
@@ -663,7 +668,7 @@ export default function BookingStatus({
               />
 
               <span className="font-label-sm text-label-sm text-on-surface-variant">
-                Status layanan: Dalam Proses
+                {translate("serviceStatus")}
               </span>
             </div>
           )}
@@ -677,7 +682,7 @@ export default function BookingStatus({
             />
 
             <span className="font-label-sm text-label-sm text-on-surface-variant">
-              Booking Code
+              {translate("bookingCode")}
             </span>
 
             <span className="font-label-md text-label-md text-on-surface">
@@ -695,12 +700,13 @@ export default function BookingStatus({
             />
 
             <span className="font-label-sm text-label-sm text-on-surface-variant">
-              Dikirim
+              {translate("submittedAt")}
             </span>
 
             <span className="font-label-md text-label-md text-on-surface">
               {formatDateTime(
                 booking.submittedAt,
+                language,
               )}
             </span>
           </div>
@@ -717,28 +723,28 @@ export default function BookingStatus({
       <section className="border-b border-outline-variant/35 pb-7">
         <SectionHeading
           icon="photo_camera"
-          title="Paket Dokumentasi"
-          description="Ringkasan paket yang dipilih pada saat inquiry dikirim."
+          title={translate("packageDetails")}
+          description={translate("selectedPackageDescription")}
         />
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="font-headline-md text-headline-md text-on-surface">
-              {selectedPackage.name ||
+              {displayPackage.name ||
                 EMPTY_VALUE}
             </p>
 
-            {selectedPackage.description && (
+            {displayPackage.description && (
               <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
                 {
-                  selectedPackage.description
+                  displayPackage.description
                 }
               </p>
             )}
 
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
               {Number(
-                selectedPackage.durationHours,
+                displayPackage.durationHours,
               ) > 0 && (
                 <span className="inline-flex items-center gap-2">
                   <AppIcon
@@ -747,9 +753,9 @@ export default function BookingStatus({
                     className="text-secondary"
                   />
                   {
-                    selectedPackage.durationHours
+                    displayPackage.durationHours
                   }{" "}
-                  jam liputan
+                  {translate("hoursCoverage")}
                 </span>
               )}
 
@@ -764,20 +770,20 @@ export default function BookingStatus({
                   className="text-secondary"
                 />
                 {showPartnerName
-                  ? "Couple / berpasangan"
-                  : "Individual"}
+                  ? translate("subjectCouple")
+                  : translate("subjectIndividual")}
               </span>
             </div>
           </div>
 
           <div className="shrink-0 sm:text-right">
             <p className="font-label-sm text-label-sm text-on-surface-variant">
-              Harga Paket
+              {translate("packagePrice")}
             </p>
 
             <p className="mt-1 font-headline-md text-headline-md text-primary">
               {getPackagePriceLabel(
-                selectedPackage,
+                displayPackage,
               )}
             </p>
           </div>
@@ -787,7 +793,7 @@ export default function BookingStatus({
           0 && (
           <div className="mt-6 border-t border-outline-variant/25 pt-5">
             <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-              Layanan Termasuk
+              {translate("includedServices")}
             </p>
 
             <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
@@ -821,27 +827,26 @@ export default function BookingStatus({
       <section className="border-b border-outline-variant/35 py-7">
         <SectionHeading
           icon="event"
-          title="Detail Acara"
-          description="Jadwal, lokasi, dan biaya perjalanan yang tercatat pada booking."
+          title={translate("eventDetails")}
+          description={translate("eventDetailsDescription")}
         />
 
         <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
           <DetailItem
-            label="Tanggal Acara"
+            label={translate("eventDateLabel")}
             value={formatDate(
               event.preferredDate,
+              language,
             )}
           />
 
           <DetailItem
-            label="Jam Acara"
-            value={getEventTimeLabel(
-              event,
-            )}
+            label={translate("eventTime")}
+            value={getEventTimeLabel(event, translate("nextDay"))}
           />
 
           <DetailItem
-            label="Lokasi Acara"
+            label={translate("eventLocationLabel")}
             value={getLocationLabel(
               eventLocation,
             )}
@@ -849,7 +854,7 @@ export default function BookingStatus({
           />
 
           <DetailItem
-            label="Biaya Perjalanan"
+            label={translate("travelCost")}
             value={formatRupiah(
               travelCharge,
             )}
@@ -865,14 +870,14 @@ export default function BookingStatus({
       <section className="border-b border-outline-variant/35 py-7">
         <SectionHeading
           icon="person"
-          title="Data Pemesan"
-          description="Informasi kontak yang digunakan tim Rafi Picture untuk komunikasi booking."
+          title={translate("personalDetails")}
+          description={translate("clientDataDescription")}
         />
 
         <div className="space-y-1">
           <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
             <DetailItem
-              label="Nama Lengkap"
+              label={translate("fullName")}
               value={
                 client.fullName
               }
@@ -880,7 +885,7 @@ export default function BookingStatus({
 
             {showPartnerName && (
               <DetailItem
-                label="Nama Pasangan"
+                label={translate("partnerName")}
                 value={
                   client.partnerName
                 }
@@ -891,12 +896,12 @@ export default function BookingStatus({
 
           <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
             <DetailItem
-              label="Email"
+              label={translate("emailAddress")}
               value={client.email}
             />
 
             <DetailItem
-              label="Nomor Telepon"
+              label={translate("phoneNumber")}
               value={client.phone}
             />
           </div>
@@ -917,12 +922,12 @@ export default function BookingStatus({
       <section className="border-b border-outline-variant/35 py-7">
         <SectionHeading
           icon="auto_awesome"
-          title="Vision & Catatan"
-          description="Konsep atau kebutuhan tambahan yang disampaikan saat booking."
+          title={translate("visionAndNotes")}
+          description={translate("visionAndNotesDescription")}
         />
 
         <DetailItem
-          label="Catatan Acara"
+          label={translate("eventNotes")}
           value={event.vision}
           optional
           fullWidth
@@ -934,20 +939,20 @@ export default function BookingStatus({
       <section className="py-7">
         <SectionHeading
           icon="payments"
-          title="Ringkasan Biaya"
-          description="Ringkasan ini berdasarkan package dan biaya perjalanan pada saat inquiry dikirim."
+          title={translate("costSummary")}
+          description={translate("costSummaryDescription")}
         />
 
         <div className="max-w-xl">
           <div className="flex items-center justify-between gap-5 py-2.5">
             <span className="font-body-md text-body-md text-on-surface-variant">
-              Harga Paket
+              {translate("packagePrice")}
             </span>
 
             <span className="font-label-md text-label-md text-on-surface">
               {formatCurrency(
                 packagePrice,
-                selectedPackage.currency ||
+                displayPackage.currency ||
                   "IDR",
               )}
             </span>
@@ -955,7 +960,7 @@ export default function BookingStatus({
 
           <div className="flex items-center justify-between gap-5 py-2.5">
             <span className="font-body-md text-body-md text-on-surface-variant">
-              Biaya Perjalanan
+              {translate("travelCost")}
             </span>
 
             <span className="font-label-md text-label-md text-on-surface">
@@ -973,7 +978,7 @@ export default function BookingStatus({
             <span className="font-headline-sm text-headline-sm text-primary">
               {formatCurrency(
                 estimatedTotal,
-                selectedPackage.currency ||
+                displayPackage.currency ||
                   "IDR",
               )}
             </span>
@@ -984,21 +989,21 @@ export default function BookingStatus({
             receiptPdf) && (
             <div className="mt-6 border-t border-outline-variant/30 pt-6">
               <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                Dokumen Pembayaran
+                {translate("paymentDocuments")}
               </p>
 
               <p className="mt-1 font-body-sm text-body-sm leading-relaxed text-on-surface-variant/75">
-                Invoice dan kuitansi yang sudah diterbitkan untuk booking ini.
+                {translate("paymentDocumentsDescription")}
               </p>
 
               <div className="mt-4 space-y-3">
                 {depositInvoicePdf && (
                   <PaymentDocumentCard
                     pdf={depositInvoicePdf}
-                    title="Invoice Down Payment"
+                    title={translate("depositInvoice")}
                     subtitle={
                       depositInvoice?.invoiceNumber ||
-                      "Invoice DP"
+                      translate("depositInvoice")
                     }
                     icon="receipt"
                   />
@@ -1007,10 +1012,10 @@ export default function BookingStatus({
                 {finalInvoicePdf && (
                   <PaymentDocumentCard
                     pdf={finalInvoicePdf}
-                    title="Invoice Pelunasan"
+                    title={translate("finalInvoice")}
                     subtitle={
                       finalInvoice?.invoiceNumber ||
-                      "Invoice Pelunasan"
+                      translate("finalInvoice")
                     }
                     icon="payments"
                   />
@@ -1019,10 +1024,10 @@ export default function BookingStatus({
                 {receiptPdf && (
                   <PaymentDocumentCard
                     pdf={receiptPdf}
-                    title="Kuitansi Pembayaran"
+                    title={translate("paymentReceipt")}
                     subtitle={
                       receipt?.receiptNumber ||
-                      "Pembayaran 100%"
+                      translate("fullPayment")
                     }
                     icon="verified"
                     highlighted
@@ -1035,7 +1040,7 @@ export default function BookingStatus({
           {normalizedStatus ===
             "pending" && (
             <p className="mt-3 font-body-sm text-body-sm leading-relaxed text-on-surface-variant/70">
-              Nominal final akan mengikuti hasil review admin dan invoice yang diterbitkan setelah booking disetujui.
+              {translate("finalAmountNotice")}
             </p>
           )}
         </div>
@@ -1044,9 +1049,10 @@ export default function BookingStatus({
       {/* FOOT META */}
       <div className="flex flex-col gap-4 border-t border-outline-variant/35 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-body-sm text-body-sm text-on-surface-variant/65">
-          Terakhir diperbarui{" "}
+          {translate("lastUpdated")} {" "}
           {formatDateTime(
             booking.updatedAt,
+            language,
           )}
         </p>
       </div>

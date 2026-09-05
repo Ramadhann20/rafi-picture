@@ -10,6 +10,10 @@ import {
 } from "@/context/DbContext";
 
 import {
+  useLanguage,
+} from "@/context/LanguageContext";
+
+import {
   useOverlay,
 } from "@/context/ui/OverlayContext";
 
@@ -428,6 +432,7 @@ function sortCalendarEvents(
 export default function Schedules() {
   const db =
     useDb();
+  const { translate } = useLanguage();
 
   const {
     openOverlay,
@@ -637,9 +642,9 @@ export default function Schedules() {
     bookingsLoading ||
     schedulesLoading
   ) {
-    return (
-      <PageState>
-        Loading schedule data...
+      return (
+        <PageState>
+          {translate("loadingScheduleData")}
       </PageState>
     );
   }
@@ -648,9 +653,9 @@ export default function Schedules() {
     bookingsError ||
     schedulesError
   ) {
-    return (
-      <PageState error>
-        Failed to load booking or schedule data.
+      return (
+        <PageState error>
+          {translate("failedLoadScheduleData")}
       </PageState>
     );
   }
@@ -659,15 +664,15 @@ export default function Schedules() {
     <section>
       <header className="mb-stack-lg">
         <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Schedule
+          {translate("schedule")}
         </p>
 
         <h1 className="font-display-lg text-display-lg text-primary">
-          Schedule Management
+           {translate("scheduleManagement")}
         </h1>
 
         <p className="mt-2 max-w-3xl font-body-md text-body-md text-on-surface-variant">
-          Lihat permintaan booking yang masih menunggu review dan jadwal aktif yang sudah terkunci setelah pembayaran DP diverifikasi.
+           {translate("scheduleManagementDescription")}
         </p>
       </header>
 

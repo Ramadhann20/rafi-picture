@@ -10,54 +10,55 @@ import AppIcon from "@/components/global/AppIcon";
 
 import { useAuth } from "@/context/AuthContext";
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 
 const PAYMENT_FILTERS = [
   {
     id: "pending",
-    label: "Pending Review",
+    labelKey: "pendingReview",
   },
   {
     id: "verified",
-    label: "Verified",
+    labelKey: "verified",
   },
   {
     id: "rejected",
-    label: "Rejected",
+    labelKey: "rejected",
   },
   {
     id: "all",
-    label: "All Payments",
+    labelKey: "allPayments",
   },
 ];
 
 const PAYMENT_STATUS = {
   pending: {
-    label: "Pending Review",
+    labelKey: "pendingReview",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   pending_verification: {
-    label: "Pending Review",
+    labelKey: "pendingReview",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   verified: {
-    label: "Verified",
+    labelKey: "verified",
     badgeClass:
       "bg-primary-container text-on-primary-container",
   },
 
   paid: {
-    label: "Verified",
+    labelKey: "verified",
     badgeClass:
       "bg-primary-container text-on-primary-container",
   },
 
   rejected: {
-    label: "Rejected",
+    labelKey: "rejected",
     badgeClass:
       "bg-error-container text-error",
   },
@@ -384,6 +385,7 @@ function getSelectedPaymentFromUrl() {
 }
 
 export default function Payments() {
+  const { translate } = useLanguage();
   const {
     user,
   } = useAuth();
@@ -1005,15 +1007,15 @@ export default function Payments() {
     <section>
       <header className="mb-stack-lg">
         <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Payments
+          {translate("paymentsPage")}
         </p>
 
         <h1 className="font-display-lg text-display-lg text-primary">
-          Payment Verification
+          {translate("paymentManagement")}
         </h1>
 
         <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          Review bukti pembayaran DP dan pelunasan. ACC DP membuka tahap invoice pelunasan, sedangkan ACC pelunasan otomatis membuat kuitansi 100%.
+          {translate("paymentManagementDescription")}
         </p>
       </header>
 
@@ -1033,7 +1035,7 @@ export default function Payments() {
             <div className="shrink-0 border-b border-outline-variant/20 p-4 sm:p-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <nav
-                  aria-label="Payment filters"
+                  aria-label={translate("paymentFilters")}
                   className="hide-scrollbar flex overflow-x-auto rounded-lg bg-surface-container-high p-1"
                 >
                   {PAYMENT_FILTERS.map(
@@ -1057,7 +1059,7 @@ export default function Payments() {
                               : "text-on-surface-variant hover:text-primary"
                           }`}
                         >
-                          {filter.label}
+                          {translate(filter.labelKey)}
 
                           <span className="ml-1.5 opacity-60">
                             (
@@ -1091,7 +1093,7 @@ export default function Payments() {
                             .value,
                         )
                       }
-                      placeholder="Search payment..."
+                      placeholder={translate("searchPayment")}
                       className="w-full rounded-lg border-none bg-surface-container-high py-2.5 pl-10 pr-4 font-label-md text-label-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
@@ -1238,9 +1240,7 @@ export default function Payments() {
                           <span
                             className={`mt-1 inline-flex rounded-full px-2.5 py-1 font-label-sm text-[11px] ${statusConfig.badgeClass}`}
                           >
-                            {
-                              statusConfig.label
-                            }
+                            {translate(statusConfig.labelKey)}
                           </span>
 
                           <p className="mt-3 font-label-sm text-label-sm text-on-surface-variant">
@@ -1414,9 +1414,7 @@ export default function Payments() {
                           <span
                             className={`inline-flex rounded-full px-3 py-1 font-label-sm text-label-sm ${selectedStatusConfig.badgeClass}`}
                           >
-                            {
-                              selectedStatusConfig.label
-                            }
+                            {translate(selectedStatusConfig.labelKey)}
                           </span>
                         </div>
                       )}

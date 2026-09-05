@@ -10,38 +10,37 @@ import AppIcon from "@/components/global/AppIcon";
 import ProfilePhotoEditor from "@/components/profile/ProfilePhotoEditor";
 
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 
 const menuConfig = [
   {
-    label: "Dashboard",
+    labelKey: "adminDashboard",
     icon: "dashboard",
     href: "/admin/dashboard",
   },
   {
-    label: "Jadwal",
+    labelKey: "adminSchedules",
     icon: "calendar_month",
     href: "/admin/schedules",
-    children: [
-      {
-        label: "Manajemen Kru",
-        href: "/admin/schedules/crews",
-      },
-    ],
   },
   {
-    label: "Pesanan",
+    labelKey: "adminCrewManagement",
+    icon: "groups",
+    href: "/admin/schedules/crews",
+  },
+  {
+    labelKey: "adminOrders",
     icon: "shopping_bag",
     href: "/admin/orders",
-    children: [
-      {
-        label: "Manajemen Paket",
-        href: "/admin/orders/packages",
-      },
-    ],
   },
   {
-    label: "Pembayaran",
+    labelKey: "adminPackageManagement",
+    icon: "inventory_2",
+    href: "/admin/orders/packages",
+  },
+  {
+    labelKey: "adminPayments",
     icon: "payments",
     href: "/admin/payments",
   },
@@ -60,6 +59,7 @@ function getInitials(value) {
 }
 
 export default function Sidebar() {
+  const { language, setLanguage, translate } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -176,7 +176,7 @@ export default function Sidebar() {
           type="button"
           onClick={handleOpenProfilePhoto}
           className={`flex items-center gap-3 border-b border-outline-variant px-4 py-5 text-left transition-colors hover:bg-surface-container ${collapsed ? "justify-center" : ""}`}
-          title="Ubah foto profil"
+          title={translate("changePhoto")}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-container-high font-label-md text-label-md text-primary">
             {photoURL ? (
@@ -206,7 +206,7 @@ export default function Sidebar() {
             </span>
 
             <span className="whitespace-nowrap text-xs text-on-surface-variant">
-              Admin Studio · Ubah Foto
+              {translate("adminStudio")} · {translate("changePhoto")}
             </span>
           </div>
         </button>
@@ -264,7 +264,7 @@ export default function Sidebar() {
                         }
                       `}
                     >
-                      {menu.label}
+                      {translate(menu.labelKey)}
                     </span>
                   </div>
 
@@ -311,7 +311,7 @@ export default function Sidebar() {
                               `}
                             >
                               <span className="font-label-sm">
-                                {child.label}
+                                {translate(child.labelKey)}
                               </span>
                             </button>
                           );
@@ -359,8 +359,8 @@ export default function Sidebar() {
               `}
             >
               {authLoading
-                ? "Logging out..."
-                : "Logout"}
+                ? translate("loggingOut")
+                : translate("logout")}
             </span>
           </button>
         </div>
@@ -369,11 +369,7 @@ export default function Sidebar() {
       {/* TOGGLE */}
       <button
         type="button"
-        aria-label={
-          collapsed
-            ? "Expand sidebar"
-            : "Collapse sidebar"
-        }
+        aria-label={translate(collapsed ? "expandSidebar" : "collapseSidebar")}
         onClick={() =>
           setCollapsed(
             (current) => !current,
@@ -403,6 +399,23 @@ export default function Sidebar() {
           size={20}
         />
       </button>
+
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-lg border border-outline-variant bg-surface-container-low p-1 shadow-lg">
+        <button
+          type="button"
+          onClick={() => setLanguage("id")}
+          className={`rounded px-2 py-1 text-xs font-semibold ${language === "id" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}
+        >
+          ID
+        </button>
+        <button
+          type="button"
+          onClick={() => setLanguage("en")}
+          className={`rounded px-2 py-1 text-xs font-semibold ${language === "en" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}
+        >
+          EN
+        </button>
+      </div>
     </>
   );
 }

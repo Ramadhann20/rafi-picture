@@ -41,18 +41,33 @@ function createEventData() {
 }
 
 function getPackageSessions(packageItem) {
+  const isBundle = packageItem?.packageCategoryId === "bundle";
+
   if (Array.isArray(packageItem?.sessions) && packageItem.sessions.length > 0) {
-    return packageItem.sessions.map((session, index) => ({
-      id: String(session.id || `session-${index + 1}`),
-      name: String(session.name || `Session ${index + 1}`),
-      durationHours: Number(session.durationHours) || packageItem.durationHours || 0,
-    }));
+    return packageItem.sessions.map((session, index) => {
+      const sessionId = String(session.id || `session-${index + 1}`);
+      const normalizedSessionId = sessionId.toLowerCase();
+      const bundleDuration = normalizedSessionId.includes("pre-wedding")
+        || normalizedSessionId.includes("prewedding")
+        ? 4
+        : normalizedSessionId === "wedding"
+          ? 6
+          : null;
+
+      return {
+        id: sessionId,
+        name: String(session.name || `Session ${index + 1}`),
+        durationHours: isBundle && bundleDuration
+          ? bundleDuration
+          : Number(session.durationHours) || packageItem.durationHours || 0,
+      };
+    });
   }
 
-  if (packageItem?.packageCategoryId === "bundle") {
+  if (isBundle) {
     return [
-      { id: "pre-wedding", name: "Pre-Wedding", durationHours: packageItem.durationHours },
-      { id: "wedding", name: "Wedding", durationHours: packageItem.durationHours },
+      { id: "pre-wedding", name: "Pre-Wedding", durationHours: 4 },
+      { id: "wedding", name: "Wedding", durationHours: 6 },
     ];
   }
 
@@ -713,12 +728,17 @@ export default function BookingProcess({
 
                 if (!packageItem) return null;
 
+                const eventPackage = {
+                  ...packageItem,
+                  durationHours: eventItem.durationHours,
+                };
+
                 return (
                 <EventInfo
                   key={`${eventItem.packageId}:${eventItem.sessionId}`}
                   data={eventItem.data}
                   errors={errors.event?.[String(index)] ?? {}}
-                  selectedPackage={packageItem}
+                  selectedPackage={eventPackage}
                   sessionName={eventItem.sessionName}
                   sessionIndex={index}
                   packageIndex={index}
@@ -809,10 +829,10 @@ export default function BookingProcess({
               className="rounded-lg bg-primary px-10 py-3 font-label-md text-label-md text-on-primary transition-all hover:bg-opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
-                ? "Sending..."
+                ? translate("sendingBooking")
                 : submitStatus === "success"
-                  ? "Inquiry Sent"
-                  : "Send Inquiry"}
+                  ? translate("inquirySent")
+                  : translate("sendInquiry")}
             </button>
           )}
         </div>
