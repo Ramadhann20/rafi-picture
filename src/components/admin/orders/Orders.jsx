@@ -1598,7 +1598,7 @@ const handleAdvancedFilter = () => {
       return (
         <div className="flex min-h-80 items-center justify-center">
           <p className="font-body-md text-body-md text-on-surface-variant">
-            Loading booking details...
+            {translate("loadingBookingDetails")}
           </p>
         </div>
       );
@@ -1614,7 +1614,7 @@ const handleAdvancedFilter = () => {
       return (
         <div className="glass-panel rounded-xl p-stack-md text-center">
           <p className="font-headline-md text-headline-md text-error">
-            Failed to load booking detail
+            {translate("failedToLoadBookingDetail")}
           </p>
 
           <button
@@ -1622,7 +1622,7 @@ const handleAdvancedFilter = () => {
             onClick={handleBackToList}
             className="mt-6 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary"
           >
-            Back to Bookings
+            {translate("backToBookings")}
           </button>
         </div>
       );
@@ -1632,7 +1632,7 @@ const handleAdvancedFilter = () => {
       return (
         <div className="glass-panel rounded-xl p-stack-md text-center">
           <p className="font-headline-md text-headline-md text-on-surface">
-            Booking not found
+            {translate("bookingNotFound")}
           </p>
 
           <button
@@ -1640,7 +1640,7 @@ const handleAdvancedFilter = () => {
             onClick={handleBackToList}
             className="mt-6 rounded-lg bg-primary px-6 py-3 font-label-md text-label-md text-on-primary"
           >
-            Back to Bookings
+            {translate("backToBookings")}
           </button>
         </div>
       );
@@ -1864,14 +1864,9 @@ const handleAdvancedFilter = () => {
                   {translate("eventDate")}
                 </th>
                 <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
-                  {translate("amount")}
-                </th>
-                <th className="px-6 py-4 font-label-md text-label-md text-on-surface-variant">
                   {translate("status")}
                 </th>
-                <th className="px-6 py-4 text-right font-label-md text-label-md text-on-surface-variant">
-                  {translate("action")}
-                </th>
+                <th className="px-6 py-4" aria-label="Open order details" />
               </tr>
             </thead>
 
@@ -1880,7 +1875,7 @@ const handleAdvancedFilter = () => {
               {bookingsLoading && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={5}
                     className="px-6 py-stack-lg text-center"
                   >
                     <p className="font-body-md text-body-md text-on-surface-variant">
@@ -2008,9 +2003,7 @@ const handleAdvancedFilter = () => {
                           <button
                             type="button"
                             onClick={() =>
-                              handleOpenDetail(
-                                booking
-                              )
+                              handleOpenDetail(booking)
                             }
                             aria-label={`Open booking detail for ${getClientDisplayName(
                               booking.client
@@ -2023,6 +2016,7 @@ const handleAdvancedFilter = () => {
                             />
                           </button>
                         </td>
+
                       </tr>
                     );
                   }

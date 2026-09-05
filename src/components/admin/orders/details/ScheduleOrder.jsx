@@ -784,7 +784,7 @@ export default function ScheduleOrder({
         className="mb-stack-md inline-flex items-center gap-2 rounded-lg px-3 py-2 font-label-md text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-primary"
       >
         <AppIcon name="arrow_back" size={20} />
-        Back to Bookings
+        {translate("backToBookings")}
       </button>
 
       <header className="mb-stack-lg">

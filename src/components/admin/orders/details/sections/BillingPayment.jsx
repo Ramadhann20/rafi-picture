@@ -485,11 +485,11 @@ export default function BillingPayment({
 
           <div>
             <h3 className="font-headline-md text-headline-md text-primary">
-              Payment Activity
+              {translate("paymentActivity")}
             </h3>
 
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Client payment submissions for this booking.
+              {translate("paymentActivityDescription")}
             </p>
           </div>
         </div>
@@ -523,11 +523,11 @@ export default function BillingPayment({
             </div>
 
             <p className="mt-4 font-label-md text-label-md text-on-surface">
-              No payment activity
+              {translate("noPaymentActivity")}
             </p>
 
             <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-              Client payment submissions will appear here.
+              {translate("noPaymentActivityDescription")}
             </p>
           </div>
         )}
@@ -1199,7 +1199,7 @@ function PaymentRow({
           </p>
 
           <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
-            Submitted{" "}
+            {translate("submitted")} {" "}
             {formatDateTime(
               payment.submittedAt ??
                 payment.createdAt,
@@ -1209,7 +1209,7 @@ function PaymentRow({
       </div>
 
       <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 font-label-sm text-label-sm text-primary transition-colors group-hover:bg-surface-container-low">
-        Review Payment
+        {translate("reviewPayment")}
 
         <AppIcon
           name="arrow_forward"
