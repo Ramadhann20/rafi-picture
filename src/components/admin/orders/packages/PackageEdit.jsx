@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 const inputClassName =
   "w-full rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-md text-body-md text-on-surface outline-none transition placeholder:text-on-surface-variant/45 focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60";
@@ -164,6 +165,7 @@ export default function PackageEdit({
   onCancel,
   onSubmit,
 }) {
+  const { translate } = useLanguage();
   const isEditing = Boolean(packageItem?.id);
 
   const selectableCategories = useMemo(
@@ -359,19 +361,19 @@ export default function PackageEdit({
           className="mb-6 inline-flex items-center gap-2 rounded-lg px-3 py-2 font-label-md text-label-md text-on-surface-variant transition hover:bg-surface-container-high hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
           <AppIcon name="arrow_back" size={20} />
-          Back to Packages
+          {translate("backToPackages")}
         </button>
 
         <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Packages
+          {translate("packages")}
         </p>
         <h1 className="font-display-lg text-display-lg text-primary">
-          {isEditing ? "Edit Package" : "Create Package"}
+          {isEditing ? translate("editPackage") : translate("createPackage")}
         </h1>
         <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
           {isEditing
-            ? "Update the client-facing information and availability of this package."
-            : "Create a package that can be displayed on the client booking page."}
+            ? translate("editPackageDescription")
+            : translate("createPackageDescription")}
         </p>
       </header>
 
@@ -385,14 +387,13 @@ export default function PackageEdit({
             role="alert"
             className="rounded-lg border border-error/25 bg-error-container px-4 py-3 font-body-md text-body-md text-on-surface"
           >
-            No package category is available. Seed the PackageCategories
-            collection first.
+            {translate("noPackageCategory")}
           </div>
         )}
 
         <fieldset className="space-y-4" disabled={submitting}>
           <legend className="font-label-md text-label-md text-on-surface-variant">
-            Package Category
+            {translate("packageCategory")}
           </legend>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
@@ -422,7 +423,7 @@ export default function PackageEdit({
                   </span>
                   {!category.isActive && (
                     <span className="font-label-sm text-[10px] uppercase tracking-wider text-error">
-                      Inactive category
+                      {translate("inactiveCategory")}
                     </span>
                   )}
                 </button>
@@ -443,7 +444,7 @@ export default function PackageEdit({
               htmlFor="package-name"
               className="block font-label-md text-label-md text-on-surface-variant"
             >
-              Package Name
+              {translate("packageName")}
             </label>
             <input
               id="package-name"
@@ -466,7 +467,7 @@ export default function PackageEdit({
               htmlFor="package-description"
               className="block font-label-md text-label-md text-on-surface-variant"
             >
-              Description
+              {translate("description")}
             </label>
             <textarea
               id="package-description"
@@ -477,7 +478,7 @@ export default function PackageEdit({
               onChange={updateField}
               disabled={submitting}
               className={`${inputClassName} resize-y`}
-              placeholder="Briefly explain the package and who it is suitable for."
+              placeholder={translate("packageDescriptionPlaceholder")}
             />
             <div className="flex items-center justify-between gap-3">
               {fieldErrors.description ? (
@@ -495,26 +496,26 @@ export default function PackageEdit({
 
           <fieldset className="space-y-3 md:col-span-2">
             <legend className="block font-label-md text-label-md text-on-surface-variant">
-              Booking Subject
+              {translate("bookingSubject")}
             </legend>
 
             <p className="font-label-sm text-label-sm text-on-surface-variant/70">
-              Controls whether the client booking form should ask for a partner name.
+              {translate("bookingSubjectDescription")}
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[
                 {
                   value: "individual",
-                  title: "Individual / Single",
+                  title: translate("individualSingle"),
                   description:
-                    "For birthday, circumcision, personal events, and packages that do not require a partner.",
+                    translate("individualDescription"),
                 },
                 {
                   value: "couple",
-                  title: "Couple / Partnered",
+                  title: translate("couplePartnered"),
                   description:
-                    "For prewedding, wedding, engagement, and other paired packages.",
+                    translate("coupleDescription"),
                 },
               ].map((option) => {
                 const selected = form.bookingSubjectType === option.value;
@@ -565,7 +566,7 @@ export default function PackageEdit({
                 htmlFor="package-highlights"
                 className="block font-label-md text-label-md text-on-surface-variant"
               >
-                Service Highlights
+                {translate("serviceHighlights")}
               </label>
               <span className="font-label-sm text-label-sm text-on-surface-variant/60">
                 {form.serviceHighlights.length}/6
@@ -596,8 +597,8 @@ export default function PackageEdit({
               className={inputClassName}
               placeholder={
                 form.serviceHighlights.length >= 6
-                  ? "Maximum of six highlights reached"
-                  : "Type a highlight and press Enter"
+                  ? translate("maximumHighlights")
+                  : translate("typeHighlight")
               }
               aria-invalid={Boolean(fieldErrors.serviceHighlights)}
               aria-describedby="package-highlights-help"
@@ -606,8 +607,7 @@ export default function PackageEdit({
               id="package-highlights-help"
               className="font-label-sm text-label-sm text-on-surface-variant/70"
             >
-              Press Enter to create a badge. Press Backspace on an empty input
-              to remove the last badge.
+              {translate("highlightHelp")}
             </p>
             {fieldErrors.serviceHighlights && (
               <p className="text-sm text-error">
@@ -621,7 +621,7 @@ export default function PackageEdit({
               htmlFor="package-price"
               className="block font-label-md text-label-md text-on-surface-variant"
             >
-              Base Price
+              {translate("basePrice")}
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center font-body-md text-body-md text-on-surface-variant">
@@ -651,7 +651,7 @@ export default function PackageEdit({
               htmlFor="package-duration"
               className="block font-label-md text-label-md text-on-surface-variant"
             >
-              Coverage Duration
+              {translate("coverageDuration")}
             </label>
             <div className="relative">
               <input
@@ -668,7 +668,7 @@ export default function PackageEdit({
                 placeholder="8"
               />
               <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center font-label-md text-label-md text-on-surface-variant">
-                hours
+                {translate("hoursCoverage")}
               </span>
             </div>
             {fieldErrors.durationHours && (
@@ -683,7 +683,7 @@ export default function PackageEdit({
               htmlFor="package-sort-order"
               className="block font-label-md text-label-md text-on-surface-variant"
             >
-              Display Order
+              {translate("displayOrder")}
             </label>
             <input
               id="package-sort-order"
@@ -708,7 +708,7 @@ export default function PackageEdit({
               htmlFor="package-status"
               className="block font-label-md text-label-md text-on-surface-variant"
             >
-              Availability
+              {translate("availability")}
             </label>
             <select
               id="package-status"
@@ -718,9 +718,9 @@ export default function PackageEdit({
               disabled={submitting}
               className={inputClassName}
             >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              {isEditing && <option value="archived">Archived</option>}
+              <option value="active">{translate("active")}</option>
+              <option value="inactive">{translate("inactive")}</option>
+              {isEditing && <option value="archived">{translate("archived")}</option>}
             </select>
           </div>
 
@@ -735,10 +735,10 @@ export default function PackageEdit({
             />
             <span>
               <span className="block font-label-md text-label-md text-on-surface">
-                Most Popular
+                {translate("mostPopular")}
               </span>
               <span className="block font-label-sm text-label-sm text-on-surface-variant">
-                Show the popular label on the client package card.
+                {translate("popularLabelDescription")}
               </span>
             </span>
           </label>
@@ -747,10 +747,10 @@ export default function PackageEdit({
         <section className="space-y-4">
           <div>
             <p className="font-label-md text-label-md text-on-surface-variant">
-              Package Cover
+              {translate("packageCover")}
             </p>
             <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant/70">
-              Use a public image URL until Firebase Storage is implemented.
+              {translate("publicImageDescription")}
             </p>
           </div>
 
@@ -760,7 +760,7 @@ export default function PackageEdit({
                 htmlFor="package-cover-url"
                 className="block font-label-md text-label-md text-on-surface-variant"
               >
-                Cover URL
+                {translate("coverUrl")}
               </label>
               <input
                 id="package-cover-url"
@@ -782,7 +782,7 @@ export default function PackageEdit({
                 htmlFor="package-cover-alt"
                 className="block font-label-md text-label-md text-on-surface-variant"
               >
-                Alternative Text
+                {translate("alternativeText")}
               </label>
               <input
                 id="package-cover-alt"
@@ -810,7 +810,7 @@ export default function PackageEdit({
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-surface-container to-surface-container-highest text-on-surface-variant/60">
                 <AppIcon name="photo_camera" size={42} />
                 <span className="font-label-md text-label-md">
-                  No cover image
+                  {translate("noCoverImage")}
                 </span>
               </div>
             )}
@@ -820,8 +820,8 @@ export default function PackageEdit({
                 type="button"
                 onClick={clearCover}
                 disabled={submitting}
-                aria-label="Remove cover URL"
-                title="Remove cover"
+                aria-label={translate("removeCover")}
+                title={translate("removeCover")}
                 className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <AppIcon name="close" size={18} />

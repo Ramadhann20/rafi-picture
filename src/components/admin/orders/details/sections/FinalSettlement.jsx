@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 import { auth } from "@/lib/firebase-config";
 
 function toDate(value) {
@@ -415,6 +416,7 @@ export default function FinalSettlement({
   invoices = [],
   payments = [],
 }) {
+  const { translate } = useLanguage();
   const depositInvoice =
     useMemo(
       () =>
@@ -1008,17 +1010,17 @@ export default function FinalSettlement({
         </p>
 
         <h2 className="mt-2 font-headline-lg text-headline-lg text-on-surface">
-          Invoice Pelunasan
+          {translate("finalInvoiceTitle")}
         </h2>
 
         <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          DP sudah terverifikasi. Siapkan invoice kedua untuk sisa pembayaran, review PDF, lalu kirim ke client.
+          {translate("finalInvoiceDescription")}
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <SummaryCard
-          label="Package"
+          label={translate("package")}
           value={formatCurrency(
             packageAmount,
             booking?.package?.currency,
@@ -1026,7 +1028,7 @@ export default function FinalSettlement({
         />
 
         <SummaryCard
-          label="Travel"
+          label={translate("travel")}
           value={formatCurrency(
             travelCharge,
             booking?.package?.currency,
@@ -1034,7 +1036,7 @@ export default function FinalSettlement({
         />
 
         <SummaryCard
-          label="Paid"
+          label={translate("paid")}
           value={formatCurrency(
             totalPaid,
             booking?.package?.currency,
@@ -1042,7 +1044,7 @@ export default function FinalSettlement({
         />
 
         <SummaryCard
-          label="Pelunasan"
+          label={translate("remainingPayment")}
           value={formatCurrency(
             remaining,
             booking?.package?.currency,
@@ -1063,14 +1065,14 @@ export default function FinalSettlement({
             name="receipt"
             size={18}
           />
-          Create Final Invoice Draft
+          {translate("createFinalInvoiceDraft")}
         </button>
       ) : (
         <article className="rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-6">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Amount
+                {translate("invoiceAmount")}
               </p>
 
               <p className="mt-2 font-headline-md text-headline-md text-primary">
@@ -1081,7 +1083,7 @@ export default function FinalSettlement({
               </p>
 
               <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-                Nominal dikunci dari Booking Total - pembayaran verified.
+                {translate("amountLockedDescription")}
               </p>
             </div>
 
@@ -1090,7 +1092,7 @@ export default function FinalSettlement({
                 htmlFor="final-note"
                 className="font-label-sm text-label-sm text-on-surface-variant"
               >
-                Invoice Note
+                {translate("invoiceNote")}
               </label>
 
               <textarea
@@ -1119,8 +1121,8 @@ export default function FinalSettlement({
           <div className="mt-6 flex flex-col gap-3 border-t border-outline-variant/30 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               {confirmed
-                ? "PDF sudah dibuat. Review sebelum invoice diterbitkan."
-                : "Draft masih lokal dan belum mengubah Firestore."}
+                ? translate("pdfCreatedReview")
+                : translate("draftLocal")}
             </p>
 
             <button
@@ -1147,10 +1149,10 @@ export default function FinalSettlement({
                 size={18}
               />
               {generating
-                ? "Generating..."
+                ? translate("generatingPdf")
                 : confirmed
-                  ? "Edit Billing"
-                  : "Confirm & Generate PDF"}
+                  ? translate("editBilling")
+                  : translate("confirmBillingGeneratePdf")}
             </button>
           </div>
         </article>
@@ -1161,12 +1163,12 @@ export default function FinalSettlement({
           <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                Generated Document
+                {translate("generatedDocument")}
               </p>
 
               <h3 className="mt-1 font-headline-md text-headline-md text-on-surface">
                 {preview.invoiceNumber ||
-                  "Invoice Pelunasan"}
+                  translate("finalInvoiceTitle")}
               </h3>
 
               <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
@@ -1190,10 +1192,10 @@ export default function FinalSettlement({
                 size={18}
               />
               {previewOpen
-                ? "Hide Preview"
+                ? translate("hidePreview")
                 : reviewed
-                  ? "Review Again"
-                  : "Review PDF"}
+                  ? translate("reviewAgain")
+                  : translate("reviewPdf")}
             </button>
           </div>
 
@@ -1201,7 +1203,7 @@ export default function FinalSettlement({
             <div className="border-t border-outline-variant/30 p-4 md:p-6">
               <div className="mb-3 flex items-center justify-between gap-4">
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Review total, DP terbayar, sisa pelunasan, dan data client.
+                  {translate("reviewInvoiceData")}
                 </p>
 
                 <a
@@ -1217,7 +1219,7 @@ export default function FinalSettlement({
                     name="download"
                     size={17}
                   />
-                  Download
+                  {translate("download")}
                 </a>
               </div>
 
@@ -1263,23 +1265,23 @@ export default function FinalSettlement({
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                Final Step
+                {translate("finalStep")}
               </p>
 
               <h3 className="mt-1 font-headline-md text-headline-md text-on-surface">
-                Issue & Send Final Invoice
+                {translate("issueSendFinalInvoice")}
               </h3>
 
               <div className="mt-3 space-y-1.5">
                 <Requirement
-                  label="Invoice draft confirmed"
+                  label={translate("invoiceDraftConfirmed")}
                   complete={
                     confirmed
                   }
                 />
 
                 <Requirement
-                  label="PDF generated"
+                  label={translate("pdfGenerated")}
                   complete={
                     Boolean(
                       preview?.url,
@@ -1288,7 +1290,7 @@ export default function FinalSettlement({
                 />
 
                 <Requirement
-                  label="PDF reviewed"
+                  label={translate("pdfReviewed")}
                   complete={
                     reviewed
                   }
@@ -1309,8 +1311,8 @@ export default function FinalSettlement({
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-7 py-3 font-label-md text-label-md text-on-primary transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {issuing
-                ? "Issuing..."
-                : "Issue & Send Invoice"}
+                ? translate("issuing")
+                : translate("issueSendFinalInvoice")}
 
               {!issuing && (
                 <AppIcon

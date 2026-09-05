@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 /* =========================================================
    AVAILABILITY CONFIG
@@ -346,6 +347,7 @@ export default function CrewAssignment({
   onAddFreelance,
   onSelectedCrewIdsChange,
 }) {
+  const { translate } = useLanguage();
   const [search, setSearch] = useState("");
 
   const [roleFilter, setRoleFilter] = useState("all");
@@ -528,15 +530,13 @@ export default function CrewAssignment({
             id="crew-assignment-title"
             className="mt-2 font-headline-lg text-headline-lg text-on-surface"
           >
-            Crew Assignment
+            {translate("crewAssignmentTitle")}
           </h2>
 
           <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
             {readOnly
-              ? "View the production crew assigned to this booking."
-              : `All crew are shown. Only active crew without another assignment on ${formatDate(
-                  eventDate,
-                )} can be selected.`}
+              ? translate("viewAssignedCrew")
+              : translate("crewAssignmentDescription")}
           </p>
         </div>
 
@@ -548,7 +548,7 @@ export default function CrewAssignment({
             className="inline-flex w-fit shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-2.5 font-label-md text-label-md text-primary transition-all hover:bg-primary hover:text-on-primary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <AppIcon name="person_add" size={18} />
-            Tambah Freelance
+            {translate("addFreelance")}
           </button>
         )}
       </div>
@@ -564,11 +564,11 @@ export default function CrewAssignment({
 
             <div>
               <p className="font-label-md text-label-md text-on-surface">
-                Crew assignment is locked
+                {translate("crewSelectionLocked")}
               </p>
 
               <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                Confirm the booking review to unlock crew selection.
+                {translate("crewSelectionUnlock")}
               </p>
             </div>
           </div>
@@ -586,11 +586,11 @@ export default function CrewAssignment({
 
             <div>
               <p className="font-label-md text-label-md text-on-surface">
-                Crew selection confirmed
+                {translate("crewSelectionConfirmed")}
               </p>
 
               <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                Choose Edit Crew below to change the local selection.
+                {translate("editCrewSelection")}
               </p>
             </div>
           </div>
@@ -617,7 +617,7 @@ export default function CrewAssignment({
                   htmlFor="crew-search"
                   className="font-label-md text-label-md uppercase tracking-widest text-primary"
                 >
-                  Find Crew
+                  {translate("findCrew")}
                 </label>
 
                 <div className="relative mt-4">
@@ -633,7 +633,7 @@ export default function CrewAssignment({
                     value={search}
                     disabled={!canInteract}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search crew..."
+                    placeholder={translate("searchCrew")}
                     className="w-full rounded-lg border-none bg-surface-container-low py-2.5 pl-10 pr-4 font-body-md text-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
@@ -641,7 +641,7 @@ export default function CrewAssignment({
                 <div className="my-6 h-px bg-outline-variant/30" />
 
                 <p className="font-label-md text-label-md uppercase tracking-widest text-primary">
-                  Filter Role
+                  {translate("filterRole")}
                 </p>
 
                 <div className="mt-4 space-y-2">
@@ -661,7 +661,7 @@ export default function CrewAssignment({
                         }`}
                       >
                         <span>
-                          {role === "all" ? "All Roles" : formatRole(role)}
+                          {role === "all" ? translate("allRoles") : formatRole(role)}
                         </span>
 
                         {active && <AppIcon name="check" size={16} />}
@@ -674,12 +674,12 @@ export default function CrewAssignment({
 
                 <div className="space-y-2">
                   <AvailabilitySummary
-                    label="Active Crew"
+                    label={translate("activeCrew")}
                     value={crewWithAvailability.filter(isCrewActive).length}
                   />
 
                   <AvailabilitySummary
-                    label="Busy"
+                    label={translate("busy")}
                     value={
                       crewWithAvailability.filter(
                         (crew) => crew.availability?.key === "assigned",
@@ -688,7 +688,7 @@ export default function CrewAssignment({
                   />
 
                   <AvailabilitySummary
-                    label="Available"
+                    label={translate("available")}
                     value={
                       crewWithAvailability.filter(
                         (crew) => crew.availability?.key === "available",
@@ -745,7 +745,7 @@ export default function CrewAssignment({
 
             <div>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                Assigned:{" "}
+                {translate("assignedLabel")}:{" "}
                 <span className="font-bold text-on-surface">
                   {selectedCrewIds.length} / {requiredCrewCount} Crew
                 </span>
@@ -765,8 +765,8 @@ export default function CrewAssignment({
           <div className="rounded-lg bg-surface-container-low px-4 py-3">
             <p className="font-label-sm text-label-sm text-on-surface-variant">
               {readOnly
-                ? "This assignment is displayed in read-only mode."
-                : "Availability is currently checked per day, not per hour."}
+                ? translate("assignmentReadOnly")
+                : translate("availabilityDaily")}
             </p>
           </div>
         </div>

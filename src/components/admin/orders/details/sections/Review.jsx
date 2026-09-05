@@ -1,6 +1,7 @@
 "use client";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 const EMPTY_VALUE = "-";
 
@@ -142,6 +143,7 @@ export default function Review({
   booking,
   statusConfig,
 }) {
+  const { translate } = useLanguage();
   const client = booking?.client ?? {};
   const event = booking?.event ?? {};
   const selectedPackage = booking?.package ?? {};
@@ -183,11 +185,11 @@ export default function Review({
           id="booking-review-title"
           className="mt-2 font-headline-lg text-headline-lg text-on-surface"
         >
-          Review Booking
+          {translate("reviewBookingTitle")}
         </h2>
 
         <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          Review the latest client, event, location, and package snapshot before assigning the crew.
+          {translate("reviewBookingDescription")}
         </p>
       </div>
 
@@ -195,18 +197,18 @@ export default function Review({
         <div className="space-y-gutter xl:col-span-8">
           <DetailCard
             icon="person"
-            title="Client Information"
+            title={translate("clientInformation")}
           >
             <div className="space-y-1">
               <DetailGrid>
                 <DetailItem
-                  label="Full Name"
+                  label={translate("fullName")}
                   value={client.fullName}
                 />
 
                 {showPartnerName && (
                   <DetailItem
-                    label="Partner Name"
+                    label={translate("partnerName")}
                     value={client.partnerName}
                     optional
                   />
@@ -220,7 +222,7 @@ export default function Review({
                 />
 
                 <DetailItem
-                  label="Phone"
+                  label={translate("phone")}
                   value={client.phone}
                 />
               </DetailGrid>
@@ -237,11 +239,11 @@ export default function Review({
 
           <DetailCard
             icon="calendar_month"
-            title="Event Information"
+            title={translate("eventInformation")}
           >
             <DetailGrid>
               <DetailItem
-                label="Preferred Date"
+                label={translate("preferredDate")}
                 value={formatDate(event.preferredDate)}
               />
 
@@ -251,20 +253,20 @@ export default function Review({
               />
 
               <DetailItem
-                label="Location"
+                label={translate("location")}
                 value={getLocationLabel(event.location)}
                 fullWidth
               />
 
               <DetailItem
-                label="Travel Charge"
+                label={translate("travelCost")}
                 value={formatCurrency(travelCharge, currency)}
                 fullWidth
                 accent={travelCharge > 0}
               />
 
               <DetailItem
-                label="Creative Vision"
+                label={translate("creativeVision")}
                 value={event.vision}
                 fullWidth
                 multiline
@@ -275,7 +277,7 @@ export default function Review({
 
           <DetailCard
             icon="photo_camera"
-            title="Package Information"
+            title={translate("packageInformation")}
           >
             <DetailGrid>
               <DetailItem
@@ -284,14 +286,14 @@ export default function Review({
               />
 
               <DetailItem
-                label="Subject"
+                label={translate("subject")}
                 value={getSubjectLabel(
                   selectedPackage.bookingSubjectType,
                 )}
               />
 
               <DetailItem
-                label="Duration"
+                label={translate("duration")}
                 value={
                   Number(selectedPackage.durationHours) > 0
                     ? `${selectedPackage.durationHours} hours`
@@ -300,7 +302,7 @@ export default function Review({
               />
 
               <DetailItem
-                label="Package Price"
+                label={translate("packagePrice")}
                 value={formatCurrency(
                   packageAmount,
                   currency,
@@ -309,7 +311,7 @@ export default function Review({
 
               <div className="sm:col-span-2">
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Features
+                  {translate("features")}
                 </p>
 
                 {features.length > 0 ? (
@@ -342,7 +344,7 @@ export default function Review({
         <aside className="xl:col-span-4">
           <div className="glass-panel rounded-xl p-6">
             <p className="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">
-              Booking Summary
+              {translate("bookingSummary")}
             </p>
 
             <p className="mt-2 break-all font-headline-md text-headline-md text-primary">
@@ -358,12 +360,12 @@ export default function Review({
               />
 
               <SummaryItem
-                label="Submitted"
+                label={translate("submitted")}
                 value={formatDateTime(booking?.submittedAt)}
               />
 
               <SummaryItem
-                label="Last Updated"
+                label={translate("lastUpdated")}
                 value={formatDateTime(booking?.updatedAt)}
               />
 
@@ -376,7 +378,7 @@ export default function Review({
               />
 
               <SummaryItem
-                label="Travel Charge"
+                label={translate("travelCost")}
                 value={formatCurrency(
                   travelCharge,
                   currency,
@@ -385,7 +387,7 @@ export default function Review({
 
               <div className="border-t border-outline-variant/30 pt-5">
                 <SummaryItem
-                  label="Estimated Booking Total"
+                  label={translate("estimatedBookingTotal")}
                   value={formatCurrency(
                     bookingTotal,
                     currency,
@@ -398,8 +400,8 @@ export default function Review({
             <div className="mt-8 rounded-lg bg-surface-container-low px-4 py-3">
               <p className="font-label-sm text-label-sm leading-relaxed text-on-surface-variant">
                 {booking?.status === "pending"
-                  ? "Confirming this review only unlocks the crew step. No Firestore changes are made until Final Confirmation."
-                  : "This booking is displayed in read-only mode."}
+                  ? translate("reviewUnlocksCrew")
+                  : translate("readOnlyBooking")}
               </p>
             </div>
           </div>

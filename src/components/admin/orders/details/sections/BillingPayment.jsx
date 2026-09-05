@@ -3,36 +3,37 @@
 import { useRouter } from "next/navigation";
 
 import AppIcon from "@/components/global/AppIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 const PAYMENTS_ROUTE = "/admin/payments";
 
 const INVOICE_STATUS = {
   draft: {
-    label: "Draft",
+    labelKey: "draft",
     badgeClass:
       "bg-surface-container-high text-on-surface-variant",
   },
 
   issued: {
-    label: "Issued",
+    labelKey: "issued",
     badgeClass:
       "bg-primary-container text-on-primary-container",
   },
 
   paid: {
-    label: "Paid",
+    labelKey: "paid",
     badgeClass:
       "bg-primary text-on-primary",
   },
 
   overdue: {
-    label: "Overdue",
+    labelKey: "overdue",
     badgeClass:
       "bg-error-container text-error",
   },
 
   void: {
-    label: "Void",
+    labelKey: "voidStatus",
     badgeClass:
       "bg-error-container text-error",
   },
@@ -40,43 +41,43 @@ const INVOICE_STATUS = {
 
 const PAYMENT_STATUS = {
   unpaid: {
-    label: "Unpaid",
+    labelKey: "unpaid",
     badgeClass:
       "bg-surface-container-high text-on-surface-variant",
   },
 
   pending: {
-    label: "Pending Verification",
+    labelKey: "pendingVerification",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   pending_verification: {
-    label: "Pending Verification",
+    labelKey: "pendingVerification",
     badgeClass:
       "bg-secondary-container text-on-secondary-container",
   },
 
   paid: {
-    label: "Paid",
+    labelKey: "paid",
     badgeClass:
       "bg-primary text-on-primary",
   },
 
   verified: {
-    label: "Paid",
+    labelKey: "paid",
     badgeClass:
       "bg-primary text-on-primary",
   },
 
   rejected: {
-    label: "Rejected",
+    labelKey: "rejected",
     badgeClass:
       "bg-error-container text-error",
   },
 
   refunded: {
-    label: "Refunded",
+    labelKey: "refunded",
     badgeClass:
       "bg-surface-container-highest text-on-surface",
   },
@@ -307,6 +308,7 @@ export default function BillingPayment({
   onReviewPdfPreview,
   onInvoiceDraftChange,
 }) {
+  const { translate } = useLanguage();
   const router = useRouter();
 
   const currency =
@@ -395,8 +397,8 @@ export default function BillingPayment({
   return (
     <section aria-labelledby="billing-payment-title">
       <SectionHeader
-        title="Billing & Payment"
-        description="Review the latest booking total, issued invoices, and client payment activity."
+        title={translate("billingPayment")}
+        description={translate("billingPaymentDescription")}
       />
 
       <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-5">
@@ -465,8 +467,8 @@ export default function BillingPayment({
         ) : (
           <EmptyCard
             icon="receipt"
-            title="No invoices"
-            description="No invoice has been saved for this booking."
+            title={translate("noInvoices")}
+            description={translate("noInvoiceDescription")}
           />
         )}
       </div>
@@ -601,8 +603,8 @@ function BillingPreparation({
   return (
     <section aria-labelledby="billing-payment-title">
       <SectionHeader
-        title="Billing Preparation"
-        description="Prepare the deposit invoice from the latest package and travel-charge snapshot. Confirm Billing generates a server-side PDF preview first; nothing is saved until Finalize & Approve."
+        title={translate("billingPreparation")}
+        description={translate("billingPreparationDescription")}
       />
 
       <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-4">
@@ -1041,7 +1043,7 @@ function InvoiceReadOnlyCard({
         <span
           className={`inline-flex rounded-full px-3 py-1.5 font-label-sm text-label-sm ${statusConfig.badgeClass}`}
         >
-          {statusConfig.label}
+          {translate(statusConfig.labelKey)}
         </span>
       </div>
 
@@ -1177,7 +1179,7 @@ function PaymentRow({
             <span
               className={`rounded-full px-2.5 py-1 font-label-sm text-label-sm ${statusConfig.badgeClass}`}
             >
-              {statusConfig.label}
+              {translate(statusConfig.labelKey)}
             </span>
           </div>
 

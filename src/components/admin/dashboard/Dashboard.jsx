@@ -14,37 +14,37 @@ const LATEST_BOOKING_LIMIT = 5;
 
 const BOOKING_STATUS = {
   pending: {
-    label: "Pending",
+    labelKey: "pending",
     badgeClass: "bg-secondary-container text-on-secondary-container",
   },
 
   approved: {
-    label: "Approved",
+    labelKey: "approvedAwaitingPayment",
     badgeClass: "bg-primary-container text-on-primary-container",
   },
 
   confirmed: {
-    label: "Confirmed",
+    labelKey: "paymentUnderReview",
     badgeClass: "bg-primary text-on-primary",
   },
 
   in_progress: {
-    label: "In Progress",
+    labelKey: "inProgress",
     badgeClass: "bg-surface-container-highest text-on-surface",
   },
 
   completed: {
-    label: "Completed",
+    labelKey: "completed",
     badgeClass: "bg-secondary-container text-on-secondary-container",
   },
 
   cancelled: {
-    label: "Cancelled",
+    labelKey: "cancelled",
     badgeClass: "bg-error-container text-error",
   },
 
   canceled: {
-    label: "Cancelled",
+    labelKey: "cancelled",
     badgeClass: "bg-error-container text-error",
   },
 };
@@ -72,12 +72,12 @@ const PENDING_PAYMENT_STATUSES = new Set([
 ]);
 
 const tableHeaders = [
-  "Client",
-  "Package",
-  "Event Date",
-  "Amount",
-  "Status",
-  "Action",
+  "client",
+  "package",
+  "eventDate",
+  "amount",
+  "status",
+  "action",
 ];
 
 /* =========================================================
@@ -942,11 +942,11 @@ export default function Dashboard() {
 
         <article className="glass-panel rounded-xl p-stack-md">
           <h2 className="font-headline-md text-headline-md text-primary">
-            Payment Distribution
+            {translate("paymentDistribution")}
           </h2>
 
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-            Verified and pending payments this month.
+            {translate("paymentDistributionDescription")}
           </p>
 
           <div className="flex items-center justify-center py-6">
@@ -989,7 +989,7 @@ export default function Dashboard() {
                 </p>
 
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Fulfilled
+                  {translate("fulfilled")}
                 </p>
               </div>
             </div>
@@ -1026,11 +1026,11 @@ export default function Dashboard() {
         <div className="flex items-center justify-between gap-4 border-b border-outline-variant px-stack-md py-stack-sm">
           <div>
             <h2 className="font-headline-md text-headline-md text-primary">
-              Latest Bookings
+              {translate("latestBookings")}
             </h2>
 
             <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-              Most recently submitted booking requests.
+              {translate("latestBookingsDescription")}
             </p>
           </div>
 
@@ -1038,7 +1038,7 @@ export default function Dashboard() {
             href="/admin/orders"
             className="shrink-0 font-label-md text-label-md text-primary underline decoration-primary underline-offset-4"
           >
-            View All
+            {translate("viewAll")}
           </Link>
         </div>
 
@@ -1056,7 +1056,7 @@ export default function Dashboard() {
                         head === "Action" ? "text-right" : ""
                       }`}
                     >
-                      {head}
+                      {translate(head)}
                     </th>
                   ))}
                 </tr>
@@ -1111,7 +1111,7 @@ export default function Dashboard() {
                         <span
                           className={`rounded-full px-3 py-1 font-label-sm text-label-sm ${statusConfig.badgeClass}`}
                         >
-                          {statusConfig.label}
+                          {translate(statusConfig.labelKey)}
                         </span>
                       </td>
 
@@ -1166,6 +1166,8 @@ function DashboardLoading() {
 }
 
 function EmptyBookings() {
+  const { translate } = useLanguage();
+
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high">
@@ -1177,12 +1179,11 @@ function EmptyBookings() {
       </div>
 
       <h3 className="mt-4 font-headline-md text-headline-md text-on-surface">
-        No bookings yet
+        {translate("noBookingsYet")}
       </h3>
 
       <p className="mt-2 max-w-md font-body-md text-body-md text-on-surface-variant">
-        New booking requests will appear here after clients submit the booking
-        form.
+        {translate("newBookingsAppear")}
       </p>
     </div>
   );

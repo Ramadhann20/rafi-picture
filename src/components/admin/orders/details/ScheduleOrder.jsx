@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import AppIcon from "@/components/global/AppIcon";
 import CrewDetails from "@/components/admin/schedules/CrewDetails";
+import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
 import { auth } from "@/lib/firebase-config";
 
@@ -14,32 +15,32 @@ import FinalSettlement from "./sections/FinalSettlement";
 
 const BOOKING_STATUS = {
   pending: {
-    label: "Pending Preparation",
+    labelKey: "pendingReview",
     badgeClass: "bg-secondary-container text-on-secondary-container",
   },
 
   approved: {
-    label: "Approved · Awaiting Payment",
+    labelKey: "approvedAwaitingPayment",
     badgeClass: "bg-primary-container text-on-primary-container",
   },
 
   confirmed: {
-    label: "Payment Under Review",
+    labelKey: "paymentUnderReview",
     badgeClass: "bg-primary text-on-primary",
   },
 
   in_progress: {
-    label: "In Progress",
+    labelKey: "inProgress",
     badgeClass: "bg-surface-container-highest text-on-surface",
   },
 
   completed: {
-    label: "Completed",
+    labelKey: "completed",
     badgeClass: "bg-secondary-container text-on-secondary-container",
   },
 
   cancelled: {
-    label: "Cancelled",
+    labelKey: "cancelled",
     badgeClass: "bg-error-container text-error",
   },
 };
@@ -167,6 +168,7 @@ export default function ScheduleOrder({
   onCreateFreelance,
 }) {
   const { openOverlay, closeOverlay } = useOverlay();
+  const { translate } = useLanguage();
 
   const [hasEntered, setHasEntered] = useState(false);
 
@@ -257,7 +259,12 @@ export default function ScheduleOrder({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const statusConfig = BOOKING_STATUS[booking.status] ?? BOOKING_STATUS.pending;
+  const statusConfig = {
+    ...(BOOKING_STATUS[booking.status] ?? BOOKING_STATUS.pending),
+    label: translate(
+      (BOOKING_STATUS[booking.status] ?? BOOKING_STATUS.pending).labelKey,
+    ),
+  };
 
   const displayedCrewIds = isPreparationMode
     ? crewDraft.crewIds
@@ -784,7 +791,9 @@ export default function ScheduleOrder({
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-2 font-label-md text-label-md uppercase tracking-widest text-secondary">
-              {isPreparationMode ? "Booking Preparation" : "Booking Detail"}
+              {isPreparationMode
+                ? translate("bookingPreparation")
+                : translate("bookingDetail")}
             </p>
 
             <h1 className="font-display-lg text-display-lg text-primary">
@@ -797,8 +806,8 @@ export default function ScheduleOrder({
 
             <p className="mt-3 max-w-2xl font-body-md text-body-md text-on-surface-variant">
               {isPreparationMode
-                ? "Review the booking, confirm the production crew, then prepare billing. Firestore is updated only after Final Confirmation."
-                : "View the booking snapshot, assigned crew, invoices, payment activity, and prepare the final settlement invoice after DP verification."}
+                ? translate("preparationDescription")
+                : translate("bookingDetailDescription")}
             </p>
           </div>
 
@@ -837,12 +846,12 @@ export default function ScheduleOrder({
           {isPreparationMode && (
             <StepConfirmation
               confirmed={preparation.reviewCompleted}
-              confirmLabel="Confirm Review"
-              editLabel="Edit Review"
+              confirmLabel={translate("confirmReview")}
+              editLabel={translate("editReview")}
               description={
                 preparation.reviewCompleted
-                  ? "Review confirmed locally. Crew assignment is now unlocked."
-                  : "Confirm that all booking information has been reviewed."
+                  ? translate("reviewConfirmedCrewUnlocked")
+                  : translate("confirmBookingReviewed")
               }
               onClick={handleToggleReview}
             />
@@ -853,8 +862,8 @@ export default function ScheduleOrder({
 
         <StepContainer
           locked={isPreparationMode && !crewAssignmentEnabled}
-          lockedTitle="Crew assignment is locked"
-          lockedDescription="Confirm the booking review to unlock crew assignment."
+          lockedTitle={translate("crewAssignmentLocked")}
+          lockedDescription={translate("confirmReviewUnlockCrew")}
         >
           <CrewAssignment
             crewMembers={crewMembers}
@@ -881,13 +890,13 @@ export default function ScheduleOrder({
           {isPreparationMode && crewAssignmentEnabled && (
             <StepConfirmation
               confirmed={preparation.crewCompleted}
-              confirmLabel="Confirm Crew"
-              editLabel="Edit Crew"
+              confirmLabel={translate("confirmCrew")}
+              editLabel={translate("editCrew")}
               description={
                 preparation.crewCompleted
-                  ? "Crew confirmed locally. Billing preparation is now unlocked."
+                  ? translate("crewConfirmedBillingUnlocked")
                   : hasCrewAssignment
-                    ? "Confirm the selected production team."
+                    ? translate("confirmProductionTeam")
                     : allowUnlimitedCrew
                       ? "Select at least one crew member before confirming this step."
                       : `Select exactly ${requiredCrewCount} crew members before confirming this step.`
@@ -902,8 +911,8 @@ export default function ScheduleOrder({
 
         <StepContainer
           locked={isPreparationMode && !billingEnabled}
-          lockedTitle="Billing preparation is locked"
-          lockedDescription="Confirm the crew assignment to unlock billing preparation."
+          lockedTitle={translate("billingPreparationLocked")}
+          lockedDescription={translate("confirmCrewUnlockBilling")}
         >
           <BillingPayment
             booking={booking}
@@ -923,10 +932,10 @@ export default function ScheduleOrder({
           {isPreparationMode && billingEnabled && (
             <StepConfirmation
               confirmed={preparation.billingCompleted}
-              confirmLabel="Confirm Billing & Generate PDF"
-              editLabel="Edit Billing"
+              confirmLabel={translate("confirmBillingGeneratePdf")}
+              editLabel={translate("editBilling")}
               loading={generatingDepositPdf}
-              loadingLabel="Generating PDF..."
+              loadingLabel={translate("generatingPdf")}
               description={
                 preparation.billingCompleted
                   ? depositPdfReviewed
@@ -976,26 +985,26 @@ export default function ScheduleOrder({
 }
 
 function PreparationProgress({ preparation }) {
+  const { translate } = useLanguage();
   const steps = [
     {
       id: "review",
-      label: "Review",
+      label: translate("review"),
       completed: preparation.reviewCompleted,
     },
     {
       id: "crew",
-      label: "Crew",
+      label: translate("crew"),
       completed: preparation.crewCompleted,
     },
     {
       id: "billing",
-      label: "Billing",
+      label: translate("billing"),
       completed: preparation.billingCompleted,
     },
   ];
 
   const completedCount = steps.filter((step) => step.completed).length;
-
   const progress = (completedCount / steps.length) * 100;
 
   return (
@@ -1003,11 +1012,11 @@ function PreparationProgress({ preparation }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">
-            Preparation Progress
+            {translate("preparationProgress")}
           </p>
 
           <p className="mt-1 font-headline-md text-headline-md text-primary">
-            {completedCount} of {steps.length} steps completed
+            {completedCount} / {steps.length} {translate("stepsCompleted")}
           </p>
         </div>
 
@@ -1022,7 +1031,6 @@ function PreparationProgress({ preparation }) {
               }`}
             >
               {step.completed && <AppIcon name="check" size={14} />}
-
               {step.label}
             </span>
           ))}
@@ -1032,9 +1040,7 @@ function PreparationProgress({ preparation }) {
       <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-surface-container-highest">
         <div
           className="h-full rounded-full bg-primary transition-all duration-300"
-          style={{
-            width: `${progress}%`,
-          }}
+          style={{ width: `${progress}%` }}
         />
       </div>
     </section>
@@ -1085,6 +1091,8 @@ function StepConfirmation({
   loadingLabel = "Processing...",
   onClick,
 }) {
+  const { translate } = useLanguage();
+
   return (
     <div
       className={`mt-stack-md flex flex-col gap-4 rounded-xl border px-6 py-5 sm:flex-row sm:items-center sm:justify-between ${
@@ -1106,7 +1114,7 @@ function StepConfirmation({
 
         <div>
           <p className="font-label-md text-label-md text-on-surface">
-            {confirmed ? "Step confirmed" : "Confirmation required"}
+            {confirmed ? translate("stepConfirmed") : translate("confirmationRequired")}
           </p>
 
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
@@ -1145,30 +1153,31 @@ function SubmitBookingPanel({
   submitting,
   onSubmit,
 }) {
+  const { translate } = useLanguage();
   const requirements = [
     {
       id: "review",
-      label: "Booking review confirmed",
+      label: translate("bookingReviewConfirmed"),
       completed: preparation.reviewCompleted,
     },
     {
       id: "crew",
-      label: "Crew assignment confirmed",
+      label: translate("crewAssignmentConfirmed"),
       completed: preparation.crewCompleted && hasCrewAssignment,
     },
     {
       id: "billing",
-      label: "Deposit invoice draft confirmed",
+      label: translate("depositInvoiceDraftConfirmed"),
       completed: preparation.billingCompleted && hasDepositInvoice,
     },
     {
       id: "pdf",
-      label: "Deposit invoice PDF generated",
+      label: translate("depositInvoiceGenerated"),
       completed: hasDepositPdf,
     },
     {
       id: "pdf-review",
-      label: "Deposit invoice PDF reviewed",
+      label: translate("depositInvoiceReviewed"),
       completed: pdfReviewed,
     },
   ];
@@ -1178,18 +1187,15 @@ function SubmitBookingPanel({
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-            Final Step
+            {translate("finalStep")}
           </p>
 
           <h2 className="mt-2 font-headline-md text-headline-md text-primary">
-            Final Confirmation
+            {translate("finalConfirmation")}
           </h2>
 
           <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-            This is the only action that persists the preparation result. It
-            uploads the reviewed DP invoice PDF to Cloudinary, publishes the
-            crew assignment, issues the invoice, changes the booking status to
-            approved, and sends the approval email with the PDF attached.
+            {translate("finalConfirmationDescription")}
           </p>
 
           <div className="mt-5 space-y-2">
@@ -1217,7 +1223,7 @@ function SubmitBookingPanel({
           onClick={onSubmit}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3 font-label-md text-label-md text-on-primary transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {submitting ? "Finalizing..." : "Finalize & Approve"}
+          {submitting ? translate("finalizing") : translate("finalizeApprove")}
 
           {!submitting && <AppIcon name="arrow_forward" size={18} />}
         </button>
