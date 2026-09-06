@@ -202,6 +202,15 @@ function getEventTimeLabel(event, nextDayLabel) {
 }
 
 function getTravelCharge(location) {
+  const accommodationRequest = Math.max(
+    Number(location?.accommodationRequest) || 0,
+    0,
+  );
+
+  if (accommodationRequest > 0) {
+    return accommodationRequest;
+  }
+
   return Math.max(
     Number(
       location?.distanceCharge?.amount,

@@ -415,7 +415,13 @@ export default function BookConfirm({
           {displayPackages.map((packageItem, index) => {
             const eventData = getPackageEvent(packageItem, index);
             const eventLocation = normalizeEventLocation(eventData.location);
-            const travelCharge = Number(eventLocation?.distanceCharge?.amount) || 0;
+            const accommodationRequest = Math.max(
+              Number(eventLocation?.accommodationRequest) || 0,
+              0,
+            );
+            const travelCharge = accommodationRequest > 0
+              ? accommodationRequest
+              : Number(eventLocation?.distanceCharge?.amount) || 0;
 
             return (
               <article
