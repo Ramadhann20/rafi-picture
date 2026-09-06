@@ -495,58 +495,52 @@ export default function BookingStatus({
 
   const client =
     booking.client ?? {};
-  const event =
-    booking.event ?? {};
-  const selectedPackage =
-    booking.package ?? {};
-  const packageTranslation =
-    language === "en"
-      ? englishPackageTranslations[selectedPackage.id]
-      : null;
-  const displayPackage = packageTranslation
-    ? {
-        ...selectedPackage,
-        description: packageTranslation.description,
-        features: packageTranslation.features,
-        serviceHighlights: packageTranslation.features,
-      }
-    : selectedPackage;
+  const event = booking.event ?? {};
+  const bookingPackages = Array.isArray(booking.packages) && booking.packages.length
+    ? booking.packages
+    : booking.package
+      ? [booking.package]
+      : [];
+  const displayPackages = bookingPackages.map((packageItem) => {
+    const packageTranslation =
+      language === "en"
+        ? englishPackageTranslations[packageItem.id]
+        : null;
 
-  const eventLocation =
-    typeof event.location ===
-    "object"
-      ? event.location
-      : {
-          venueName:
-            event.location || "",
-        };
+    return packageTranslation
+      ? {
+          ...packageItem,
+          description: packageTranslation.description,
+          features: packageTranslation.features,
+          serviceHighlights: packageTranslation.features,
+        }
+      : packageItem;
+  });
+  const packageEvents = displayPackages.map((packageItem, index) => ({
+    packageItem,
+    event: booking.events?.find(
+      (eventItem) => eventItem.packageId === packageItem.id,
+    ) ?? (index === 0 ? event : {}),
+  }));
+  const packageTotals = packageEvents.map(({ packageItem, event: packageEvent }) => {
+    const eventLocation = typeof packageEvent.location === "object"
+      ? packageEvent.location
+      : { venueName: packageEvent.location || "" };
+    const packagePrice = Math.max(Number(packageItem.price) || 0, 0);
+    const travelCharge = getTravelCharge(eventLocation);
 
-  const travelCharge =
-    getTravelCharge(
-      eventLocation,
-    );
-
-  const packagePrice =
-    Math.max(
-      Number(
-        displayPackage.price,
-      ) || 0,
-      0,
-    );
-
-  const estimatedTotal =
-    packagePrice +
-    travelCharge;
-
-  const packageFeatures =
-    getPackageFeatures(
-      displayPackage,
-    );
-
-  const showPartnerName =
-    displayPackage
-      .bookingSubjectType ===
-    "couple";
+    return {
+      packagePrice,
+      travelCharge,
+      total: packagePrice + travelCharge,
+    };
+  });
+  const packagePrice = packageTotals.reduce((total, item) => total + item.packagePrice, 0);
+  const travelCharge = packageTotals.reduce((total, item) => total + item.travelCharge, 0);
+  const estimatedTotal = packageTotals.reduce((total, item) => total + item.total, 0);
+  const showPartnerName = displayPackages.some(
+    (packageItem) => packageItem.bookingSubjectType === "couple",
+  );
 
   const bookingReference =
     booking.bookingCode ||
@@ -727,100 +721,83 @@ export default function BookingStatus({
           description={translate("selectedPackageDescription")}
         />
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="font-headline-md text-headline-md text-on-surface">
-              {displayPackage.name ||
-                EMPTY_VALUE}
-            </p>
+        <div className="space-y-6">
+          {displayPackages.map((displayPackage, packageIndex) => {
+            const packageFeatures = getPackageFeatures(displayPackage);
 
-            {displayPackage.description && (
-              <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
-                {
-                  displayPackage.description
-                }
-              </p>
-            )}
+            return (
+              <article
+                key={`${displayPackage.id}-${packageIndex}`}
+                className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-label-sm text-label-sm uppercase tracking-wider text-secondary">
+                      {translate("packageDetails")} {packageIndex + 1}
+                    </p>
+                    <p className="mt-1 font-headline-md text-headline-md text-on-surface">
+                      {displayPackage.name || EMPTY_VALUE}
+                    </p>
 
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
-              {Number(
-                displayPackage.durationHours,
-              ) > 0 && (
-                <span className="inline-flex items-center gap-2">
-                  <AppIcon
-                    name="schedule"
-                    size={16}
-                    className="text-secondary"
-                  />
-                  {
-                    displayPackage.durationHours
-                  }{" "}
-                  {translate("hoursCoverage")}
-                </span>
-              )}
+                    {displayPackage.description && (
+                      <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
+                        {displayPackage.description}
+                      </p>
+                    )}
 
-              <span className="inline-flex items-center gap-2">
-                <AppIcon
-                  name={
-                    showPartnerName
-                      ? "groups"
-                      : "person"
-                  }
-                  size={16}
-                  className="text-secondary"
-                />
-                {showPartnerName
-                  ? translate("subjectCouple")
-                  : translate("subjectIndividual")}
-              </span>
-            </div>
-          </div>
+                    <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
+                      {Number(displayPackage.durationHours) > 0 && (
+                        <span className="inline-flex items-center gap-2">
+                          <AppIcon name="schedule" size={16} className="text-secondary" />
+                          {displayPackage.durationHours} {translate("hoursCoverage")}
+                        </span>
+                      )}
 
-          <div className="shrink-0 sm:text-right">
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
-              {translate("packagePrice")}
-            </p>
+                      <span className="inline-flex items-center gap-2">
+                        <AppIcon
+                          name={displayPackage.bookingSubjectType === "couple" ? "groups" : "person"}
+                          size={16}
+                          className="text-secondary"
+                        />
+                        {displayPackage.bookingSubjectType === "couple"
+                          ? translate("subjectCouple")
+                          : translate("subjectIndividual")}
+                      </span>
+                    </div>
+                  </div>
 
-            <p className="mt-1 font-headline-md text-headline-md text-primary">
-              {getPackagePriceLabel(
-                displayPackage,
-              )}
-            </p>
-          </div>
+                  <div className="shrink-0 sm:text-right">
+                    <p className="font-label-sm text-label-sm text-on-surface-variant">
+                      {translate("packagePrice")}
+                    </p>
+                    <p className="mt-1 font-headline-md text-headline-md text-primary">
+                      {getPackagePriceLabel(displayPackage)}
+                    </p>
+                  </div>
+                </div>
+
+                {packageFeatures.length > 0 && (
+                  <div className="mt-6 border-t border-outline-variant/25 pt-5">
+                    <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                      {translate("includedServices")}
+                    </p>
+                    <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+                      {packageFeatures.map((feature, index) => (
+                        <li
+                          key={`${feature}-${index}`}
+                          className="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant"
+                        >
+                          <AppIcon name="check" size={17} className="mt-0.5 shrink-0 text-secondary" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
-
-        {packageFeatures.length >
-          0 && (
-          <div className="mt-6 border-t border-outline-variant/25 pt-5">
-            <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-              {translate("includedServices")}
-            </p>
-
-            <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
-              {packageFeatures.map(
-                (
-                  feature,
-                  index,
-                ) => (
-                  <li
-                    key={`${feature}-${index}`}
-                    className="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant"
-                  >
-                    <AppIcon
-                      name="check"
-                      size={17}
-                      className="mt-0.5 shrink-0 text-secondary"
-                    />
-
-                    <span>
-                      {feature}
-                    </span>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
-        )}
       </section>
 
       {/* EVENT */}
@@ -831,38 +808,45 @@ export default function BookingStatus({
           description={translate("eventDetailsDescription")}
         />
 
-        <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
-          <DetailItem
-            label={translate("eventDateLabel")}
-            value={formatDate(
-              event.preferredDate,
-              language,
-            )}
-          />
+        <div className="space-y-6">
+          {packageEvents.map(({ packageItem, event: packageEvent }, packageIndex) => {
+            const packageEventLocation = typeof packageEvent.location === "object"
+              ? packageEvent.location
+              : { venueName: packageEvent.location || "" };
+            const packageTravelCharge = getTravelCharge(packageEventLocation);
 
-          <DetailItem
-            label={translate("eventTime")}
-            value={getEventTimeLabel(event, translate("nextDay"))}
-          />
-
-          <DetailItem
-            label={translate("eventLocationLabel")}
-            value={getLocationLabel(
-              eventLocation,
-            )}
-            fullWidth
-          />
-
-          <DetailItem
-            label={translate("travelCost")}
-            value={formatRupiah(
-              travelCharge,
-            )}
-            accent={
-              travelCharge > 0
-            }
-            fullWidth
-          />
+            return (
+              <article
+                key={`${packageItem.id}-${packageIndex}`}
+                className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+              >
+                <h3 className="mb-4 font-headline-md text-headline-md text-primary">
+                  {translate("bookingDetails")} {packageIndex + 1}: {packageItem.name}
+                </h3>
+                <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+                  <DetailItem
+                    label={translate("eventDateLabel")}
+                    value={formatDate(packageEvent.preferredDate, language)}
+                  />
+                  <DetailItem
+                    label={translate("eventTime")}
+                    value={getEventTimeLabel(packageEvent, translate("nextDay"))}
+                  />
+                  <DetailItem
+                    label={translate("eventLocationLabel")}
+                    value={getLocationLabel(packageEventLocation)}
+                    fullWidth
+                  />
+                  <DetailItem
+                    label={translate("travelCost")}
+                    value={formatRupiah(packageTravelCharge)}
+                    accent={packageTravelCharge > 0}
+                    fullWidth
+                  />
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -926,13 +910,18 @@ export default function BookingStatus({
           description={translate("visionAndNotesDescription")}
         />
 
-        <DetailItem
-          label={translate("eventNotes")}
-          value={event.vision}
-          optional
-          fullWidth
-          multiline
-        />
+        <div className="space-y-4">
+          {packageEvents.map(({ packageItem, event: packageEvent }, packageIndex) => (
+            <DetailItem
+              key={`${packageItem.id}-${packageIndex}`}
+              label={`${translate("eventNotes")} ${packageIndex + 1} - ${packageItem.name}`}
+              value={packageEvent.vision}
+              optional
+              fullWidth
+              multiline
+            />
+          ))}
+        </div>
       </section>
 
       {/* COST SUMMARY */}
@@ -944,30 +933,38 @@ export default function BookingStatus({
         />
 
         <div className="max-w-xl">
-          <div className="flex items-center justify-between gap-5 py-2.5">
-            <span className="font-body-md text-body-md text-on-surface-variant">
-              {translate("packagePrice")}
-            </span>
+          <div className="space-y-4">
+            {packageEvents.map(({ packageItem }, packageIndex) => {
+              const totals = packageTotals[packageIndex] ?? {
+                packagePrice: 0,
+                travelCharge: 0,
+              };
 
-            <span className="font-label-md text-label-md text-on-surface">
-              {formatCurrency(
-                packagePrice,
-                displayPackage.currency ||
-                  "IDR",
-              )}
-            </span>
-          </div>
+              return (
+                <article
+                  key={`${packageItem.id}-${packageIndex}`}
+                  className="rounded-lg border border-outline-variant/25 bg-surface-container-low px-4 py-3"
+                >
+                  <div className="flex items-center justify-between gap-5">
+                    <span className="font-label-md text-label-md text-on-surface">
+                      {translate("packageDetails")} {packageIndex + 1}: {packageItem.name}
+                    </span>
+                    <span className="font-label-md text-label-md text-primary">
+                      {formatCurrency(totals.packagePrice, "IDR")}
+                    </span>
+                  </div>
 
-          <div className="flex items-center justify-between gap-5 py-2.5">
-            <span className="font-body-md text-body-md text-on-surface-variant">
-              {translate("travelCost")}
-            </span>
-
-            <span className="font-label-md text-label-md text-on-surface">
-              {formatRupiah(
-                travelCharge,
-              )}
-            </span>
+                  <div className="mt-2 flex items-center justify-between gap-5 text-sm">
+                    <span className="text-on-surface-variant">
+                      {translate("travelCost")}
+                    </span>
+                    <span className="font-label-sm text-label-sm text-on-surface">
+                      {formatRupiah(totals.travelCharge)}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
           <div className="mt-2 flex items-center justify-between gap-5 border-t border-outline-variant/40 pt-4">
@@ -978,8 +975,7 @@ export default function BookingStatus({
             <span className="font-headline-sm text-headline-sm text-primary">
               {formatCurrency(
                 estimatedTotal,
-                displayPackage.currency ||
-                  "IDR",
+                "IDR",
               )}
             </span>
           </div>

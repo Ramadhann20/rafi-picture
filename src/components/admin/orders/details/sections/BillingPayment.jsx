@@ -180,19 +180,25 @@ function getDefaultDueDate() {
 }
 
 function getBookingAmounts(booking) {
-  const packageAmount =
-    Math.max(
-      Number(booking?.package?.price) || 0,
-      0,
-    );
-
-  const travelCharge =
-    Math.max(
-      Number(
-        booking?.event?.location?.distanceCharge?.amount,
-      ) || 0,
-      0,
-    );
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+  const eventItems = Array.isArray(booking?.events) && booking.events.length
+    ? booking.events
+    : booking?.event
+      ? [booking.event]
+      : [];
+  const packageAmount = packageItems.reduce(
+    (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
+    0,
+  );
+  const travelCharge = eventItems.reduce(
+    (total, eventItem) =>
+      total + Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0),
+    0,
+  );
 
   return {
     packageAmount,
@@ -208,23 +214,32 @@ function createInvoiceItems(booking) {
     travelCharge,
   } = getBookingAmounts(booking);
 
-  const items = [
-    {
-      id: "package-service",
-      label:
-        booking?.package?.name ??
-        "Package Service",
-      amount: packageAmount,
-    },
-  ];
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+  const eventItems = Array.isArray(booking?.events) && booking.events.length
+    ? booking.events
+    : booking?.event
+      ? [booking.event]
+      : [];
+  const items = packageItems.map((packageItem, index) => ({
+    id: `package-service-${packageItem.id ?? index}`,
+    label: packageItem.name ?? "Package Service",
+    amount: Math.max(Number(packageItem.price) || 0, 0),
+  }));
 
-  if (travelCharge > 0) {
-    items.push({
-      id: "travel-charge",
-      label: "Travel Charge",
-      amount: travelCharge,
-    });
-  }
+  eventItems.forEach((eventItem, index) => {
+    const amount = Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0);
+    if (amount > 0) {
+      items.push({
+        id: `travel-charge-${index}`,
+        label: `Travel Charge ${index + 1}`,
+        amount,
+      });
+    }
+  });
 
   return items;
 }

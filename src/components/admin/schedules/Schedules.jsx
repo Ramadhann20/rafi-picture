@@ -106,6 +106,22 @@ function getBookingDate(booking) {
   );
 }
 
+function getBookingPackageEntries(booking) {
+  const packages = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+
+  return packages.map((packageItem, index) => ({
+    packageItem,
+    event:
+      booking?.events?.find(
+        (eventItem) => eventItem.packageId === packageItem.id,
+      ) ?? (index === 0 ? booking?.event ?? {} : {}),
+  }));
+}
+
 function getScheduleDate(
   schedule,
   relatedBooking,
@@ -214,9 +230,8 @@ function mapPendingBookings(
             booking.bookingStatus,
         ) === "pending",
     )
-    .map((booking) => {
-      const event =
-        booking?.event ?? {};
+    .flatMap((booking) => {
+      return getBookingPackageEntries(booking).map(({ packageItem, event }) => {
 
       const locationLabel =
         getLocationLabel(
@@ -235,13 +250,11 @@ function mapPendingBookings(
 
       return {
         id:
-          `booking-${booking.id}`,
+          `booking-${booking.id}-${packageItem.id}`,
         source:
           "booking",
         date:
-          getBookingDate(
-            booking,
-          ),
+          event?.preferredDate ?? getBookingDate(booking),
         title:
           getClientName(
             booking.client,
@@ -261,14 +274,14 @@ function mapPendingBookings(
           booking?.bookingCode ??
           null,
         packageName:
-          booking?.package
-            ?.name ??
+          packageItem?.name ??
           null,
         timeLabel,
         locationLabel,
         raw:
-          booking,
+          { booking, package: packageItem, event },
       };
+      });
     })
     .filter(
       (event) =>
@@ -391,6 +404,54 @@ function mapSchedules(
     );
 }
 
+function mapMissingPackageSchedules(bookings, schedules) {
+  const existingKeys = new Set(
+    schedules
+      .filter((schedule) => getScheduleStatus(schedule) !== "cancelled")
+      .map((schedule) => `${schedule.bookingId}:${schedule.packageId ?? "legacy"}`),
+  );
+
+  return bookings
+    .filter((booking) =>
+      !["pending", "cancelled", "canceled"].includes(
+        normalizeStatus(booking.status ?? booking.bookingStatus),
+      ),
+    )
+    .flatMap((booking) =>
+      getBookingPackageEntries(booking).map(({ packageItem, event }, index) => {
+        const packageKey = `${booking.id}:${packageItem.id ?? (index === 0 ? "legacy" : "")}`;
+
+        if (existingKeys.has(packageKey) || !event?.preferredDate) {
+          return null;
+        }
+
+        const locationLabel = getLocationLabel(event.location);
+        const timeLabel = getEventTimeLabel({
+          startTime: event.startTime,
+          endTime: event.endTime,
+          endTimeDayOffset: event.endTimeDayOffset,
+        });
+
+        return {
+          id: `schedule-fallback-${booking.id}-${packageItem.id ?? index}`,
+          source: "schedule",
+          date: event.preferredDate,
+          title: getClientName(booking.client),
+          subtitle: buildSubtitle({ timeLabel, locationLabel }),
+          status: normalizeStatus(booking.status) || "booked",
+          bookingId: booking.id,
+          scheduleId: null,
+          bookingCode: booking.bookingCode ?? null,
+          packageName: packageItem.name ?? null,
+          timeLabel,
+          locationLabel,
+          raw: { booking, package: packageItem, event, fallback: true },
+        };
+      }),
+    )
+    .filter(Boolean);
+}
+
 function sortCalendarEvents(
   events,
 ) {
@@ -508,14 +569,14 @@ export default function Schedules() {
 
   const scheduleEvents =
     useMemo(
-      () =>
-        mapSchedules(
-          schedules,
-          bookingById,
-        ),
+      () => [
+        ...mapSchedules(schedules, bookingById),
+        ...mapMissingPackageSchedules(bookings, schedules),
+      ],
       [
         schedules,
         bookingById,
+        bookings,
       ],
     );
 

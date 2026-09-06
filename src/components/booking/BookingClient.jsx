@@ -4,6 +4,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { doc, writeBatch } from "firebase/firestore";
 
 import { useAuth } from "@/context/AuthContext";
 import { useDb } from "@/context/DbContext";
@@ -310,9 +311,6 @@ export default function BookingClient({ packageId = null }) {
           "submittedAt",
           "desc",
         ),
-        db.limit(
-          BOOKING_POLICY.queryLimit,
-        ),
       );
     },
     [userId],
@@ -322,19 +320,38 @@ export default function BookingClient({ packageId = null }) {
   );
 
   /*
-   * Karena query memakai limit(1), array hanya
-   * berisi booking terbaru milik user.
+   * Semua child booking inquiry dibaca agar customer dapat melihat satu
+   * inquiry gabungan, sementara Admin tetap menerima satu record per paket.
    */
   const persistedBooking = useMemo(() => {
-    return (
-      userBookings.find((booking) =>
-        BOOKING_STATUSES.includes(
-          String(
-            booking.status ?? "",
-          ).toLowerCase(),
-        ),
-      ) ?? null
+    const latestBooking = userBookings.find((booking) =>
+      BOOKING_STATUSES.includes(
+        String(booking.status ?? "").toLowerCase(),
+      ),
     );
+
+    if (!latestBooking) return null;
+
+    const inquiryBookings = latestBooking.inquiryId
+      ? userBookings.filter(
+          (booking) => booking.inquiryId === latestBooking.inquiryId,
+        )
+      : [latestBooking];
+
+    if (inquiryBookings.length <= 1) return latestBooking;
+
+    return {
+      ...latestBooking,
+      packages: inquiryBookings.map((booking) => booking.package).filter(Boolean),
+      events: inquiryBookings.map((booking) => ({
+        ...(booking.event ?? {}),
+        packageId: booking.package?.id ?? null,
+      })),
+      personalDetails: inquiryBookings.flatMap(
+        (booking) => booking.personalDetails ?? [],
+      ),
+      inquiryBookingIds: inquiryBookings.map((booking) => booking.id),
+    };
   }, [userBookings]);
 
   /*
@@ -597,31 +614,51 @@ export default function BookingClient({ packageId = null }) {
       vision: data.vision?.trim() || null,
     }));
 
+    const personalRecords = packageRecords.map((packageItem, index) => {
+      const personalEntry = formData.personalDetails?.find(
+        (entry) => entry.packageId === packageItem.id,
+      );
+      const personal = personalEntry?.data ?? formData.personal;
+
+      return {
+        packageId: packageItem.id,
+        fullName: personal.fullName?.trim() || "",
+        partnerName:
+          packageItem.bookingSubjectType === "individual"
+            ? null
+            : personal.partnerName?.trim() || null,
+        email: personal.email?.trim().toLowerCase() || "",
+        phone: personal.phone?.trim() || "",
+        instagram: personal.instagram?.trim() || null,
+        useMyData: Boolean(personal.useMyData),
+        eventIndex: index,
+      };
+    });
+
+    const primaryPersonal = personalRecords[0] ?? {
+      fullName: formData.personal.fullName.trim(),
+      partnerName: formData.personal.partnerName?.trim() || null,
+      email: formData.personal.email.trim().toLowerCase(),
+      phone: formData.personal.phone.trim(),
+      instagram: formData.personal.instagram?.trim() || null,
+    };
+
     const primaryEvent = eventRecords[0];
 
     return {
       client: {
         uid: userId,
 
-        fullName:
-          formData.personal.fullName.trim(),
+        fullName: primaryPersonal.fullName,
 
         partnerName:
-          selectedPackage.bookingSubjectType === "individual"
-            ? null
-            : formData.personal.partnerName?.trim() || null,
+          primaryPersonal.partnerName,
 
-        email:
-          formData.personal.email
-            .trim()
-            .toLowerCase(),
+        email: primaryPersonal.email,
 
-        phone:
-          formData.personal.phone.trim(),
+        phone: primaryPersonal.phone,
 
-        instagram:
-          formData.personal.instagram?.trim() ||
-          null,
+        instagram: primaryPersonal.instagram,
       },
 
       event: {
@@ -636,10 +673,58 @@ export default function BookingClient({ packageId = null }) {
       package: serializePackage(selectedPackage),
       packages: packageRecords.map(serializePackage),
       events: eventRecords,
+      personalDetails: personalRecords,
 
       status: "pending",
       source: "website_booking_form",
     };
+  };
+
+  const buildPackageBookingPayloads = ({
+    bookingPayload,
+    bookingCode,
+    inquiryId,
+  }) => {
+    const packages = bookingPayload.packages?.length
+      ? bookingPayload.packages
+      : [bookingPayload.package];
+
+    return packages.map((packageItem, index) => {
+      const packageId = packageItem.id;
+      const packageEvent =
+        bookingPayload.events?.find(
+          (eventItem) => eventItem.packageId === packageId,
+        ) ?? bookingPayload.event;
+      const packagePersonal =
+        bookingPayload.personalDetails?.find(
+          (entry) => entry.packageId === packageId,
+        ) ?? bookingPayload.personalDetails?.[index];
+
+      const client = {
+        ...bookingPayload.client,
+        fullName: packagePersonal?.fullName ?? bookingPayload.client.fullName,
+        partnerName: packagePersonal?.partnerName ?? bookingPayload.client.partnerName,
+        email: packagePersonal?.email ?? bookingPayload.client.email,
+        phone: packagePersonal?.phone ?? bookingPayload.client.phone,
+        instagram: packagePersonal?.instagram ?? bookingPayload.client.instagram,
+      };
+
+      return {
+        ...bookingPayload,
+        inquiryId,
+        inquiryBookingCount: packages.length,
+        inquiryIndex: index + 1,
+        bookingCode: `${bookingCode}-${index + 1}`,
+        client,
+        package: packageItem,
+        packages: [packageItem],
+        event: packageEvent,
+        events: [packageEvent],
+        personalDetails: packagePersonal
+          ? [{ ...packagePersonal }]
+          : [],
+      };
+    });
   };
 
   const handleSubmitBooking = async (
@@ -683,25 +768,41 @@ export default function BookingClient({ packageId = null }) {
           bookingPayload.package.packageCategoryId || "",
       });
 
-      const documentReference =
-        await db.addDoc("Bookings", {
-          ...bookingPayload,
-          bookingCode,
+      const inquiryId = doc(db.db, "Bookings").id;
+      const packageBookingPayloads = buildPackageBookingPayloads({
+        bookingPayload,
+        bookingCode,
+        inquiryId,
+      });
+      const batch = writeBatch(db.db);
+      const bookingReferences = packageBookingPayloads.map(() =>
+        doc(db.db, "Bookings"),
+      );
+      const timestamp = db.serverTimestamp();
 
-          submittedAt:
-            db.serverTimestamp(),
-
-          updatedAt:
-            db.serverTimestamp(),
+      packageBookingPayloads.forEach((packageBooking, index) => {
+        batch.set(bookingReferences[index], {
+          ...packageBooking,
+          submittedAt: timestamp,
+          updatedAt: timestamp,
         });
+      });
+
+      await batch.commit();
 
       const currentTime =
         new Date().toISOString();
 
       const newBooking = {
-        id: documentReference.id,
-        ...bookingPayload,
-        bookingCode,
+        id: bookingReferences[0]?.id ?? inquiryId,
+        ...packageBookingPayloads[0],
+        inquiryId,
+        inquiryBookingIds: bookingReferences.map((reference) => reference.id),
+        packages: packageBookingPayloads.map((packageBooking) => packageBooking.package),
+        events: packageBookingPayloads.map((packageBooking) => packageBooking.event),
+        personalDetails: packageBookingPayloads.flatMap(
+          (packageBooking) => packageBooking.personalDetails ?? [],
+        ),
         submittedAt: currentTime,
         updatedAt: currentTime,
       };
@@ -737,7 +838,7 @@ export default function BookingClient({ packageId = null }) {
                 body:
                   JSON.stringify({
                     bookingId:
-                      documentReference.id,
+                      bookingReferences[0]?.id,
                   }),
 
                 keepalive:

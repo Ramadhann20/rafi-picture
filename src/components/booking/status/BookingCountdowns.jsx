@@ -92,7 +92,7 @@ function CountdownDigits({ duration, danger = false }) {
   );
 }
 
-function EventCountdownCard({ booking, nowMs }) {
+function EventCountdownCard({ booking, packageName, packageIndex, nowMs }) {
   const { translate, language } = useLanguage();
   const normalizedBookingStatus = normalizeStatus(booking?.status);
 
@@ -124,9 +124,11 @@ function EventCountdownCard({ booking, nowMs }) {
             </p>
 
             <h2 className="mt-1 font-headline-sm text-headline-sm text-on-surface">
-              {hasArrived
-                ? translate("eventDayArrived")
-                : translate("eventCountdown")}
+              {packageName
+                ? `${packageName} ${packageIndex != null ? `(${packageIndex + 1})` : ""}`
+                : hasArrived
+                  ? translate("eventDayArrived")
+                  : translate("eventCountdown")}
             </h2>
           </div>
         </div>
@@ -341,12 +343,21 @@ export default function BookingCountdowns({
     return null;
   }
 
-  const eventStart = getEventStartDate(booking?.event);
+  const packageEntries = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages.map((packageItem, index) => ({
+        packageItem,
+        event:
+          booking.events?.find(
+            (eventItem) => eventItem.packageId === packageItem.id,
+          ) ?? (index === 0 ? booking.event : null),
+      }))
+    : [{ packageItem: booking?.package ?? null, event: booking?.event }];
+  const eventCountdowns = packageEntries.filter(({ event }) => Boolean(event));
   const paymentTimer = buildPaymentTimer({ invoice, payments, nowMs });
   const normalizedBookingStatus = normalizeStatus(booking?.status);
 
   const showEvent =
-    Boolean(eventStart) &&
+    eventCountdowns.some(({ event }) => Boolean(getEventStartDate(event))) &&
     !["cancelled", "completed"].includes(normalizedBookingStatus);
 
   const showPayment = Boolean(paymentTimer);
@@ -362,7 +373,15 @@ export default function BookingCountdowns({
           showEvent && showPayment ? "lg:grid-cols-2" : ""
         }`}
       >
-        {showEvent && <EventCountdownCard booking={booking} nowMs={nowMs} />}
+        {showEvent && eventCountdowns.map(({ packageItem, event }, index) => (
+          <EventCountdownCard
+            key={`${packageItem?.id ?? "event"}-${index}`}
+            booking={{ ...booking, event }}
+            packageName={packageItem?.name}
+            packageIndex={packageItem ? index : null}
+            nowMs={nowMs}
+          />
+        ))}
 
         {showPayment && (
           <PaymentCountdownCard

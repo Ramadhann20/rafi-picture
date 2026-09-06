@@ -134,6 +134,23 @@ export async function POST(
       ...bookingSnapshot.data(),
     };
 
+    const packageId = String(body?.packageId || "").trim();
+    const selectedPackage = packageId
+      ? (booking.packages || []).find((item) => item.id === packageId)
+      : null;
+    const selectedEvent = packageId
+      ? (booking.events || []).find((item) => item.packageId === packageId)
+      : null;
+    const scopedBooking = selectedPackage
+      ? {
+          ...booking,
+          package: selectedPackage,
+          event: selectedEvent || booking.event,
+          packages: [selectedPackage],
+          events: selectedEvent ? [selectedEvent] : booking.events,
+        }
+      : booking;
+
     if (
       booking.status !==
       "pending"
@@ -148,9 +165,7 @@ export async function POST(
       packageAmount,
       travelCharge,
       bookingTotal,
-    } = getBookingAmounts(
-      booking,
-    );
+    } = getBookingAmounts(scopedBooking);
 
     const requestedAmount =
       Number(
@@ -180,7 +195,7 @@ export async function POST(
 
     const invoiceNumber =
       buildDepositInvoiceNumber(
-        booking,
+        scopedBooking,
       );
 
     const fileName =
@@ -193,6 +208,7 @@ export async function POST(
 
     const invoice = {
       type: "deposit",
+      packageId: packageId || scopedBooking.package?.id || null,
       packageTotal:
         bookingTotal,
       packageAmount,
@@ -200,7 +216,7 @@ export async function POST(
       bookingTotal,
       amount,
       currency:
-        booking?.package
+        scopedBooking?.package
           ?.currency ||
         "IDR",
       dueAt:
@@ -224,7 +240,7 @@ export async function POST(
 
     const pdfBuffer =
       await generateDepositInvoicePdf({
-        booking,
+        booking: scopedBooking,
         invoice,
         invoiceNumber,
         invoiceDate,

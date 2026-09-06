@@ -246,6 +246,7 @@ function DetailRow({
 export default function BookConfirm({
   formData,
   selectedPackage,
+  selectedPackages = [],
   submitStatus,
 }) {
   const { language, translate } = useLanguage();
@@ -259,29 +260,27 @@ export default function BookConfirm({
         }
       : selectedPackage
     : null;
-  const personalData =
-    formData?.personal ?? {};
-  const eventData =
-    formData?.event ?? {};
+  const personalData = formData?.personal ?? {};
+  const displayPackages = (selectedPackages.length
+    ? selectedPackages
+    : displayPackage
+      ? [displayPackage]
+      : []
+  ).map((packageItem) =>
+    englishPackageTranslations[packageItem.id] && language === "en"
+      ? {
+          ...packageItem,
+          description: englishPackageTranslations[packageItem.id].description,
+          serviceHighlights: englishPackageTranslations[packageItem.id].features,
+          features: englishPackageTranslations[packageItem.id].features,
+        }
+      : packageItem,
+  );
 
-  const eventLocation =
-    normalizeEventLocation(
-      eventData.location,
-    );
-
-  const travelCharge =
-    Number(
-      eventLocation
-        ?.distanceCharge
-        ?.amount,
-    ) || 0;
-
-  const packageHighlights = getPackageHighlights(displayPackage);
-
-  const showPartnerName =
-    Boolean(displayPackage) &&
-    displayPackage.bookingSubjectType !==
-      "individual";
+  const getPackageEvent = (packageItem, index) =>
+    formData?.events?.find(
+      (eventItem) => eventItem.packageId === packageItem.id,
+    )?.data ?? (index === 0 ? formData?.event ?? {} : {});
 
   const isSubmitting =
     submitStatus === "loading";
@@ -312,99 +311,95 @@ export default function BookConfirm({
           description={translate("selectedPackageDescription")}
         />
 
-        {displayPackage ? (
-          <>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <p className="font-headline-md text-headline-md text-on-surface">
-                    {displayPackage.name}
-                  </p>
-
-                  {displayPackage.featured && (
-                    <span className="font-label-sm text-[10px] uppercase tracking-widest text-secondary">
-                      {translate("mostPopular")}
-                    </span>
-                  )}
-                </div>
-
-                {displayPackage.description && (
-                  <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
-                    {displayPackage.description}
-                  </p>
-                )}
-
-                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
-                  {Number(
-                    displayPackage.durationHours,
-                  ) > 0 && (
-                    <span>
-                      {displayPackage.durationHours} {translate("hoursCoverage")}
-                    </span>
-                  )}
-
-                  <span>
-                    {displayPackage.bookingSubjectType ===
-                    "couple"
-                      ? translate("subjectCouple")
-                      : displayPackage.bookingSubjectType ===
-                          "individual"
-                        ? translate("subjectIndividual")
-                        : translate("subjectUnknown")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0 sm:text-right">
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  {translate("packagePrice")}
-                </p>
-
-                <p className="mt-1 font-headline-md text-headline-md text-primary">
-                  {getPackagePrice(
-                    displayPackage,
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {packageHighlights.length >
-              0 && (
-              <div className="mt-6 border-t border-outline-variant/25 pt-5">
-                <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-                  {translate("includedServices")}
-                </p>
-
-                <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
-                  {packageHighlights.map(
-                    (
-                      highlight,
-                      index,
-                    ) => (
-                      <li
-                        key={`${highlight}-${index}`}
-                        className="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant"
-                      >
-                        <AppIcon
-                          name="check"
-                          size={17}
-                          className="mt-0.5 shrink-0 text-secondary"
-                        />
-
-                        <span>
-                          {highlight}
-                        </span>
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            )}
-          </>
-        ) : (
+        {displayPackages.length === 0 ? (
           <p className="font-body-md text-body-md text-error">
             {translate("packageRequired")}
           </p>
+        ) : (
+          <div className="space-y-6">
+            {displayPackages.map((packageItem, packageIndex) => {
+              const packageHighlights = getPackageHighlights(packageItem);
+
+              return (
+                <article
+                  key={`${packageItem.id}-${packageIndex}`}
+                  className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <p className="font-label-md text-label-md uppercase tracking-wider text-secondary">
+                          {translate("packageDetails")} {packageIndex + 1}
+                        </p>
+                        {packageItem.featured && (
+                          <span className="font-label-sm text-[10px] uppercase tracking-widest text-secondary">
+                            {translate("mostPopular")}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="mt-1 font-headline-md text-headline-md text-on-surface">
+                        {packageItem.name}
+                      </h3>
+
+                      {packageItem.description && (
+                        <p className="mt-2 max-w-2xl font-body-sm text-body-sm leading-relaxed text-on-surface-variant">
+                          {packageItem.description}
+                        </p>
+                      )}
+
+                      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-label-sm text-label-sm text-on-surface-variant">
+                        {Number(packageItem.durationHours) > 0 && (
+                          <span>
+                            {packageItem.durationHours} {translate("hoursCoverage")}
+                          </span>
+                        )}
+                        <span>
+                          {packageItem.bookingSubjectType === "couple"
+                            ? translate("subjectCouple")
+                            : packageItem.bookingSubjectType === "individual"
+                              ? translate("subjectIndividual")
+                              : translate("subjectUnknown")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 sm:text-right">
+                      <p className="font-label-sm text-label-sm text-on-surface-variant">
+                        {translate("packagePrice")}
+                      </p>
+                      <p className="mt-1 font-headline-md text-headline-md text-primary">
+                        {getPackagePrice(packageItem)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {packageHighlights.length > 0 && (
+                    <div className="mt-6 border-t border-outline-variant/25 pt-5">
+                      <p className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                        {translate("includedServices")}
+                      </p>
+                      <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+                        {packageHighlights.map((highlight, index) => (
+                          <li
+                            key={`${highlight}-${index}`}
+                            className="flex items-start gap-2.5 font-body-sm text-body-sm text-on-surface-variant"
+                          >
+                            <AppIcon
+                              name="check"
+                              size={17}
+                              className="mt-0.5 shrink-0 text-secondary"
+                            />
+                            <span>{highlight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
 
@@ -416,38 +411,43 @@ export default function BookConfirm({
           description={translate("eventDetailsDescription")}
         />
 
-        <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
-          <DetailRow
-            label={translate("eventDate")}
-            value={formatEventDate(
-              eventData.eventDate,
-              language,
-            )}
-          />
+        <div className="space-y-6">
+          {displayPackages.map((packageItem, index) => {
+            const eventData = getPackageEvent(packageItem, index);
+            const eventLocation = normalizeEventLocation(eventData.location);
+            const travelCharge = Number(eventLocation?.distanceCharge?.amount) || 0;
 
-          <DetailRow
-            label={translate("eventTime")}
-            value={getEventTimeLabel(
-              eventData,
-              translate("nextDay"),
-            )}
-          />
-
-          <DetailRow
-            label={translate("eventLocation")}
-            value={getDisplayValue(
-              eventLocation.venueName,
-            )}
-            fullWidth
-          />
-
-          <DetailRow
-            label={translate("accommodationCost")}
-            value={formatRupiah(
-              travelCharge,
-            )}
-            fullWidth
-          />
+            return (
+              <article
+                key={`${packageItem.id}-${index}`}
+                className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+              >
+                <h3 className="mb-4 font-headline-md text-headline-md text-primary">
+                  {translate("bookingDetails")} {index + 1}: {packageItem.name}
+                </h3>
+                <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+                  <DetailRow
+                    label={translate("eventDate")}
+                    value={formatEventDate(eventData.eventDate, language)}
+                  />
+                  <DetailRow
+                    label={translate("eventTime")}
+                    value={getEventTimeLabel(eventData, translate("nextDay"))}
+                  />
+                  <DetailRow
+                    label={translate("eventLocation")}
+                    value={getDisplayValue(eventLocation.venueName)}
+                    fullWidth
+                  />
+                  <DetailRow
+                    label={translate("accommodationCost")}
+                    value={formatRupiah(travelCharge)}
+                    fullWidth
+                  />
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -459,48 +459,58 @@ export default function BookConfirm({
           description={translate("personalDetailsDescription")}
         />
 
-        <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
-          <DetailRow
-            label={translate("fullName")}
-            value={getDisplayValue(
-              personalData.fullName,
-            )}
-          />
+        <div className="space-y-6">
+          {selectedPackages.map((packageItem, index) => {
+            const packagePersonal =
+              formData.personalDetails?.find(
+                (entry) => entry.packageId === packageItem.id,
+              )?.data ?? personalData;
 
-          {showPartnerName && (
-            <DetailRow
-              label={translate("partnerName")}
-              value={getDisplayValue(
-                personalData.partnerName,
-              )}
-              optional
-              optionalLabel={translate("optional")}
-            />
-          )}
+            return (
+              <article
+                key={`${packageItem.id}-${index}`}
+                className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
+              >
+                <h3 className="mb-4 font-headline-md text-headline-md text-primary">
+                  {translate("personalInformation")} {index + 1}: {packageItem.name}
+                </h3>
 
-          <DetailRow
-            label="Email"
-            value={getDisplayValue(
-              personalData.email,
-            )}
-          />
+                <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+                  <DetailRow
+                    label={translate("fullName")}
+                    value={getDisplayValue(packagePersonal.fullName)}
+                  />
 
-          <DetailRow
-            label={translate("phoneNumber")}
-            value={getDisplayValue(
-              personalData.phone,
-            )}
-          />
+                  {packageItem.bookingSubjectType !== "individual" && (
+                    <DetailRow
+                      label={translate("partnerName")}
+                      value={getDisplayValue(packagePersonal.partnerName)}
+                      optional
+                      optionalLabel={translate("optional")}
+                    />
+                  )}
 
-          <DetailRow
-            label="Instagram"
-            value={normalizeInstagram(
-              personalData.instagram,
-            )}
-            optional
-              optionalLabel={translate("optional")}
-            fullWidth
-          />
+                  <DetailRow
+                    label="Email"
+                    value={getDisplayValue(packagePersonal.email)}
+                  />
+
+                  <DetailRow
+                    label={translate("phoneNumber")}
+                    value={getDisplayValue(packagePersonal.phone)}
+                  />
+
+                  <DetailRow
+                    label="Instagram"
+                    value={normalizeInstagram(packagePersonal.instagram)}
+                    optional
+                    optionalLabel={translate("optional")}
+                    fullWidth
+                  />
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 
@@ -512,16 +522,19 @@ export default function BookConfirm({
           description={translate("visionNotesDescription")}
         />
 
-        <DetailRow
-          label={translate("eventNotes")}
-          value={getDisplayValue(
-            eventData.vision,
-          )}
-          optional
-          optionalLabel={translate("optional")}
-          fullWidth
-          multiline
-        />
+        <div className="space-y-4">
+          {selectedPackages.map((packageItem, index) => (
+            <DetailRow
+              key={`${packageItem.id}-${index}`}
+              label={`${translate("eventNotes")} ${index + 1} - ${packageItem.name}`}
+              value={getDisplayValue(formData.events?.[index]?.data?.vision)}
+              optional
+              optionalLabel={translate("optional")}
+              fullWidth
+              multiline
+            />
+          ))}
+        </div>
       </section>
 
       {/* IMPORTANT INFO */}

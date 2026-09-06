@@ -311,15 +311,18 @@ function buildReviewedBy(
 
 function buildSchedulePayload({
   booking,
+  invoice,
   paymentId,
   invoiceId,
   timestamp,
 }) {
-  const event =
-    booking?.event ?? {};
-
-  const selectedPackage =
-    booking?.package ?? {};
+  const packageId = invoice?.packageId ?? null;
+  const selectedPackage = packageId
+    ? booking?.packages?.find((item) => item.id === packageId) ?? booking?.package ?? {}
+    : booking?.package ?? {};
+  const event = packageId
+    ? booking?.events?.find((item) => item.packageId === packageId) ?? booking?.event ?? {}
+    : booking?.event ?? {};
 
   return {
     bookingId:
@@ -343,7 +346,7 @@ function buildSchedulePayload({
 
     packageId:
       selectedPackage?.id ??
-      null,
+      packageId,
 
     packageName:
       selectedPackage?.name ??
@@ -874,54 +877,47 @@ export async function POST(
         },
       );
 
-      const activeScheduleDoc =
-        scheduleSnapshot.docs.find(
-          (document) => {
-            const schedule =
-              document.data();
+      const packageEntries = invoice?.packageId
+        ? [{ packageId: invoice.packageId }]
+        : Array.isArray(booking?.packages) && booking.packages.length
+          ? booking.packages.map((packageItem) => ({ packageId: packageItem.id }))
+          : [{ packageId: booking?.package?.id ?? null }];
 
-            return (
-              schedule?.status !==
-                "cancelled" &&
-              schedule
-                ?.scheduleStatus !==
-                "cancelled"
-            );
-          },
-        );
+      packageEntries.forEach(({ packageId }) => {
+        const activeScheduleDoc = scheduleSnapshot.docs.find((document) => {
+          const schedule = document.data();
 
-      const schedulePayload =
-        buildSchedulePayload({
+          return (
+            (schedule?.packageId === packageId ||
+              (!schedule?.packageId && packageId === booking?.package?.id)) &&
+            schedule?.status !== "cancelled" &&
+            schedule?.scheduleStatus !== "cancelled"
+          );
+        });
+
+        const packageInvoice = {
+          ...invoice,
+          packageId,
+        };
+        const schedulePayload = buildSchedulePayload({
           booking,
+          invoice: packageInvoice,
           paymentId,
           invoiceId,
           timestamp,
         });
 
-      if (
-        activeScheduleDoc
-      ) {
-        batch.update(
-          activeScheduleDoc.ref,
-          schedulePayload,
-        );
-      } else {
-        const scheduleRef =
-          adminDb
-            .collection(
-              "Schedules",
-            )
-            .doc();
+        if (activeScheduleDoc) {
+          batch.update(activeScheduleDoc.ref, schedulePayload);
+        } else {
+          const scheduleRef = adminDb.collection("Schedules").doc();
 
-        batch.set(
-          scheduleRef,
-          {
+          batch.set(scheduleRef, {
             ...schedulePayload,
-            createdAt:
-              timestamp,
-          },
-        );
-      }
+            createdAt: timestamp,
+          });
+        }
+      });
 
       await batch.commit();
 

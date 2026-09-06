@@ -690,6 +690,17 @@ export default function Orders() {
     );
   }, [assignments, selectedBookingId]);
 
+  const selectedAssignments = useMemo(() => {
+    if (!selectedBookingId) return [];
+
+    return assignments.filter(
+      (assignment) =>
+        assignment.bookingId === selectedBookingId &&
+        assignment.status !== "cancelled" &&
+        assignment.status !== "void",
+    );
+  }, [assignments, selectedBookingId]);
+
   const bookingPayments = useMemo(() => {
     if (!selectedBookingId) return [];
 
@@ -1653,6 +1664,9 @@ const handleAdvancedFilter = () => {
         assignments={assignments}
         existingAssignment={
           selectedAssignment
+        }
+        existingAssignments={
+          selectedAssignments
         }
         savingAssignment={
           savingAssignment

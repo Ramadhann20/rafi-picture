@@ -101,16 +101,21 @@ function createEventEntries(packageItems, previousEvents = []) {
 
 function createInitialFormData(initialPackageId) {
   const packageIds = normalizeInitialPackageIds(initialPackageId);
+  const personal = {
+    fullName: "",
+    partnerName: "",
+    email: "",
+    phone: "",
+    instagram: "",
+    useMyData: false,
+  };
 
   return {
-    personal: {
-      fullName: "",
-      partnerName: "",
-      email: "",
-      phone: "",
-      instagram: "",
-      useMyData: false,
-    },
+    personal,
+    personalDetails: packageIds.map((packageId) => ({
+      packageId,
+      data: { ...personal },
+    })),
     event: createEventData(),
     events: packageIds.map((packageId) => ({
       packageId,
@@ -236,13 +241,29 @@ export default function BookingProcess({
       const nextKey = nextEvents
         .map((eventItem) => `${eventItem.packageId}:${eventItem.sessionId}`)
         .join("|");
+      const previousPersonalKey = (previousData.personalDetails ?? [])
+        .map((item) => item.packageId)
+        .join("|");
+      const nextPersonalKey = selectedPackageIds.join("|");
 
-      if (previousKey === nextKey) return previousData;
+      if (
+        previousKey === nextKey &&
+        previousPersonalKey === nextPersonalKey
+      ) {
+        return previousData;
+      }
 
       return {
         ...previousData,
         events: nextEvents,
         event: nextEvents[0]?.data ?? createEventData(),
+        personalDetails: selectedPackageIds.map((packageId) => ({
+          packageId,
+          data:
+            previousData.personalDetails?.find(
+              (item) => item.packageId === packageId,
+            )?.data ?? { ...previousData.personal },
+        })),
       };
     });
   }, [selectedPackageKey, packageOptions]);
@@ -316,34 +337,30 @@ export default function BookingProcess({
   };
 
   const getPersonalErrors = () => {
-    const nextErrors = {};
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phonePattern = /^\+?[0-9\s\-()]{8,20}$/;
+    const personalEntries = formData.personalDetails?.length
+      ? formData.personalDetails
+      : [{ packageId: selectedPackage?.id, data: formData.personal }];
 
-    const fullName = formData.personal.fullName.trim();
-    const email = formData.personal.email.trim();
-    const phone = formData.personal.phone.trim();
+    return Object.fromEntries(
+      personalEntries.map((entry, index) => {
+        const nextErrors = {};
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phonePattern = /^\+?[0-9\s\-()]{8,20}$/;
+        const personal = entry.data ?? {};
+        const fullName = String(personal.fullName ?? "").trim();
+        const email = String(personal.email ?? "").trim();
+        const phone = String(personal.phone ?? "").trim();
 
-    if (!fullName) {
-      nextErrors.fullName = translate("fullNameRequired");
-    } else if (fullName.length < 2) {
-      nextErrors.fullName =
-        translate("fullNameMinLength");
-    }
+        if (!fullName) nextErrors.fullName = translate("fullNameRequired");
+        else if (fullName.length < 2) nextErrors.fullName = translate("fullNameMinLength");
+        if (!email) nextErrors.email = translate("emailRequired");
+        else if (!emailPattern.test(email)) nextErrors.email = translate("validEmail");
+        if (!phone) nextErrors.phone = translate("phoneRequired");
+        else if (!phonePattern.test(phone)) nextErrors.phone = translate("validPhone");
 
-    if (!email) {
-      nextErrors.email = translate("emailRequired");
-    } else if (!emailPattern.test(email)) {
-      nextErrors.email = translate("validEmail");
-    }
-
-    if (!phone) {
-      nextErrors.phone = translate("phoneRequired");
-    } else if (!phonePattern.test(phone)) {
-      nextErrors.phone = translate("validPhone");
-    }
-
-    return nextErrors;
+        return [String(index), nextErrors];
+      }),
+    );
   };
 
   const getEventErrors = (eventData = formData.event) => {
@@ -502,6 +519,12 @@ export default function BookingProcess({
       );
     }
 
+    if (section === "personal") {
+      return !Object.values(nextErrors).some(
+        (personalErrors) => Object.keys(personalErrors).length > 0,
+      );
+    }
+
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -537,7 +560,7 @@ export default function BookingProcess({
       return false;
     }
 
-    if (Object.keys(personalErrors).length > 0) {
+    if (Object.values(personalErrors).some((errorsForPerson) => Object.keys(errorsForPerson).length > 0)) {
       transitionToPhase(2);
       return false;
     }
@@ -752,15 +775,65 @@ export default function BookingProcess({
           {currentPhase === 2 && (
             <PersonalDetail
               data={formData.personal}
+              personalDetails={formData.personalDetails}
               accountData={accountData}
               errors={errors.personal ?? {}}
               showPartnerName={showPartnerName}
-              vision={formData.event.vision ?? ""}
-              onChange={(values) =>
-                updateFormSection("personal", values)
-              }
-              onVisionChange={(vision) =>
-                updateFormSection("event", { vision })
+              selectedPackages={selectedPackages}
+              events={formData.events}
+              onChange={(values) => updateFormSection("personal", values)}
+              onPersonalChange={(packageId, values) => {
+                setFormData((previousData) => {
+                  const currentDetails = previousData.personalDetails ?? [];
+                  const detailExists = currentDetails.some(
+                    (entry) => entry.packageId === packageId,
+                  );
+                  const nextDetails = detailExists
+                    ? currentDetails.map((entry) =>
+                        entry.packageId === packageId
+                          ? { ...entry, data: { ...entry.data, ...values } }
+                          : entry,
+                      )
+                    : [
+                        ...currentDetails,
+                        { packageId, data: { ...values } },
+                      ];
+
+                  return {
+                    ...previousData,
+                    personal: packageId === selectedPackageIds[0]
+                      ? { ...previousData.personal, ...values }
+                      : previousData.personal,
+                    personalDetails: nextDetails,
+                  };
+                });
+
+                setErrors((previousErrors) => {
+                  const personalErrors = {
+                    ...(previousErrors.personal ?? {}),
+                  };
+                  const packageIndex = selectedPackageIds.indexOf(packageId);
+
+                  if (packageIndex < 0) return previousErrors;
+
+                  const packageErrors = {
+                    ...(personalErrors[String(packageIndex)] ?? {}),
+                  };
+
+                  Object.keys(values).forEach((fieldName) => {
+                    delete packageErrors[fieldName];
+                  });
+
+                  personalErrors[String(packageIndex)] = packageErrors;
+
+                  return {
+                    ...previousErrors,
+                    personal: personalErrors,
+                  };
+                });
+              }}
+              onEventChange={(index, values) =>
+                updateEventData(index, values)
               }
             />
           )}

@@ -86,24 +86,28 @@ function normalizeDueDate(
 function getBookingAmounts(
   booking,
 ) {
-  const packageAmount =
-    Math.max(
-      Number(
-        booking?.package?.price,
-      ) || 0,
-      0,
-    );
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
 
-  const travelCharge =
-    Math.max(
-      Number(
-        booking?.event
-          ?.location
-          ?.distanceCharge
-          ?.amount,
-      ) || 0,
-      0,
-    );
+  const packageAmount = packageItems.reduce(
+    (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
+    0,
+  );
+
+  const eventItems = Array.isArray(booking?.events) && booking.events.length
+    ? booking.events
+    : booking?.event
+      ? [booking.event]
+      : [];
+
+  const travelCharge = eventItems.reduce(
+    (total, eventItem) =>
+      total + Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0),
+    0,
+  );
 
   return {
     packageAmount,
@@ -124,31 +128,36 @@ function createInvoiceItems(
     booking,
   );
 
-  const items = [
-    {
-      id:
-        "package-service",
-      label:
-        booking?.package
-          ?.name ||
-        "Package Service",
-      amount:
-        packageAmount,
-    },
-  ];
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+  const eventItems = Array.isArray(booking?.events) && booking.events.length
+    ? booking.events
+    : booking?.event
+      ? [booking.event]
+      : [];
 
-  if (
-    travelCharge > 0
-  ) {
-    items.push({
-      id:
-        "travel-charge",
-      label:
-        "Travel Charge",
-      amount:
-        travelCharge,
-    });
-  }
+  const items = packageItems.map((packageItem, index) => ({
+    id: `package-service-${packageItem.id ?? index}`,
+    label: packageItem.name || "Package Service",
+    amount: Math.max(Number(packageItem.price) || 0, 0),
+  }));
+
+  const travelItems = eventItems.reduce((result, eventItem, index) => {
+    const amount = Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0);
+    if (amount > 0) {
+      result.push({
+        id: `travel-charge-${index}`,
+        label: `Travel Charge ${index + 1}`,
+        amount,
+      });
+    }
+    return result;
+  }, []);
+
+  items.push(...travelItems);
 
   return items;
 }
@@ -189,6 +198,10 @@ function normalizeCrewAssignment({
   return {
     bookingId:
       booking.id,
+    packageId:
+      value?.packageId ??
+      booking?.package?.id ??
+      null,
     bookingCode:
       booking.bookingCode ||
       null,
@@ -429,13 +442,17 @@ export async function POST(
       );
     }
 
-    const assignment =
-      normalizeCrewAssignment({
-        booking,
-        value:
-          body
-            ?.crewAssignment,
-      });
+    const requestedAssignments = Array.isArray(body?.crewAssignments) && body.crewAssignments.length
+      ? body.crewAssignments
+      : [body?.crewAssignment];
+
+    const assignments = requestedAssignments.map((value) =>
+      normalizeCrewAssignment({ booking, value }),
+    );
+
+    if (assignments.some((item) => item.crewIds.length < REQUIRED_CREW_COUNT)) {
+      return jsonError("Setiap paket harus memiliki minimal satu kru.");
+    }
 
     const {
       packageAmount,
@@ -484,22 +501,16 @@ export async function POST(
     const invoiceId =
       `${bookingId}_deposit_v1`;
 
-    const assignmentId =
-      String(
-        body
-          ?.crewAssignment
-          ?.id ||
-          `${bookingId}_crew_assignment`,
+    const assignmentEntries = assignments.map((item, index) => ({
+      assignment: item,
+      id: String(
+        requestedAssignments[index]?.id ||
+          `${bookingId}_${item.packageId || `package_${index + 1}`}_crew_assignment`,
       )
         .trim()
-        .replace(
-          /[\/]+/g,
-          "_",
-        )
-        .slice(
-          0,
-          240,
-        );
+        .replace(/[\/]+/g, "_")
+        .slice(0, 240),
+    }));
 
     const dueAt =
       normalizeDueDate(
@@ -529,6 +540,10 @@ export async function POST(
       clientId:
         booking?.client
           ?.uid ||
+        null,
+
+      packageId:
+        booking?.package?.id ||
         null,
 
       type:
@@ -623,15 +638,6 @@ export async function POST(
         },
       });
 
-    const assignmentRef =
-      adminDb
-        .collection(
-          "CrewAssignments",
-        )
-        .doc(
-          assignmentId,
-        );
-
     const invoiceRef =
       adminDb
         .collection(
@@ -651,24 +657,22 @@ export async function POST(
     const batch =
       adminDb.batch();
 
-    batch.set(
-      assignmentRef,
-      {
-        ...assignment,
+    assignmentEntries.forEach(({ assignment: assignmentItem, id }) => {
+      const assignmentRef = adminDb
+        .collection("CrewAssignments")
+        .doc(id);
 
-        publishedAt:
-          timestamp,
-
-        createdAt:
-          timestamp,
-
-        updatedAt:
-          timestamp,
-      },
-      {
-        merge: true,
-      },
-    );
+      batch.set(
+        assignmentRef,
+        {
+          ...assignmentItem,
+          publishedAt: timestamp,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+        { merge: true },
+      );
+    });
 
     batch.set(
       invoiceRef,
@@ -952,7 +956,8 @@ export async function POST(
 
       data: {
         bookingId,
-        assignmentId,
+        assignmentId: assignmentEntries[0]?.id ?? null,
+        assignmentIds: assignmentEntries.map((entry) => entry.id),
         invoiceId,
         invoiceNumber,
 
