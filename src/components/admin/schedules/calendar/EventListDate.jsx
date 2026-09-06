@@ -233,41 +233,11 @@ export default function EventListDate({
       ],
     );
 
-  /*
-   * Schedule terbaru tidak perlu membuat DateLocks tambahan.
-   * Adanya schedule `booked` / `conflict` sendiri sudah menjadi
-   * source-of-truth bahwa tanggal tidak boleh dibuka manual.
-   */
-  const hasActiveSchedule =
-    useMemo(
-      () =>
-        sortedEvents.some(
-          (event) =>
-            event.source ===
-              "schedule" &&
-            [
-              "booked",
-              "confirmed",
-              "in_progress",
-              "conflict",
-            ].includes(
-              normalizeStatus(
-                event.status,
-              ),
-            ),
-        ),
-      [
-        sortedEvents,
-      ],
-    );
-
   const isManualLocked =
     dateLock?.status ===
     "locked";
 
-  const isEffectiveLocked =
-    isManualLocked ||
-    hasActiveSchedule;
+  const isEffectiveLocked = isManualLocked;
 
   const fullDate =
     formatFullDate(
@@ -348,8 +318,7 @@ export default function EventListDate({
       if (
         !dateKey ||
         lockLoading ||
-        lockProcessing ||
-        hasActiveSchedule
+        lockProcessing
       ) {
         return;
       }
@@ -496,19 +465,15 @@ export default function EventListDate({
                     : "text-on-surface"
                 }`}
               >
-                {hasActiveSchedule
-                  ? "Terkunci oleh Schedule"
-                  : "Kunci Tanggal"}
+                {isManualLocked ? "Tanggal Terkunci Manual" : "Kunci Tanggal"}
               </p>
 
               <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant">
                 {lockLoading
                   ? "Memuat status tanggal..."
-                  : hasActiveSchedule
-                    ? "Tanggal sudah memiliki schedule aktif. Client tidak dapat melakukan booking baru di tanggal ini."
-                    : isManualLocked
-                      ? "Tanggal dikunci manual. Client tidak dapat melakukan booking di tanggal ini."
-                      : "Tanggal tersedia. Client masih dapat melakukan booking di tanggal ini."}
+                  : isManualLocked
+                    ? "Tanggal dikunci manual. Client tidak dapat melakukan booking di tanggal ini."
+                    : "Tanggal tersedia. Client masih dapat melakukan booking di tanggal ini."}
               </p>
             </div>
 
@@ -521,8 +486,7 @@ export default function EventListDate({
               aria-label="Kunci tanggal"
               disabled={
                 lockLoading ||
-                lockProcessing ||
-                hasActiveSchedule
+                lockProcessing
               }
               onClick={
                 handleToggleLock
@@ -542,12 +506,6 @@ export default function EventListDate({
               />
             </button>
           </div>
-
-          {hasActiveSchedule && (
-            <p className="mt-3 border-t border-error/15 pt-3 font-label-sm text-label-sm text-error">
-              Kunci schedule bersifat otomatis dan tidak dapat dibuka secara manual selama schedule masih aktif.
-            </p>
-          )}
 
           {lockError && (
             <p

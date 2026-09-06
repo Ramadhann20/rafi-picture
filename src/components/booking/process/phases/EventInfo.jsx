@@ -8,10 +8,8 @@ import {
 
 import CalendarSchedule from "@/components/admin/schedules/calendar/CalendarSchedules";
 
-import { useDb } from "@/context/DbContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useOverlay } from "@/context/ui/OverlayContext";
-import { useCollection } from "@/hooks/useCollection";
 
 import {
   AGENCY_LOCATION,
@@ -175,7 +173,6 @@ export default function EventInfo({
   packageIndex = 0,
   onChange,
 }) {
-  const db = useDb();
   const { translate, language } = useLanguage();
 
   const {
@@ -261,14 +258,6 @@ export default function EventInfo({
         : "Tanpa biaya tambahan"
       : "-";
 
-  const {
-    rows: schedules,
-    error: schedulesError,
-  } = useCollection(
-    () => db.colRef("Schedules"),
-    [],
-  );
-
   useEffect(() => {
     const nextDate =
       data.eventDate || "";
@@ -318,30 +307,6 @@ export default function EventInfo({
     durationHours,
     onChange,
   ]);
-
-  const blockedDateKeys =
-    useMemo(
-      () => [
-        ...new Set(
-          schedules
-            .filter(
-              (schedule) =>
-                [
-                  "booked",
-                  "conflict",
-                ].includes(
-                  schedule.scheduleStatus,
-                ),
-            )
-            .map(
-              (schedule) =>
-                schedule.date,
-            )
-            .filter(Boolean),
-        ),
-      ],
-      [schedules],
-    );
 
   const handleDateSelect =
     (day) => {
@@ -401,9 +366,6 @@ export default function EventInfo({
               selectionMode
               selectedDate={
                 selectedDate
-              }
-              blockedDateKeys={
-                blockedDateKeys
               }
               onCellClick={
                 handleDateSelect
@@ -726,12 +688,6 @@ export default function EventInfo({
             "selected" && (
             <p className="mt-2 font-label-sm text-label-sm text-secondary">
               {translate("dateAvailable")}
-            </p>
-          )}
-
-          {schedulesError && (
-            <p className="mt-2 font-label-sm text-label-sm text-error">
-              {translate("scheduleLoadError")}
             </p>
           )}
 
