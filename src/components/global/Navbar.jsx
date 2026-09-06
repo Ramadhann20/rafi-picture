@@ -384,26 +384,30 @@ function LanguageSwitcher({
           type="button"
           onClick={() => setLanguage("en")}
           aria-pressed={language === "en"}
+          aria-label={translate("english")}
+          title={translate("english")}
           className={`flex-1 rounded-md px-3 py-2 font-label-sm text-[11px] font-semibold transition-colors ${
             language === "en"
               ? "bg-[#58d7ff] text-[#061d2b] shadow-sm"
               : "text-white hover:bg-white/15"
           }`}
         >
-          {translate("english")}
+          EN
         </button>
 
         <button
           type="button"
           onClick={() => setLanguage("id")}
           aria-pressed={language === "id"}
+          aria-label={translate("indonesian")}
+          title={translate("indonesian")}
           className={`flex-1 rounded-md px-3 py-2 font-label-sm text-[11px] font-semibold transition-colors ${
             language === "id"
               ? "bg-[#58d7ff] text-[#061d2b] shadow-sm"
               : "text-white hover:bg-white/15"
           }`}
         >
-          {translate("indonesian")}
+          ID
         </button>
       </div>
     </div>
