@@ -84,6 +84,10 @@ const translations = {
     packagesPageTitle: "Paket Fotografi Kami",
     packagesPageDescription:
       "Mengabadikan momen abadi dalam hidup Anda melalui lensa editorial. Pilih paket yang sesuai dengan visi Anda.",
+    portfolioPageLabel: "Portofolio",
+    portfolioPageTitle: "Cerita yang Kami Abadikan",
+    portfolioPageDescription:
+      "Kumpulan momen pilihan dari Rafi Picture. Setiap kunjungan menampilkan susunan foto secara acak dari galeri portofolio.",
     bookingPageTitle: "Pesan Sesi Anda",
     bookingPageDescription:
       "Abadikan momen yang menjadi bagian penting dalam babak terbesar hidup Anda.",
@@ -688,6 +692,10 @@ const translations = {
     packagesPageTitle: "Our Photography Packages",
     packagesPageDescription:
       "Preserve life's timeless moments through an editorial lens. Choose the package that matches your vision.",
+    portfolioPageLabel: "Portfolio",
+    portfolioPageTitle: "Stories We Capture",
+    portfolioPageDescription:
+      "A curated collection of moments from Rafi Picture. Each visit reveals a random selection from our portfolio gallery.",
     bookingPageTitle: "Book Your Session",
     bookingPageDescription:
       "Capture the moments that define the greatest chapters of your life.",
