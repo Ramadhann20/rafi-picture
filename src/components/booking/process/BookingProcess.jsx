@@ -627,7 +627,7 @@ export default function BookingProcess({
       setErrors((previousErrors) => ({
         ...previousErrors,
         package: {
-          packageId: "Please select a valid package.",
+          packageId: translate("validPackageRequired"),
         },
       }));
 

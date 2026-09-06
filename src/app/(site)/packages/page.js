@@ -7,6 +7,7 @@ export const metadata = {
 };
 
 import ActionButtonWrapper from "@/components/global/ActionButtonWrapper";
+import LocalizedPageHeader from "@/components/global/LocalizedPageHeader";
 
 const filterItems = ["Pernikahan", "Pertunangan", "Prewedding", "Acara"];
 
@@ -16,16 +17,10 @@ export default function PackagesPage() {
     <ActionButtonWrapper />
     <main className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg">
       {/* Page Header */}
-      <header className="mb-stack-lg text-center">
-        <h1 className="font-display-lg text-display-lg mb-stack-sm">
-          Paket Fotografi Kami
-        </h1>
-
-        <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
-          Mengabadikan momen abadi dalam hidup Anda melalui lensa editorial.
-          Pilih paket yang sesuai dengan visi Anda.
-        </p>
-      </header>
+      <LocalizedPageHeader
+        titleKey="packagesPageTitle"
+        descriptionKey="packagesPageDescription"
+      />
 
 
       {/* Interactive Package Cards Section */}

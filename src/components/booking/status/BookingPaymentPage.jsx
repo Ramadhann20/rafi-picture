@@ -442,19 +442,19 @@ export default function BookingPaymentPage({
     if (!invoice?.id) {
       setFormError(
         isFinalPayment
-          ? "Invoice pelunasan belum tersedia."
-          : "Invoice DP belum tersedia.",
+          ? translate("finalInvoiceUnavailable")
+          : translate("depositInvoiceUnavailable"),
       );
       return;
     }
 
     if (!proofFile) {
-      setFormError("Pilih bukti pembayaran terlebih dahulu.");
+      setFormError(translate("paymentProofRequired"));
       return;
     }
 
     if (typeof onSubmitPayment !== "function") {
-      setFormError("Handler pengiriman pembayaran belum tersedia.");
+      setFormError(translate("paymentHandlerUnavailable"));
       return;
     }
 
@@ -474,7 +474,7 @@ export default function BookingPaymentPage({
 
       setFormError(
         error?.message ??
-          "Bukti pembayaran gagal dikirim. Silakan coba kembali.",
+          translate("paymentProofUploadFailed"),
       );
     } finally {
       setSubmitting(false);

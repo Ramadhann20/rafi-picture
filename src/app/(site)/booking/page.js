@@ -1,4 +1,5 @@
 import BookingClient from "@/components/booking/BookingClient";
+import LocalizedPageHeader from "@/components/global/LocalizedPageHeader";
 
 
 
@@ -63,15 +64,10 @@ export default async function BookingPage({ searchParams }) {
 
   return (
     <main className="max-w-4xl mx-auto px-margin-mobile md:px-4 py-stack-lg">
-      <div className="text-center mb-stack-lg">
-        <h1 className="font-headline-lg text-headline-lg mb-2">
-          Book Your Session
-        </h1>
-
-        <p className="text-on-surface-variant font-body-md">
-          Capture the moments that define your life's greatest chapters.
-        </p>
-      </div>
+      <LocalizedPageHeader
+        titleKey="bookingPageTitle"
+        descriptionKey="bookingPageDescription"
+      />
 
       <BookingClient packageId={packageId} />
     </main>

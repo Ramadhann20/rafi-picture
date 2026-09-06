@@ -7,6 +7,7 @@ import {
 
 import { useAuth } from "@/context/AuthContext";
 import { useDb } from "@/context/DbContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useCollection } from "@/hooks/useCollection";
 
 import { CODE_PREFIXES, generateCode } from "@/lib/codefication";
@@ -222,6 +223,8 @@ function normalizePackageRecord(packageRecord) {
 }
 
 export default function BookingClient({ packageId = null }) {
+  const { translate } = useLanguage();
+
   const {
     user,
     loading: authLoading,
@@ -773,7 +776,7 @@ export default function BookingClient({ packageId = null }) {
 
       setSubmitError(
         error?.message ||
-          "Booking gagal dikirim. Silakan coba kembali.",
+          translate("bookingSubmitFailed"),
       );
     }
   };
@@ -791,7 +794,7 @@ export default function BookingClient({ packageId = null }) {
   }) => {
     if (!bookingRecord?.id) {
       throw new Error(
-        "Data booking tidak tersedia.",
+        translate("bookingDataUnavailable"),
       );
     }
 
@@ -800,7 +803,7 @@ export default function BookingClient({ packageId = null }) {
       bookingRecord.id
     ) {
       throw new Error(
-        "Booking pembayaran tidak sesuai.",
+        translate("paymentBookingMismatch"),
       );
     }
 
@@ -810,7 +813,7 @@ export default function BookingClient({ packageId = null }) {
         payableInvoice.id
     ) {
       throw new Error(
-        "Invoice pembayaran tidak sesuai atau sudah tidak aktif.",
+        translate("paymentInvoiceUnavailable"),
       );
     }
 
