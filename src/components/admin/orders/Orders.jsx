@@ -11,8 +11,6 @@ import { cleanupCompletedFreelanceCrews } from "@/lib/crewFreelance";
 
 import ScheduleOrder from "./details/ScheduleOrder";
 
-const REQUIRED_CREW_COUNT = 1;
-
 /* =========================================================
    BOOKING STATUS
 ========================================================= */
@@ -484,6 +482,15 @@ export default function Orders() {
   );
 
   const {
+    rows: packageCatalog,
+    loading: packageCatalogLoading,
+    error: packageCatalogError,
+  } = useCollection(
+    () => db.colRef("Packages"),
+    [],
+  );
+
+  const {
     rows: crewMembers,
     loading: crewLoading,
     error: crewError,
@@ -515,7 +522,7 @@ export default function Orders() {
   --------------------------------------------------------- */
 
   useEffect(() => {
-    if (bookingsLoading || crewLoading || assignmentsLoading) {
+    if (bookingsLoading || packageCatalogLoading || crewLoading || assignmentsLoading) {
       return;
     }
 
@@ -530,6 +537,7 @@ export default function Orders() {
   }, [
     db,
     bookings,
+    packageCatalogLoading,
     assignments,
     crewMembers,
     bookingsLoading,
@@ -1064,6 +1072,7 @@ const handleAdvancedFilter = () => {
   const handleFinalizeBooking = async ({
     booking,
     crewAssignment,
+    crewAssignments = [],
     depositInvoice,
     preparation,
     pdfReviewed,
@@ -1097,17 +1106,16 @@ const handleAdvancedFilter = () => {
       );
     }
 
-    const currentAssignment =
-      crewAssignment ??
-      selectedAssignment;
+    const requestedAssignments = crewAssignments.length
+      ? crewAssignments
+      : [crewAssignment ?? selectedAssignment];
+    const hasIncompleteAssignment = requestedAssignments.some(
+      (assignment) =>
+        !Array.isArray(assignment?.crewIds) ||
+        assignment.crewIds.length === 0,
+    );
 
-    if (
-      !Array.isArray(
-        currentAssignment?.crewIds,
-      ) ||
-      currentAssignment.crewIds.length <
-        REQUIRED_CREW_COUNT
-    ) {
+    if (hasIncompleteAssignment) {
       throw new Error(
         "Crew assignment belum lengkap.",
       );
@@ -1176,7 +1184,10 @@ const handleAdvancedFilter = () => {
                   currentBooking.id,
 
                 crewAssignment:
-                  currentAssignment,
+                  requestedAssignments[0],
+
+                crewAssignments:
+                  requestedAssignments,
 
                 depositInvoice,
 
@@ -1601,6 +1612,7 @@ const handleAdvancedFilter = () => {
   if (selectedBookingId) {
     if (
       bookingsLoading ||
+      packageCatalogLoading ||
       crewLoading ||
       assignmentsLoading ||
       invoicesLoading ||
@@ -1619,6 +1631,7 @@ const handleAdvancedFilter = () => {
       bookingsError ||
       crewError ||
       assignmentsError ||
+      packageCatalogError ||
       invoicesError ||
       paymentsError
     ) {
@@ -1660,6 +1673,7 @@ const handleAdvancedFilter = () => {
     return (
       <ScheduleOrder
         booking={selectedBooking}
+        packageCatalog={packageCatalog}
         crewMembers={crewMembers}
         assignments={assignments}
         existingAssignment={

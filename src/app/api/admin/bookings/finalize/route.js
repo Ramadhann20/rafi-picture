@@ -45,9 +45,6 @@ import {
 export const runtime =
   "nodejs";
 
-const REQUIRED_CREW_COUNT =
-  1;
-
 function jsonError(
   message,
   status = 400,
@@ -63,6 +60,110 @@ function jsonError(
       status,
     },
   );
+}
+
+function getRequiredCrewCount(booking, assignment) {
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+  const packageItem = packageItems.find(
+    (item) => item?.id === assignment?.packageId,
+  ) ?? booking?.package ?? {};
+  const serviceId = String(assignment?.serviceId ?? "").toLowerCase();
+  const serviceName = String(assignment?.serviceName ?? "").toLowerCase();
+  const packageName = String(
+    packageItem?.name ?? packageItem?.packageName ?? packageItem?.title ?? "",
+  ).toLowerCase();
+  const normalizedPackageName = packageName
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const normalizedPackageId = String(packageItem?.id ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const isBundle = packageItem?.packageCategoryId === "bundle"
+    || (normalizedPackageName.includes("prewedding") &&
+      normalizedPackageName.includes("wedding") &&
+      normalizedPackageName.includes("bundle"));
+
+  if (isBundle && (serviceId.includes("pre-wedding") || serviceName.includes("pre-wedding"))) {
+    return 2;
+  }
+
+  if (isBundle && (serviceId === "wedding" || serviceName === "wedding")) {
+    return 3;
+  }
+
+  const packageEvent = Array.isArray(booking?.events)
+    ? booking.events.find(
+        (eventItem) =>
+          eventItem.packageId === assignment?.packageId &&
+          (!assignment?.serviceId || eventItem.sessionId === assignment.serviceId),
+      )
+    : booking?.event;
+  const defaultCounts = {
+    "classic a wedding package": 2,
+    "classic b wedding package": 2,
+    "bronze wedding package": 3,
+    "silver wedding package": 4,
+    "gold wedding package": 4,
+    "platinum wedding package": 4,
+    "prewedding bronze": 1,
+    "prewedding silver": 2,
+    "engagement bronze": 1,
+    "engagement silver": 2,
+    "bronze pengajian siraman": 1,
+    "silver pengajian siraman": 2,
+  };
+  const defaultCount =
+    defaultCounts[normalizedPackageName] ??
+    defaultCounts[normalizedPackageId];
+  const eventCount = Number(
+    packageEvent?.requiredCrewCount ?? packageEvent?.crewCount,
+  );
+  if (Number.isInteger(eventCount) && eventCount > 0) {
+    if (eventCount === 1 && defaultCount > 1) {
+      return defaultCount;
+    }
+
+    return eventCount;
+  }
+
+  const packageCount = Number(
+    packageItem?.requiredCrewCount ?? packageItem?.crewCount,
+  );
+  if (Number.isInteger(packageCount) && packageCount > 0) {
+    return packageCount;
+  }
+
+  return defaultCount ?? 1;
+}
+
+function getExpectedAssignmentKeys(booking) {
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+  const events = Array.isArray(booking?.events) && booking.events.length
+    ? booking.events
+    : booking?.event
+      ? [booking.event]
+      : [];
+
+  return packageItems.map((packageItem) => {
+    const packageEvents = events.filter(
+      (eventItem) => eventItem.packageId === packageItem.id,
+    );
+    const serviceEvents = packageEvents.length ? packageEvents : [{}];
+
+    return serviceEvents.map(
+      (eventItem, index) =>
+        `${packageItem.id}:${eventItem.sessionId ?? `service-${index + 1}`}`,
+    );
+  }).flat();
 }
 
 function normalizeDueDate(
@@ -186,14 +287,21 @@ function normalizeCrewAssignment({
         )
       : [];
 
-  if (
-    crewIds.length <
-    REQUIRED_CREW_COUNT
-  ) {
+  const requiredCrewCount = getRequiredCrewCount(booking, value);
+
+  if (crewIds.length !== requiredCrewCount) {
     throw new Error(
-      `Minimal ${REQUIRED_CREW_COUNT} kru harus dipilih.`,
+      `Tepat ${requiredCrewCount} kru harus dipilih untuk assignment ini.`,
     );
   }
+
+  const packageEvent = Array.isArray(booking?.events)
+    ? booking.events.find(
+        (eventItem) =>
+          eventItem.packageId === value?.packageId &&
+          (!value?.serviceId || eventItem.sessionId === value.serviceId),
+      )
+    : booking?.event;
 
   return {
     bookingId:
@@ -202,12 +310,19 @@ function normalizeCrewAssignment({
       value?.packageId ??
       booking?.package?.id ??
       null,
+    serviceId:
+      value?.serviceId ??
+      null,
+    serviceName:
+      value?.serviceName ??
+      null,
+    requiredCrewCount,
     bookingCode:
       booking.bookingCode ||
       null,
     packageName:
-      booking?.package
-        ?.name || null,
+      (packageEvent?.packageName ??
+        booking?.package?.name) || null,
 
     type:
       String(
@@ -236,29 +351,30 @@ function normalizeCrewAssignment({
       ),
 
     eventDate:
-      booking?.event
-        ?.preferredDate ||
+      packageEvent?.preferredDate ??
+      booking?.event?.preferredDate ??
       null,
 
     startTime:
-      booking?.event
-        ?.startTime ||
+      packageEvent?.startTime ??
+      booking?.event?.startTime ??
       null,
 
     endTime:
-      booking?.event
-        ?.endTime ||
+      packageEvent?.endTime ??
+      booking?.event?.endTime ??
       null,
 
     endTimeDayOffset:
       Number(
+        packageEvent?.endTimeDayOffset ??
         booking?.event
           ?.endTimeDayOffset,
       ) || 0,
 
     location:
-      booking?.event
-        ?.location ||
+      packageEvent?.location ??
+      booking?.event?.location ??
       null,
 
     crewIds,
@@ -450,8 +566,16 @@ export async function POST(
       normalizeCrewAssignment({ booking, value }),
     );
 
-    if (assignments.some((item) => item.crewIds.length < REQUIRED_CREW_COUNT)) {
-      return jsonError("Setiap paket harus memiliki minimal satu kru.");
+    const assignmentKeys = assignments.map(
+      (item) => `${item.packageId}:${item.serviceId ?? "service-1"}`,
+    );
+    const expectedAssignmentKeys = getExpectedAssignmentKeys(booking);
+
+    if (
+      new Set(assignmentKeys).size !== assignmentKeys.length ||
+      expectedAssignmentKeys.some((key) => !assignmentKeys.includes(key))
+    ) {
+      return jsonError("Setiap paket dan bagian layanan harus memiliki assignment kru sendiri.");
     }
 
     const {

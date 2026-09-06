@@ -315,15 +315,40 @@ function normalizeStoredDistanceCharge(
   );
 }
 
+function applyAccommodationRequest(
+  distanceCharge,
+  accommodationRequest,
+) {
+  const amount = Math.max(
+    Number(accommodationRequest) || 0,
+    0,
+  );
+
+  if (amount <= 0) {
+    return distanceCharge;
+  }
+
+  return {
+    ...distanceCharge,
+    applicable: true,
+    amount,
+  };
+}
+
 export function normalizeEventLocation(value) {
   if (typeof value === "string") {
     return createEventLocation({ venueName: value });
   }
 
+  const accommodationRequest = Math.max(
+    Number(value?.accommodationRequest) || 0,
+    0,
+  );
+
   const normalized = createEventLocation({
     venueName: value?.venueName ?? "",
     coordinates: value?.coordinates ?? null,
-    accommodationRequest: value?.accommodationRequest ?? 0,
+    accommodationRequest,
   });
 
   const storedDistance = Number(
@@ -357,22 +382,26 @@ export function normalizeEventLocation(value) {
         },
       },
 
-      distanceCharge:
+      distanceCharge: applyAccommodationRequest(
         normalizeStoredDistanceCharge(
           value?.distanceCharge,
           straightLineKm,
         ),
+        accommodationRequest,
+      ),
     };
   }
 
   return {
     ...normalized,
 
-    distanceCharge:
+    distanceCharge: applyAccommodationRequest(
       normalizeStoredDistanceCharge(
         value?.distanceCharge,
         normalized.distance?.straightLineKm,
       ),
+      accommodationRequest,
+    ),
   };
 }
 

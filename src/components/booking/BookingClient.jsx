@@ -768,7 +768,8 @@ export default function BookingClient({ packageId = null }) {
           bookingPayload.package.packageCategoryId || "",
       });
 
-      const inquiryId = doc(db.db, "Bookings").id;
+      const bookingsCollection = db.colRef("Bookings");
+      const inquiryId = doc(bookingsCollection).id;
       const packageBookingPayloads = buildPackageBookingPayloads({
         bookingPayload,
         bookingCode,
@@ -776,7 +777,7 @@ export default function BookingClient({ packageId = null }) {
       });
       const batch = writeBatch(db.db);
       const bookingReferences = packageBookingPayloads.map(() =>
-        doc(db.db, "Bookings"),
+        doc(bookingsCollection),
       );
       const timestamp = db.serverTimestamp();
 

@@ -65,7 +65,7 @@ function getInitialPreparation(booking) {
   };
 }
 
-function getBookingPackageEntries(booking) {
+function getBookingPackageEntries(booking, packageCatalog = []) {
   const packages = Array.isArray(booking?.packages) && booking.packages.length
     ? booking.packages
     : booking?.package
@@ -74,7 +74,10 @@ function getBookingPackageEntries(booking) {
 
   return packages.map((packageItem, index) => ({
     key: String(packageItem.id ?? `package-${index}`),
-    packageItem,
+    packageItem: {
+      ...packageItem,
+      ...(packageCatalog.find((catalogItem) => catalogItem.id === packageItem.id) ?? {}),
+    },
     event:
       booking?.events?.find(
         (eventItem) => eventItem.packageId === packageItem.id,
@@ -82,14 +85,89 @@ function getBookingPackageEntries(booking) {
   }));
 }
 
-function getCrewRequirement(booking) {
-  const packageItem = booking?.package ?? {};
+function getConfiguredCrewCount(packageItem, event = null) {
+  const sessionId = String(event?.sessionId ?? "").toLowerCase();
+  const sessionName = String(event?.sessionName ?? "").toLowerCase();
+  const packageName = String(
+    packageItem?.name ?? packageItem?.packageName ?? packageItem?.title ?? "",
+  ).toLowerCase();
+  const normalizedPackageName = packageName
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const normalizedPackageId = String(packageItem?.id ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const isBundle = packageItem?.packageCategoryId === "bundle"
+    || (normalizedPackageName.includes("prewedding") &&
+      normalizedPackageName.includes("wedding") &&
+      normalizedPackageName.includes("bundle"));
+
+  if (isBundle && (sessionId.includes("pre-wedding") || sessionName.includes("pre-wedding"))) {
+    return 2;
+  }
+
+  if (isBundle && (sessionId === "wedding" || sessionName === "wedding")) {
+    return 3;
+  }
+
+  const defaultCounts = {
+    "classic a wedding package": 2,
+    "classic b wedding package": 2,
+    "bronze wedding package": 3,
+    "silver wedding package": 4,
+    "gold wedding package": 4,
+    "platinum wedding package": 4,
+    "prewedding bronze": 1,
+    "prewedding silver": 2,
+    "engagement bronze": 1,
+    "engagement silver": 2,
+    "bronze pengajian siraman": 1,
+    "silver pengajian siraman": 2,
+  };
+  const defaultCount =
+    defaultCounts[normalizedPackageName] ??
+    defaultCounts[normalizedPackageId];
+
+  const eventCount = Number(event?.requiredCrewCount ?? event?.crewCount);
+  if (Number.isInteger(eventCount) && eventCount > 0) {
+    if (eventCount === 1 && defaultCount > 1) {
+      return defaultCount;
+    }
+
+    return eventCount;
+  }
+
   const configuredCount = Number(
     packageItem.requiredCrewCount ?? packageItem.crewCount,
   );
 
   if (Number.isInteger(configuredCount) && configuredCount > 0) {
-    return { count: configuredCount, isConfigured: true };
+    if (configuredCount === 1 && defaultCount > 1) {
+      return defaultCount;
+    }
+
+    return configuredCount;
+  }
+
+  const serviceRequirement = Array.isArray(packageItem.crewRequirements)
+    ? packageItem.crewRequirements.find((requirement) => {
+        const requirementId = String(
+          requirement?.sessionId ?? requirement?.serviceId ?? "",
+        ).toLowerCase();
+        return requirementId && requirementId === sessionId;
+      })
+    : null;
+  const serviceCount = Number(
+    serviceRequirement?.requiredCrewCount ?? serviceRequirement?.crewCount,
+  );
+
+  if (Number.isInteger(serviceCount) && serviceCount > 0) {
+    return serviceCount;
+  }
+
+  if (defaultCount) {
+    return defaultCount;
   }
 
   const requirementSources = [
@@ -106,32 +184,73 @@ function getCrewRequirement(booking) {
   const matches = [...requirementText.matchAll(rolePattern)];
 
   if (matches.length === 0) {
-    return { count: 1, isConfigured: false };
+    return 1;
   }
 
-  const count = matches.reduce((total, match) => {
+  return matches.reduce((total, match) => {
     const prefix = requirementText.slice(0, match.index);
     const countMatch = prefix.match(/(\d+)\s*$/);
 
     return total + (Number(countMatch?.[1]) || 1);
   }, 0);
-
-  return { count, isConfigured: true };
 }
 
-function createCrewDraft(booking, existingAssignment) {
+function getCrewAssignmentEntries(booking, packageEntries) {
+  return packageEntries.flatMap((entry) => {
+    const packageEvents = Array.isArray(booking?.events)
+      ? booking.events.filter((eventItem) => eventItem.packageId === entry.key)
+      : [];
+    const events = packageEvents.length ? packageEvents : [entry.event];
+
+    return events.map((event, index) => {
+      const serviceId = String(
+        event?.sessionId ?? event?.serviceId ?? `service-${index + 1}`,
+      );
+      const serviceName = String(
+        event?.sessionName ?? event?.serviceName ?? "",
+      ).trim();
+
+      return {
+        key: `${entry.key}:${serviceId}`,
+        packageKey: entry.key,
+        packageItem: entry.packageItem,
+        event,
+        serviceId,
+        serviceName,
+        requiredCrewCount: getConfiguredCrewCount(entry.packageItem, event),
+      };
+    });
+  });
+}
+
+function createCrewDraft(booking, existingAssignment, assignmentEntry = null) {
+  const packageItem = assignmentEntry?.packageItem ?? booking.package ?? {};
+  const event = assignmentEntry?.event ?? booking.event ?? {};
+  const serviceName = assignmentEntry?.serviceName;
+
   return {
     bookingId: booking.id,
     packageId:
       existingAssignment?.packageId ??
-      booking.package?.id ??
+      packageItem.id ??
       null,
+    serviceId:
+      existingAssignment?.serviceId ??
+      assignmentEntry?.serviceId ??
+      null,
+    serviceName:
+      existingAssignment?.serviceName ??
+      (serviceName || null),
+    requiredCrewCount:
+      assignmentEntry?.requiredCrewCount ??
+      existingAssignment?.requiredCrewCount ??
+      1,
 
     type: existingAssignment?.type ?? "photo",
 
     title:
       existingAssignment?.title ??
-      `${booking.package?.name ?? "Booking"}: ${getClientDisplayName(
+      `${packageItem.name ?? "Booking"}${serviceName ? ` - ${serviceName}` : ""}: ${getClientDisplayName(
         booking.client,
       )}`,
 
@@ -142,31 +261,31 @@ function createCrewDraft(booking, existingAssignment) {
 
     packageName:
       existingAssignment?.packageName ??
-      booking.package?.name ??
+      packageItem.name ??
       null,
 
     eventDate:
       existingAssignment?.eventDate ??
       existingAssignment?.date ??
-      booking.event?.preferredDate ??
+      event?.preferredDate ??
       null,
 
     startTime:
-      existingAssignment?.startTime ?? booking.event?.startTime ?? null,
+      existingAssignment?.startTime ?? event?.startTime ?? null,
 
     endTime:
       existingAssignment?.endTime ??
-      booking.event?.endTime ??
+      event?.endTime ??
       null,
 
     endTimeDayOffset:
       existingAssignment?.endTimeDayOffset ??
-      booking.event?.endTimeDayOffset ??
+      event?.endTimeDayOffset ??
       0,
 
     location:
       existingAssignment?.location ??
-      booking.event?.location ??
+      event?.location ??
       null,
 
     crewIds: Array.isArray(existingAssignment?.crewIds)
@@ -179,6 +298,7 @@ function createCrewDraft(booking, existingAssignment) {
 
 export default function ScheduleOrder({
   booking,
+  packageCatalog = [],
   crewMembers = [],
   assignments = [],
   existingAssignment = null,
@@ -209,14 +329,18 @@ export default function ScheduleOrder({
   );
 
   const packageEntries = useMemo(
-    () => getBookingPackageEntries(booking),
-    [booking],
+    () => getBookingPackageEntries(booking, packageCatalog),
+    [booking, packageCatalog],
+  );
+  const crewAssignmentEntries = useMemo(
+    () => getCrewAssignmentEntries(booking, packageEntries),
+    [booking, packageEntries],
   );
 
   const [activePackageIndex, setActivePackageIndex] = useState(0);
   const [packagePreparation, setPackagePreparation] = useState(() =>
     Object.fromEntries(
-      getBookingPackageEntries(booking).map((entry) => [
+      getBookingPackageEntries(booking, packageCatalog).map((entry) => [
         entry.key,
         getInitialPreparation(booking),
       ]),
@@ -225,13 +349,16 @@ export default function ScheduleOrder({
 
   const [packageCrewDrafts, setPackageCrewDrafts] = useState(() =>
     Object.fromEntries(
-      getBookingPackageEntries(booking).map((entry) => [
+      getCrewAssignmentEntries(booking, getBookingPackageEntries(booking, packageCatalog)).map((entry) => [
         entry.key,
         createCrewDraft(
           { ...booking, package: entry.packageItem, event: entry.event },
           existingAssignments.find(
-            (assignment) => assignment.packageId === entry.key,
+            (assignment) =>
+              assignment.packageId === entry.packageKey &&
+              (!entry.serviceId || assignment.serviceId === entry.serviceId),
           ) ?? existingAssignment,
+          entry,
         ),
       ]),
     ),
@@ -269,9 +396,6 @@ export default function ScheduleOrder({
   ] = useState(null);
 
   const isPreparationMode = booking.status === "pending";
-  const crewRequirement = getCrewRequirement(booking);
-  const requiredCrewCount = crewRequirement.count;
-  const allowUnlimitedCrew = !crewRequirement.isConfigured;
 
   useEffect(() => {
     setPreparation(getInitialPreparation(booking));
@@ -286,13 +410,16 @@ export default function ScheduleOrder({
     );
     setPackageCrewDrafts(
       Object.fromEntries(
-        packageEntries.map((entry) => [
+        crewAssignmentEntries.map((entry) => [
           entry.key,
           createCrewDraft(
             { ...booking, package: entry.packageItem, event: entry.event },
             existingAssignments.find(
-              (assignment) => assignment.packageId === entry.key,
+              (assignment) =>
+                assignment.packageId === entry.packageKey &&
+                (!entry.serviceId || assignment.serviceId === entry.serviceId),
             ) ?? existingAssignment,
+            entry,
           ),
         ]),
       ),
@@ -312,7 +439,13 @@ export default function ScheduleOrder({
     setFinalizationNotice(null);
     setActionError(null);
     setSubmitting(false);
-  }, [booking.id, existingAssignment?.id, existingAssignments, packageEntries]);
+  }, [
+    booking.id,
+    existingAssignment?.id,
+    existingAssignments,
+    packageEntries,
+    crewAssignmentEntries,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -349,23 +482,37 @@ export default function ScheduleOrder({
     : booking;
   const activePreparation =
     packagePreparation[activePackageKey] ?? preparation;
-  const activeCrewDraft =
-    packageCrewDrafts[activePackageKey] ?? crewDraft;
   const activeDepositDraft = depositDrafts[activePackageKey] ?? null;
-  const activeAssignment =
-    existingAssignments.find(
-      (assignment) => assignment.packageId === activePackageKey,
-    ) ?? existingAssignment;
+  const activeCrewAssignmentEntries = crewAssignmentEntries.filter(
+    (entry) => entry.packageKey === activePackageKey,
+  );
+  const activeCrewGroups = activeCrewAssignmentEntries.map((entry) => {
+    const assignment = existingAssignments.find(
+      (item) =>
+        item.packageId === entry.packageKey &&
+        (!entry.serviceId || item.serviceId === entry.serviceId),
+    ) ?? (activeCrewAssignmentEntries.length === 1 ? existingAssignment : null);
+    const draft = packageCrewDrafts[entry.key] ?? createCrewDraft(
+      { ...booking, package: entry.packageItem, event: entry.event },
+      assignment,
+      entry,
+    );
 
-  const displayedCrewIds = isPreparationMode
-    ? activeCrewDraft.crewIds
-    : Array.isArray(activeAssignment?.crewIds)
-      ? activeAssignment.crewIds
-      : [];
-
-  const hasCrewAssignment = allowUnlimitedCrew
-    ? displayedCrewIds.length > 0
-    : displayedCrewIds.length === requiredCrewCount;
+    return {
+      ...entry,
+      assignment,
+      draft,
+      crewIds: isPreparationMode
+        ? draft.crewIds
+        : Array.isArray(assignment?.crewIds)
+          ? assignment.crewIds
+          : [],
+      hasAssignment: draft.crewIds.length === entry.requiredCrewCount,
+    };
+  });
+  const hasCrewAssignment = activeCrewGroups.length > 0 && activeCrewGroups.every(
+    (group) => group.crewIds.length === group.requiredCrewCount,
+  );
 
   const hasDepositInvoice =
     Boolean(activeDepositDraft) && Number(activeDepositDraft.amount) > 0;
@@ -390,7 +537,10 @@ export default function ScheduleOrder({
         packagePreparation[entry.key]?.crewCompleted,
     ) &&
     preparation.billingCompleted &&
-    hasCrewAssignment &&
+    crewAssignmentEntries.every((entry) => {
+      const draft = packageCrewDrafts[entry.key];
+      return draft?.crewIds?.length === entry.requiredCrewCount;
+    }) &&
     hasDepositInvoice &&
     hasDepositPdf &&
     depositPdfReviewed;
@@ -439,13 +589,13 @@ export default function ScheduleOrder({
     }));
   };
 
-  const handleCrewSelectionChange = (crewIds) => {
+  const handleCrewSelectionChange = (assignmentKey, crewIds) => {
     if (!isPreparationMode) return;
 
     setPackageCrewDrafts((currentMap) => ({
       ...currentMap,
-      [activePackageKey]: {
-        ...(currentMap[activePackageKey] ?? activeCrewDraft),
+      [assignmentKey]: {
+        ...(currentMap[assignmentKey] ?? {}),
         crewIds,
       },
     }));
@@ -463,8 +613,11 @@ export default function ScheduleOrder({
   };
 
 
-  const handleOpenFreelance = () => {
+  const handleOpenFreelance = (assignmentKey) => {
     if (!onCreateFreelance) return;
+    const targetGroup = activeCrewGroups.find(
+      (group) => group.key === assignmentKey,
+    ) ?? activeCrewGroups[0];
 
     openOverlay({
       closeOnBackdrop: true,
@@ -479,7 +632,7 @@ export default function ScheduleOrder({
           onSubmit={async (payload) => {
             const createdCrew = await onCreateFreelance({
               booking,
-              assignment: existingAssignment,
+              assignment: targetGroup?.assignment ?? existingAssignment,
               crew: payload,
             });
 
@@ -489,10 +642,16 @@ export default function ScheduleOrder({
 
             if (isPreparationMode) {
               const nextCrewIds = [
-                ...new Set([...activeCrewDraft.crewIds, createdCrew.id]),
+                ...new Set([
+                  ...(targetGroup?.draft.crewIds ?? []),
+                  createdCrew.id,
+                ]),
               ];
 
-              handleCrewSelectionChange(nextCrewIds);
+              handleCrewSelectionChange(
+                targetGroup?.key,
+                nextCrewIds,
+              );
             }
 
             closeOverlay();
@@ -509,11 +668,10 @@ export default function ScheduleOrder({
     setActionError(null);
 
     if (!activePreparation.crewCompleted && !hasCrewAssignment) {
-      setActionError(
-        allowUnlimitedCrew
-          ? "Select at least one crew member before confirming this step."
-          : `Select exactly ${requiredCrewCount} crew members before confirming this step.`,
+      const incompleteGroup = activeCrewGroups.find(
+        (group) => !group.hasAssignment,
       );
+      setActionError(`Select exactly ${incompleteGroup?.requiredCrewCount ?? 1} crew members for ${incompleteGroup?.serviceName || incompleteGroup?.packageItem?.name || "this service"}.`);
 
       return;
     }
@@ -857,13 +1015,16 @@ export default function ScheduleOrder({
           booking,
 
           crewAssignment: {
-            ...activeCrewDraft,
-            crewIds: [...activeCrewDraft.crewIds],
+            ...(activeCrewGroups[0]?.draft ?? {}),
+            crewIds: [...(activeCrewGroups[0]?.crewIds ?? [])],
           },
 
-          crewAssignments: packageEntries.map((entry) => ({
+          crewAssignments: crewAssignmentEntries.map((entry) => ({
             ...(packageCrewDrafts[entry.key] ?? {}),
-            packageId: entry.key,
+            packageId: entry.packageKey,
+            serviceId: entry.serviceId,
+            serviceName: entry.serviceName || null,
+            requiredCrewCount: entry.requiredCrewCount,
             crewIds: [
               ...(packageCrewDrafts[entry.key]?.crewIds ?? []),
             ],
@@ -1039,27 +1200,38 @@ export default function ScheduleOrder({
           lockedTitle={translate("crewAssignmentLocked")}
           lockedDescription={translate("confirmReviewUnlockCrew")}
         >
-          <CrewAssignment
-            crewMembers={crewMembers}
-            assignments={assignments}
-            eventDate={activeBooking.event?.preferredDate}
-            eventStartTime={activeBooking.event?.startTime ?? null}
-            eventEndTime={activeBooking.event?.endTime ?? null}
-            currentBookingId={booking.id}
-            currentAssignmentId={activeAssignment?.id ?? null}
-            selectedCrewIds={displayedCrewIds}
-            enabled={crewAssignmentEnabled}
-            readOnly={!isPreparationMode || activePreparation.crewCompleted}
-            showOnlySelected={!isPreparationMode}
-            requiredCrewCount={requiredCrewCount}
-            allowUnlimitedSelection={allowUnlimitedCrew}
-            allowFreelance={
-              crewAssignmentEnabled &&
-              !["completed", "cancelled"].includes(booking.status)
-            }
-            onAddFreelance={handleOpenFreelance}
-            onSelectedCrewIdsChange={handleCrewSelectionChange}
-          />
+          {activeCrewGroups.map((group) => (
+            <div key={group.key} className="space-y-4">
+              {activeCrewGroups.length > 1 && (
+                <h3 className="border-t border-outline-variant/30 pt-6 font-headline-md text-headline-md text-primary first:border-t-0 first:pt-0">
+                  Penugasan Kru - {group.serviceName || group.packageItem.name}
+                </h3>
+              )}
+              <CrewAssignment
+                crewMembers={crewMembers}
+                assignments={assignments}
+                eventDate={group.event?.preferredDate}
+                eventStartTime={group.event?.startTime ?? null}
+                eventEndTime={group.event?.endTime ?? null}
+                currentBookingId={booking.id}
+                currentAssignmentId={group.assignment?.id ?? null}
+                selectedCrewIds={group.crewIds}
+                enabled={crewAssignmentEnabled}
+                readOnly={!isPreparationMode || activePreparation.crewCompleted}
+                showOnlySelected={!isPreparationMode}
+                requiredCrewCount={group.requiredCrewCount}
+                allowUnlimitedSelection={false}
+                allowFreelance={
+                  crewAssignmentEnabled &&
+                  !["completed", "cancelled"].includes(booking.status)
+                }
+                onAddFreelance={() => handleOpenFreelance(group.key)}
+                onSelectedCrewIdsChange={(crewIds) =>
+                  handleCrewSelectionChange(group.key, crewIds)
+                }
+              />
+            </div>
+          ))}
 
           {isPreparationMode && crewAssignmentEnabled && (
             <StepConfirmation
@@ -1071,11 +1243,9 @@ export default function ScheduleOrder({
                   ? translate("crewConfirmedBillingUnlocked")
                   : hasCrewAssignment
                     ? translate("confirmProductionTeam")
-                    : allowUnlimitedCrew
-                      ? "Select at least one crew member before confirming this step."
-                      : `Select exactly ${requiredCrewCount} crew members before confirming this step.`
+                      : "Lengkapi seluruh slot kru pada setiap bagian layanan sebelum melanjutkan."
               }
-              disabled={!preparation.crewCompleted && !hasCrewAssignment}
+              disabled={!activePreparation.crewCompleted && !hasCrewAssignment}
               onClick={handleToggleCrew}
             />
           )}
