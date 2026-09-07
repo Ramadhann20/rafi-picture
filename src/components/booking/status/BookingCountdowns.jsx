@@ -92,7 +92,7 @@ function CountdownDigits({ duration, danger = false }) {
   );
 }
 
-function EventCountdownCard({ booking, packageName, packageIndex, nowMs }) {
+function EventCountdownCard({ booking, packageName, sessionName, packageIndex, nowMs }) {
   const { translate, language } = useLanguage();
   const normalizedBookingStatus = normalizeStatus(booking?.status);
 
@@ -124,8 +124,10 @@ function EventCountdownCard({ booking, packageName, packageIndex, nowMs }) {
             </p>
 
             <h2 className="mt-1 font-headline-sm text-headline-sm text-on-surface">
-              {packageName
-                ? `${packageName} ${packageIndex != null ? `(${packageIndex + 1})` : ""}`
+              {sessionName
+                ? `${translate("towardEventDay")} ${sessionName} ${packageIndex != null ? packageIndex + 1 : ""}`
+                : packageName
+                  ? `${packageName} ${packageIndex != null ? `(${packageIndex + 1})` : ""}`
                 : hasArrived
                   ? translate("eventDayArrived")
                   : translate("eventCountdown")}
@@ -344,13 +346,15 @@ export default function BookingCountdowns({
   }
 
   const packageEntries = Array.isArray(booking?.packages) && booking.packages.length
-    ? booking.packages.map((packageItem, index) => ({
-        packageItem,
-        event:
-          booking.events?.find(
-            (eventItem) => eventItem.packageId === packageItem.id,
-          ) ?? (index === 0 ? booking.event : null),
-      }))
+    ? booking.packages.flatMap((packageItem, index) => {
+        const events = booking.events?.filter(
+          (eventItem) => eventItem.packageId === packageItem.id,
+        ) ?? [];
+
+        return (events.length ? events : index === 0 ? [booking.event] : [])
+          .filter(Boolean)
+          .map((event) => ({ packageItem, event }));
+      })
     : [{ packageItem: booking?.package ?? null, event: booking?.event }];
   const eventCountdowns = packageEntries.filter(({ event }) => Boolean(event));
   const paymentTimer = buildPaymentTimer({ invoice, payments, nowMs });
@@ -378,6 +382,7 @@ export default function BookingCountdowns({
             key={`${packageItem?.id ?? "event"}-${index}`}
             booking={{ ...booking, event }}
             packageName={packageItem?.name}
+            sessionName={event?.sessionName}
             packageIndex={packageItem ? index : null}
             nowMs={nowMs}
           />

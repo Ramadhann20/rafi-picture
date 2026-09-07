@@ -122,26 +122,52 @@ export async function POST(
     if (
       !bookingSnapshot.exists
     ) {
-      return jsonError(
-        "Booking tidak ditemukan.",
-        404,
-      );
+            const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+              ? booking.packages
+              : booking?.package
+                ? [booking.package]
+                : [];
+            const uniquePackageItems = Array.from(
+              new Map(packageItems.map((packageItem, index) => [
+                String(packageItem?.id ?? index),
+                packageItem,
+              ])).values(),
+            );
+            const packageAmount = uniquePackageItems.reduce(
+              (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
+              0,
+            );
+            const eventItems = Array.isArray(booking?.events) && booking.events.length
+              ? booking.events
+              : booking?.event
+                ? [booking.event]
+                : [];
+            const travelCharge = eventItems.reduce(
+              (total, eventItem) => total + Math.max(
+                Number(eventItem?.location?.accommodationRequest) ||
+                  Number(eventItem?.location?.distanceCharge?.amount) ||
+                  0,
+                0,
+              ),
+              0,
+            );
+      if (inquiryBookings.length > 1) {
+        booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
+        booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
+        booking.package = booking.packages[0] ?? booking.package;
+        booking.event = booking.events[0] ?? booking.event;
+      }
     }
-
-    const booking = {
-      id:
-        bookingSnapshot.id,
-      ...bookingSnapshot.data(),
-    };
 
     const packageId = String(body?.packageId || "").trim();
     const selectedPackage = packageId
       ? (booking.packages || []).find((item) => item.id === packageId)
       : null;
+    const isBundle = selectedPackage?.packageCategoryId === "bundle";
     const selectedEvent = packageId
       ? (booking.events || []).find((item) => item.packageId === packageId)
       : null;
-    const scopedBooking = selectedPackage
+    const scopedBooking = selectedPackage && !isBundle
       ? {
           ...booking,
           package: selectedPackage,

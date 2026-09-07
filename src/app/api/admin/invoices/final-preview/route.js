@@ -167,6 +167,21 @@ export async function POST(
       ...bookingSnapshot.data(),
     };
 
+    if (booking.inquiryId) {
+      const inquirySnapshot = await adminDb
+        .collection("Bookings")
+        .where("inquiryId", "==", booking.inquiryId)
+        .get();
+      const inquiryBookings = inquirySnapshot.docs.map((document) => document.data());
+
+      if (inquiryBookings.length > 1) {
+        booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
+        booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
+        booking.package = booking.packages[0] ?? booking.package;
+        booking.event = booking.events[0] ?? booking.event;
+      }
+    }
+
     if (
       booking.status !==
       "in_progress"

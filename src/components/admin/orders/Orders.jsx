@@ -293,6 +293,44 @@ function normalizePaymentStatus(status) {
   );
 }
 
+function mergeInquiryBookings(bookings, selectedBookingId) {
+  const selectedBooking = bookings.find((booking) => booking.id === selectedBookingId);
+  if (!selectedBooking?.inquiryId) return selectedBooking ?? null;
+
+  const inquiryBookings = bookings
+    .filter((booking) => booking.inquiryId === selectedBooking.inquiryId)
+    .sort((first, second) =>
+      (Number(first.inquiryIndex) || 0) - (Number(second.inquiryIndex) || 0),
+    );
+
+  if (inquiryBookings.length <= 1) return selectedBooking;
+
+  const packages = Array.from(
+    new Map(
+      inquiryBookings
+        .map((booking) => booking.package)
+        .filter(Boolean)
+        .map((packageItem) => [packageItem.id, packageItem]),
+    ).values(),
+  );
+  const events = inquiryBookings.map((booking) => booking.event).filter(Boolean);
+  const personalDetails = inquiryBookings.flatMap(
+    (booking) => booking.personalDetails ?? [],
+  );
+
+  return {
+    ...selectedBooking,
+    id: inquiryBookings[0]?.id ?? selectedBooking.id,
+    packages,
+    events,
+    package: packages[0] ?? selectedBooking.package,
+    event: events[0] ?? selectedBooking.event,
+    personalDetails,
+    inquiryBookingIds: inquiryBookings.map((booking) => booking.id),
+    inquiryBookings,
+  };
+}
+
 /*
  * Normalisasi payment terbaru dengan fallback field lama
  * agar data historis tetap dapat dibaca.
@@ -555,6 +593,17 @@ export default function Orders() {
 
   const [selectedBookingId, setSelectedBookingId] =
     useState(null);
+  const transactionBookingId = useMemo(() => {
+    if (!selectedBookingId) return null;
+    const selected = bookings.find((booking) => booking.id === selectedBookingId);
+    if (!selected?.inquiryId) return selectedBookingId;
+
+    return bookings
+      .filter((booking) => booking.inquiryId === selected.inquiryId)
+      .sort((first, second) =>
+        (Number(first.inquiryIndex) || 0) - (Number(second.inquiryIndex) || 0),
+      )[0]?.id ?? selectedBookingId;
+  }, [bookings, selectedBookingId]);
 
   /*
    * Membuka detail pesanan dari URL:
@@ -620,21 +669,21 @@ export default function Orders() {
     error: invoicesError,
   } = useCollection(
     () => {
-      if (!selectedBookingId) return null;
+      if (!transactionBookingId) return null;
 
       return db.query(
         db.colRef("Invoices"),
         db.where(
           "bookingId",
           "==",
-          selectedBookingId
+          transactionBookingId
         )
       );
     },
-    [selectedBookingId],
+    [transactionBookingId],
     {
       enabled: Boolean(
-        selectedBookingId
+        transactionBookingId
       ),
     }
   );
@@ -650,18 +699,18 @@ export default function Orders() {
     error: paymentsError,
   } = useCollection(
     () => {
-      if (!selectedBookingId) return null;
+      if (!transactionBookingId) return null;
 
       return db.query(
         db.colRef("Payments"),
         db.where(
           "bookingId",
           "==",
-          selectedBookingId
+          transactionBookingId
         )
       );
     },
-    [selectedBookingId],
+    [transactionBookingId],
     {
       enabled: Boolean(
         selectedBookingId
@@ -676,12 +725,7 @@ export default function Orders() {
   const selectedBooking = useMemo(() => {
     if (!selectedBookingId) return null;
 
-    return (
-      bookings.find(
-        (booking) =>
-          booking.id === selectedBookingId
-      ) ?? null
-    );
+    return mergeInquiryBookings(bookings, selectedBookingId);
   }, [bookings, selectedBookingId]);
 
   const selectedAssignment = useMemo(() => {

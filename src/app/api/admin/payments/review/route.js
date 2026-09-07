@@ -597,6 +597,29 @@ export async function POST(
         bookingSnapshot.id,
       ...bookingSnapshot.data(),
     };
+    let inquiryBookingRecords = [booking];
+    let inquiryBookingRefs = [bookingRef];
+
+    if (booking.inquiryId) {
+      const inquirySnapshot = await adminDb
+        .collection("Bookings")
+        .where("inquiryId", "==", booking.inquiryId)
+        .get();
+      const inquiryBookings = inquirySnapshot.docs.map((document) => ({
+        id: document.id,
+        ...document.data(),
+      }));
+
+      inquiryBookingRecords = inquiryBookings;
+      inquiryBookingRefs = inquirySnapshot.docs.map((document) => document.ref);
+      if (inquiryBookings.length > 1) {
+        booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
+        booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
+        booking.package = booking.packages[0] ?? booking.package;
+        booking.event = booking.events[0] ?? booking.event;
+        booking.inquiryBookingIds = inquiryBookings.map((item) => item.id);
+      }
+    }
 
     const invoice = {
       id:
@@ -685,11 +708,8 @@ export async function POST(
         },
       );
 
-      batch.update(
-        bookingRef,
-        invoiceType ===
-          "final"
-          ? {
+      const rejectedBookingData = invoiceType === "final"
+        ? {
               status:
                 "in_progress",
 
@@ -726,8 +746,11 @@ export async function POST(
 
               updatedAt:
                 timestamp,
-            },
-      );
+            };
+
+      inquiryBookingRefs.forEach((reference) => {
+        batch.update(reference, rejectedBookingData);
+      });
 
       await batch.commit();
 
@@ -851,9 +874,7 @@ export async function POST(
         },
       );
 
-      batch.update(
-        bookingRef,
-        {
+      const depositApprovedBookingData = {
           status:
             "in_progress",
 
@@ -874,22 +895,31 @@ export async function POST(
 
           updatedAt:
             timestamp,
-        },
-      );
+        };
 
-      const packageEntries = invoice?.packageId
-        ? [{ packageId: invoice.packageId }]
+      inquiryBookingRefs.forEach((reference) => {
+        batch.update(reference, depositApprovedBookingData);
+      });
+
+      const packageEntries = inquiryBookingRecords.length > 1
+        ? inquiryBookingRecords.map((bookingRecord) => ({
+            bookingRecord,
+            packageId: bookingRecord?.package?.id ?? invoice?.packageId ?? null,
+          }))
+        : invoice?.packageId
+        ? [{ bookingRecord: booking, packageId: invoice.packageId }]
         : Array.isArray(booking?.packages) && booking.packages.length
-          ? booking.packages.map((packageItem) => ({ packageId: packageItem.id }))
-          : [{ packageId: booking?.package?.id ?? null }];
+          ? booking.packages.map((packageItem) => ({ bookingRecord: booking, packageId: packageItem.id }))
+          : [{ bookingRecord: booking, packageId: booking?.package?.id ?? null }];
 
-      packageEntries.forEach(({ packageId }) => {
+      packageEntries.forEach(({ bookingRecord, packageId }) => {
         const activeScheduleDoc = scheduleSnapshot.docs.find((document) => {
           const schedule = document.data();
 
           return (
+            schedule?.bookingId === bookingRecord.id &&
             (schedule?.packageId === packageId ||
-              (!schedule?.packageId && packageId === booking?.package?.id)) &&
+              (!schedule?.packageId && packageId === bookingRecord?.package?.id)) &&
             schedule?.status !== "cancelled" &&
             schedule?.scheduleStatus !== "cancelled"
           );
@@ -900,7 +930,7 @@ export async function POST(
           packageId,
         };
         const schedulePayload = buildSchedulePayload({
-          booking,
+          booking: bookingRecord,
           invoice: packageInvoice,
           paymentId,
           invoiceId,
@@ -1284,9 +1314,7 @@ export async function POST(
       },
     );
 
-    batch.update(
-      bookingRef,
-      {
+    const finalApprovedBookingData = {
         status:
           "in_progress",
 
@@ -1340,8 +1368,11 @@ export async function POST(
 
         updatedAt:
           timestamp,
-      },
-    );
+      };
+
+    inquiryBookingRefs.forEach((reference) => {
+      batch.update(reference, finalApprovedBookingData);
+    });
 
     try {
       await batch.commit();

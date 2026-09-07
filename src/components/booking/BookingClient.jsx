@@ -337,28 +337,35 @@ export default function BookingClient({ packageId = null }) {
           (booking) => booking.inquiryId === latestBooking.inquiryId,
         )
       : [latestBooking];
+    const orderedInquiryBookings = [...inquiryBookings].sort(
+      (first, second) =>
+        (Number(first.inquiryIndex) || 0) -
+        (Number(second.inquiryIndex) || 0),
+    );
+    const canonicalBooking = orderedInquiryBookings[0] ?? latestBooking;
 
     if (inquiryBookings.length <= 1) return latestBooking;
 
     return {
       ...latestBooking,
-      packages: inquiryBookings
-        .map((booking) => booking.package
-          ? {
-              ...booking.package,
-              serviceId: booking.event?.sessionId ?? null,
-              serviceName: booking.event?.sessionName ?? null,
-            }
-          : null)
-        .filter(Boolean),
-      events: inquiryBookings.map((booking) => ({
+      id: canonicalBooking.id,
+      packages: Array.from(
+        new Map(
+          orderedInquiryBookings
+            .map((booking) => booking.package
+              ? [booking.package.id, booking.package]
+              : null)
+            .filter(Boolean),
+        ).values(),
+      ),
+      events: orderedInquiryBookings.map((booking) => ({
         ...(booking.event ?? {}),
         packageId: booking.package?.id ?? null,
       })),
-      personalDetails: inquiryBookings.flatMap(
+      personalDetails: orderedInquiryBookings.flatMap(
         (booking) => booking.personalDetails ?? [],
       ),
-      inquiryBookingIds: inquiryBookings.map((booking) => booking.id),
+      inquiryBookingIds: orderedInquiryBookings.map((booking) => booking.id),
     };
   }, [userBookings]);
 
@@ -755,6 +762,7 @@ export default function BookingClient({ packageId = null }) {
           ? [{ ...packagePersonal }]
           : [],
       };
+      });
     });
   };
 
@@ -836,7 +844,6 @@ export default function BookingClient({ packageId = null }) {
           (packageBooking) => packageBooking.personalDetails ?? [],
         ),
         submittedAt: currentTime,
-      });
         updatedAt: currentTime,
       };
 

@@ -193,7 +193,13 @@ function getBookingAmounts(
       ? [booking.package]
       : [];
 
-  const packageAmount = packageItems.reduce(
+  const uniquePackageItems = Array.from(
+    new Map(packageItems.map((packageItem, index) => [
+      String(packageItem?.id ?? index),
+      packageItem,
+    ])).values(),
+  );
+  const packageAmount = uniquePackageItems.reduce(
     (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
     0,
   );
@@ -206,7 +212,12 @@ function getBookingAmounts(
 
   const travelCharge = eventItems.reduce(
     (total, eventItem) =>
-      total + Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0),
+      total + Math.max(
+        Number(eventItem?.location?.accommodationRequest) ||
+          Number(eventItem?.location?.distanceCharge?.amount) ||
+          0,
+        0,
+      ),
     0,
   );
 
@@ -240,7 +251,15 @@ function createInvoiceItems(
       ? [booking.event]
       : [];
 
-  const items = packageItems.map((packageItem, index) => ({
+  const uniquePackageItems = Array.from(
+    new Map(
+      packageItems.map((packageItem, index) => [
+        String(packageItem.id ?? index),
+        packageItem,
+      ]),
+    ).values(),
+  );
+  const items = uniquePackageItems.map((packageItem, index) => ({
     id: `package-service-${packageItem.id ?? index}`,
     label: packageItem.name || "Package Service",
     amount: Math.max(Number(packageItem.price) || 0, 0),
@@ -525,6 +544,27 @@ export async function POST(
         bookingSnapshot.id,
       ...bookingSnapshot.data(),
     };
+    let inquiryBookingRefs = [bookingRef];
+
+    if (booking.inquiryId) {
+      const inquirySnapshot = await adminDb
+        .collection("Bookings")
+        .where("inquiryId", "==", booking.inquiryId)
+        .get();
+      const inquiryBookings = inquirySnapshot.docs.map((document) => ({
+        id: document.id,
+        ...document.data(),
+      }));
+
+      inquiryBookingRefs = inquirySnapshot.docs.map((document) => document.ref);
+      if (inquiryBookings.length > 1) {
+        booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
+        booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
+        booking.package = booking.packages[0] ?? booking.package;
+        booking.event = booking.events[0] ?? booking.event;
+        booking.inquiryBookingIds = inquiryBookings.map((item) => item.id);
+      }
+    }
 
     if (
       booking.status !==
@@ -837,9 +877,7 @@ export async function POST(
       },
     );
 
-    batch.update(
-      bookingRef,
-      {
+    const approvedBookingData = {
         status:
           "approved",
 
@@ -861,8 +899,11 @@ export async function POST(
 
         updatedAt:
           timestamp,
-      },
-    );
+    };
+
+    inquiryBookingRefs.forEach((reference) => {
+      batch.update(reference, approvedBookingData);
+    });
 
     try {
       await batch.commit();

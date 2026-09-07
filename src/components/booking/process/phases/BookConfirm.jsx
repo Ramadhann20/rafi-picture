@@ -277,10 +277,22 @@ export default function BookConfirm({
       : packageItem,
   );
 
-  const getPackageEvent = (packageItem, index) =>
-    formData?.events?.find(
-      (eventItem) => eventItem.packageId === packageItem.id,
-    )?.data ?? (index === 0 ? formData?.event ?? {} : {});
+  const getPackageEventEntries = (packageItem, index) => {
+    const entries = (formData?.events ?? [])
+      .filter((eventItem) => eventItem.packageId === packageItem.id)
+      .map((eventItem) => ({
+        ...eventItem.data,
+        packageId: eventItem.packageId,
+        sessionId: eventItem.sessionId,
+        sessionName: eventItem.sessionName,
+      }));
+
+    return entries.length
+      ? entries
+      : index === 0
+        ? [{ ...(formData?.event ?? {}), packageId: packageItem.id }]
+        : [];
+  };
 
   const isSubmitting =
     submitStatus === "loading";
@@ -288,22 +300,10 @@ export default function BookConfirm({
     submitStatus === "success";
 
   return (
-    const getPackageEventEntries = (packageItem, index) => {
-      const entries = (formData?.events ?? [])
-        .filter((eventItem) => eventItem.packageId === packageItem.id)
-        .map((eventItem) => ({
-          ...eventItem.data,
-          packageId: eventItem.packageId,
-          sessionId: eventItem.sessionId,
-          sessionName: eventItem.sessionName,
-        }));
-
-      return entries.length
-        ? entries
-        : index === 0
-          ? [{ ...(formData?.event ?? {}), packageId: packageItem.id }]
-          : [];
-    };
+    <div>
+      <header className="mb-9">
+        <p className="font-label-sm text-[10px] uppercase tracking-[0.24em] text-secondary">
+          {translate("confirmation")}
         </p>
 
         <h2 className="mt-1 font-headline-md text-headline-md text-on-surface">
@@ -315,12 +315,11 @@ export default function BookConfirm({
         </p>
       </header>
 
-      {/* PACKAGE */}
       <section className="border-b border-outline-variant/35 pb-7">
         <SectionHeading
-          icon="photo_camera"
           title={translate("packageDetails")}
           description={translate("selectedPackageDescription")}
+          icon="photo_camera"
         />
 
         {displayPackages.length === 0 ? (
@@ -424,8 +423,8 @@ export default function BookConfirm({
         />
 
         <div className="space-y-6">
-          {displayPackages.map((packageItem, index) => {
-            const eventData = getPackageEvent(packageItem, index);
+          {displayPackages.flatMap((packageItem, index) =>
+            getPackageEventEntries(packageItem, index).map((eventData, eventIndex) => {
             const eventLocation = normalizeEventLocation(eventData.location);
             const accommodationRequest = Math.max(
               Number(eventLocation?.accommodationRequest) || 0,
@@ -437,11 +436,11 @@ export default function BookConfirm({
 
             return (
               <article
-                key={`${packageItem.id}-${index}`}
+                key={`${packageItem.id}-${eventData.sessionId ?? eventIndex}`}
                 className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5"
               >
                 <h3 className="mb-4 font-headline-md text-headline-md text-primary">
-                  {translate("bookingDetails")} {index + 1}: {packageItem.name}
+                  {translate("bookingDetails")} {eventIndex + 1}: {eventData.sessionName || packageItem.name}
                 </h3>
                 <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
                   <DetailRow
@@ -465,7 +464,8 @@ export default function BookConfirm({
                 </div>
               </article>
             );
-          })}
+            }),
+          )}
         </div>
       </section>
 
@@ -541,17 +541,19 @@ export default function BookConfirm({
         />
 
         <div className="space-y-4">
-          {selectedPackages.map((packageItem, index) => (
-            <DetailRow
-              key={`${packageItem.id}-${index}`}
-              label={`${translate("eventNotes")} ${index + 1} - ${packageItem.name}`}
-              value={getDisplayValue(formData.events?.[index]?.data?.vision)}
-              optional
-              optionalLabel={translate("optional")}
-              fullWidth
-              multiline
-            />
-          ))}
+          {displayPackages.flatMap((packageItem, index) =>
+            getPackageEventEntries(packageItem, index).map((eventData, eventIndex) => (
+              <DetailRow
+                key={`${packageItem.id}-${eventData.sessionId ?? eventIndex}`}
+                label={`${translate("eventNotes")} ${eventIndex + 1} - ${eventData.sessionName || packageItem.name}`}
+                value={getDisplayValue(eventData.vision)}
+                optional
+                optionalLabel={translate("optional")}
+                fullWidth
+                multiline
+              />
+            )),
+          )}
         </div>
       </section>
 

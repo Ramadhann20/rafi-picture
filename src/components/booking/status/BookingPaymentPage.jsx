@@ -145,11 +145,19 @@ function getClientDisplayName(client) {
 
 function getInvoiceItems(invoice, booking) {
   if (Array.isArray(invoice?.items) && invoice.items.length > 0) {
-    return invoice.items.map((item, index) => ({
-      id: item.id ?? `${item.label ?? "item"}-${index}`,
-      label: item.label ?? item.name ?? "Layanan",
-      amount: Number(item.amount ?? item.price) || 0,
-    }));
+    const seenItemIds = new Set();
+
+    return invoice.items
+      .map((item, index) => ({
+        id: item.id ?? `${item.label ?? "item"}-${index}`,
+        label: item.label ?? item.name ?? "Layanan",
+        amount: Number(item.amount ?? item.price) || 0,
+      }))
+      .filter((item) => {
+        if (seenItemIds.has(item.id)) return false;
+        seenItemIds.add(item.id);
+        return true;
+      });
   }
 
   const packageAmount =

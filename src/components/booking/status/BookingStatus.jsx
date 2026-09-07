@@ -525,16 +525,21 @@ export default function BookingStatus({
         }
       : packageItem;
   });
-  const packageEvents = displayPackages.map((packageItem, index) => ({
-    packageItem,
-    event: booking.events?.find(
-      (eventItem) =>
-        eventItem.packageId === packageItem.id &&
-        (!packageItem.serviceId || eventItem.sessionId === packageItem.serviceId),
-    ) ?? booking.events?.filter(
+  const packageEvents = displayPackages.flatMap((packageItem, index) => {
+    const matchingEvents = booking.events?.filter(
       (eventItem) => eventItem.packageId === packageItem.id,
-    )[index] ?? (index === 0 ? event : {}),
-  }));
+    ) ?? [];
+
+    return (matchingEvents.length
+      ? matchingEvents
+      : index === 0
+        ? [event]
+        : []
+    ).map((packageEvent) => ({
+      packageItem,
+      event: packageEvent,
+    }));
+  });
   const seenPackageIds = new Set();
   const packageTotals = packageEvents.map(({ packageItem, event: packageEvent }) => {
     const eventLocation = typeof packageEvent.location === "object"
@@ -556,6 +561,27 @@ export default function BookingStatus({
   const packagePrice = packageTotals.reduce((total, item) => total + item.packagePrice, 0);
   const travelCharge = packageTotals.reduce((total, item) => total + item.travelCharge, 0);
   const estimatedTotal = packageTotals.reduce((total, item) => total + item.total, 0);
+  const costSummary = packageEvents.reduce((summary, { packageItem }, packageIndex) => {
+    const totals = packageTotals[packageIndex] ?? {
+      packagePrice: 0,
+      travelCharge: 0,
+    };
+    const packageId = String(packageItem.id ?? packageIndex);
+    const existing = summary.find((item) => item.packageId === packageId);
+
+    if (existing) {
+      existing.travelCharge += totals.travelCharge;
+      return summary;
+    }
+
+    summary.push({
+      packageId,
+      packageItem,
+      packagePrice: totals.packagePrice,
+      travelCharge: totals.travelCharge,
+    });
+    return summary;
+  }, []);
   const showPartnerName = displayPackages.some(
     (packageItem) => packageItem.bookingSubjectType === "couple",
   );
@@ -952,12 +978,7 @@ export default function BookingStatus({
 
         <div className="max-w-xl">
           <div className="space-y-4">
-            {packageEvents.map(({ packageItem }, packageIndex) => {
-              const totals = packageTotals[packageIndex] ?? {
-                packagePrice: 0,
-                travelCharge: 0,
-              };
-
+            {costSummary.map(({ packageItem, packagePrice: summaryPackagePrice, travelCharge: summaryTravelCharge }, packageIndex) => {
               return (
                 <article
                   key={`${packageItem.id}-${packageIndex}`}
@@ -968,7 +989,7 @@ export default function BookingStatus({
                       {translate("packageDetails")} {packageIndex + 1}: {packageItem.name}
                     </span>
                     <span className="font-label-md text-label-md text-primary">
-                      {formatCurrency(totals.packagePrice, "IDR")}
+                      {formatCurrency(summaryPackagePrice, "IDR")}
                     </span>
                   </div>
 
@@ -977,7 +998,7 @@ export default function BookingStatus({
                       {translate("travelCost")}
                     </span>
                     <span className="font-label-sm text-label-sm text-on-surface">
-                      {formatRupiah(totals.travelCharge)}
+                      {formatRupiah(summaryTravelCharge)}
                     </span>
                   </div>
                 </article>

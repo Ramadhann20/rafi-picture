@@ -65,6 +65,17 @@ function getInitialPreparation(booking) {
   };
 }
 
+function isBundleBooking(booking, packageEntries = []) {
+  const packageItem = packageEntries[0]?.packageItem ?? booking?.package ?? {};
+  const packageName = String(packageItem.name ?? "").toLowerCase();
+
+  return packageItem.packageCategoryId === "bundle" || (
+    packageName.includes("prewedding") &&
+    packageName.includes("wedding") &&
+    packageName.includes("bundle")
+  );
+}
+
 function getBookingPackageEntries(booking, packageCatalog = []) {
   const packages = Array.isArray(booking?.packages) && booking.packages.length
     ? booking.packages
@@ -205,10 +216,7 @@ function getConfiguredCrewCount(packageItem, event = null) {
 
 function getCrewAssignmentEntries(booking, packageEntries) {
   return packageEntries.flatMap((entry) => {
-    const packageEvents = Array.isArray(booking?.events)
-      ? booking.events.filter((eventItem) => eventItem.packageId === entry.key)
-      : [];
-    const events = packageEvents.length ? packageEvents : [entry.event];
+    const events = [entry.event];
 
     return events.map((event, index) => {
       const serviceId = String(
@@ -219,8 +227,9 @@ function getCrewAssignmentEntries(booking, packageEntries) {
       ).trim();
 
       return {
-        key: `${entry.key}:${serviceId}`,
-        packageKey: entry.packageId ?? entry.key,
+        key: entry.key,
+        packageKey: entry.key,
+        packageId: entry.packageId,
         packageItem: entry.packageItem,
         event,
         serviceId,
@@ -346,6 +355,7 @@ export default function ScheduleOrder({
   );
 
   const [activePackageIndex, setActivePackageIndex] = useState(0);
+  const [bundleStep, setBundleStep] = useState(0);
   const [packagePreparation, setPackagePreparation] = useState(() =>
     Object.fromEntries(
       getBookingPackageEntries(booking, packageCatalog).map((entry) => [
@@ -363,7 +373,7 @@ export default function ScheduleOrder({
           { ...booking, package: entry.packageItem, event: entry.event },
           existingAssignments.find(
             (assignment) =>
-              assignment.packageId === entry.packageKey &&
+              assignment.packageId === entry.packageId &&
               (!entry.serviceId || assignment.serviceId === entry.serviceId),
           ) ?? existingAssignment,
           entry,
@@ -404,10 +414,12 @@ export default function ScheduleOrder({
   ] = useState(null);
 
   const isPreparationMode = booking.status === "pending";
+  const isBundlePreparation = isBundleBooking(booking, packageEntries);
 
   useEffect(() => {
     setPreparation(getInitialPreparation(booking));
     setActivePackageIndex(0);
+    setBundleStep(0);
     setPackagePreparation(
       Object.fromEntries(
         packageEntries.map((entry) => [
@@ -424,7 +436,7 @@ export default function ScheduleOrder({
             { ...booking, package: entry.packageItem, event: entry.event },
             existingAssignments.find(
               (assignment) =>
-                assignment.packageId === entry.packageKey &&
+                assignment.packageId === entry.packageId &&
                 (!entry.serviceId || assignment.serviceId === entry.serviceId),
             ) ?? existingAssignment,
             entry,
@@ -478,8 +490,11 @@ export default function ScheduleOrder({
     ),
   };
 
+  const selectedPackageIndex = isBundlePreparation
+    ? bundleStep >= 2 ? 1 : 0
+    : activePackageIndex;
   const activePackageEntry =
-    packageEntries[activePackageIndex] ?? packageEntries[0] ?? null;
+    packageEntries[selectedPackageIndex] ?? packageEntries[0] ?? null;
   const activePackageKey = activePackageEntry?.key ?? "default";
   const activeBooking = activePackageEntry
     ? {
@@ -497,7 +512,7 @@ export default function ScheduleOrder({
   const activeCrewGroups = activeCrewAssignmentEntries.map((entry) => {
     const assignment = existingAssignments.find(
       (item) =>
-        item.packageId === entry.packageKey &&
+        item.packageId === entry.packageId &&
         (!entry.serviceId || item.serviceId === entry.serviceId),
     ) ?? (activeCrewAssignmentEntries.length === 1 ? existingAssignment : null);
     const draft = packageCrewDrafts[entry.key] ?? createCrewDraft(
@@ -526,11 +541,17 @@ export default function ScheduleOrder({
     Boolean(activeDepositDraft) && Number(activeDepositDraft.amount) > 0;
 
   const crewAssignmentEnabled =
-    !isPreparationMode || activePreparation.reviewCompleted;
+    !isPreparationMode || (
+      isBundlePreparation
+        ? bundleStep === 1 || bundleStep === 3
+        : activePreparation.reviewCompleted
+    );
 
   const billingEnabled =
     !isPreparationMode ||
-    (activePreparation.reviewCompleted && activePreparation.crewCompleted);
+    (isBundlePreparation
+      ? bundleStep === 4
+      : activePreparation.reviewCompleted && activePreparation.crewCompleted);
 
   const hasDepositPdf =
     Boolean(
@@ -545,6 +566,7 @@ export default function ScheduleOrder({
         packagePreparation[entry.key]?.crewCompleted,
     ) &&
     preparation.billingCompleted &&
+    (!isBundlePreparation || bundleStep === 4) &&
     crewAssignmentEntries.every((entry) => {
       const draft = packageCrewDrafts[entry.key];
       return draft?.crewIds?.length === entry.requiredCrewCount;
@@ -567,6 +589,10 @@ export default function ScheduleOrder({
     if (!isPreparationMode) return;
 
     setActionError(null);
+
+    if (isBundlePreparation && (bundleStep === 1 || bundleStep === 3)) {
+      setBundleStep((current) => current - 1);
+    }
 
     setPackagePreparation((currentMap) => {
       const current = currentMap[activePackageKey] ?? getInitialPreparation(booking);
@@ -595,6 +621,10 @@ export default function ScheduleOrder({
       ...current,
         reviewCompleted: true,
     }));
+
+    if (isBundlePreparation) {
+      setBundleStep((current) => Math.max(current, current === 0 ? 1 : 3));
+    }
   };
 
   const handleCrewSelectionChange = (assignmentKey, crewIds) => {
@@ -675,6 +705,10 @@ export default function ScheduleOrder({
 
     setActionError(null);
 
+    if (isBundlePreparation && (bundleStep === 2 || bundleStep === 4)) {
+      setBundleStep((current) => current - 1);
+    }
+
     if (!activePreparation.crewCompleted && !hasCrewAssignment) {
       const incompleteGroup = activeCrewGroups.find(
         (group) => !group.hasAssignment,
@@ -706,6 +740,10 @@ export default function ScheduleOrder({
         },
       };
     });
+
+    if (isBundlePreparation) {
+      setBundleStep((current) => Math.max(current, current === 1 ? 2 : 4));
+    }
   };
 
   const clearDepositPdfPreview = () => {
@@ -767,7 +805,7 @@ export default function ScheduleOrder({
               booking.id,
               invoiceDraft:
                 activeDepositDraft,
-              packageId: activePackageKey,
+              packageId: activePackageEntry?.packageId ?? activePackageKey,
           }),
         },
       );
@@ -944,6 +982,10 @@ export default function ScheduleOrder({
         billingCompleted: false,
       }));
 
+      if (isBundlePreparation) {
+        setBundleStep(4);
+      }
+
       return;
     }
 
@@ -968,6 +1010,9 @@ export default function ScheduleOrder({
         ...current,
         billingCompleted: true,
       }));
+      if (isBundlePreparation) {
+        setBundleStep(4);
+      }
     } catch (error) {
       console.error(
         "GENERATE DEPOSIT PDF PREVIEW ERROR:",
@@ -1029,7 +1074,7 @@ export default function ScheduleOrder({
 
           crewAssignments: crewAssignmentEntries.map((entry) => ({
             ...(packageCrewDrafts[entry.key] ?? {}),
-            packageId: entry.packageKey,
+            packageId: entry.packageId,
             serviceId: entry.serviceId,
             serviceName: entry.serviceName || null,
             requiredCrewCount: entry.requiredCrewCount,
@@ -1040,7 +1085,7 @@ export default function ScheduleOrder({
 
           depositInvoice: {
             ...activeDepositDraft,
-            packageId: activePackageKey,
+            packageId: activePackageEntry?.packageId ?? activePackageKey,
           },
 
           preparation: {
@@ -1048,7 +1093,9 @@ export default function ScheduleOrder({
             crewCompleted: true,
             billingCompleted: true,
             packages: packageEntries.map((entry) => ({
-              packageId: entry.key,
+              packageId: entry.packageId,
+              serviceId: entry.event?.sessionId ?? null,
+              serviceName: entry.event?.sessionName ?? null,
               ...(packagePreparation[entry.key] ?? {}),
             })),
           },
@@ -1126,7 +1173,13 @@ export default function ScheduleOrder({
         </div>
       </header>
 
-      {isPreparationMode && <PreparationProgress preparation={preparation} />}
+      {isPreparationMode && (
+        <PreparationProgress
+          preparation={preparation}
+          bundleMode={isBundlePreparation}
+          bundleStep={bundleStep}
+        />
+      )}
 
       {actionError && (
         <div
@@ -1146,7 +1199,7 @@ export default function ScheduleOrder({
         </div>
       )}
 
-      {packageEntries.length > 1 && (
+      {packageEntries.length > 1 && !isBundlePreparation && (
         <div className="mb-stack-lg flex flex-wrap gap-2" role="tablist" aria-label={translate("selectedPackages")}>
           {packageEntries.map((entry, index) => {
             const entryPreparation = packagePreparation[entry.key] ?? {};
@@ -1183,7 +1236,7 @@ export default function ScheduleOrder({
       )}
 
       <div className="space-y-stack-lg">
-        <div>
+        {(!isBundlePreparation || bundleStep === 0 || bundleStep === 2) && <div>
           <Review booking={activeBooking} statusConfig={statusConfig} />
 
           {isPreparationMode && (
@@ -1199,11 +1252,11 @@ export default function ScheduleOrder({
               onClick={handleToggleReview}
             />
           )}
-        </div>
+        </div>}
 
         <SectionDivider />
 
-        <StepContainer
+        {(!isBundlePreparation || bundleStep === 1 || bundleStep === 3) && <StepContainer
           locked={isPreparationMode && !crewAssignmentEnabled}
           lockedTitle={translate("crewAssignmentLocked")}
           lockedDescription={translate("confirmReviewUnlockCrew")}
@@ -1257,11 +1310,11 @@ export default function ScheduleOrder({
               onClick={handleToggleCrew}
             />
           )}
-        </StepContainer>
+        </StepContainer>}
 
         <SectionDivider />
 
-        <StepContainer
+        {(!isBundlePreparation || bundleStep === 4) && <StepContainer
           locked={isPreparationMode && !billingEnabled}
           lockedTitle={translate("billingPreparationLocked")}
           lockedDescription={translate("confirmCrewUnlockBilling")}
@@ -1305,7 +1358,7 @@ export default function ScheduleOrder({
               onClick={handleToggleBilling}
             />
           )}
-        </StepContainer>
+        </StepContainer>}
 
         {!isPreparationMode && (
           <>
@@ -1322,6 +1375,8 @@ export default function ScheduleOrder({
         {isPreparationMode && (
           <SubmitBookingPanel
             preparation={preparation}
+            bundleMode={isBundlePreparation}
+            bundleStep={bundleStep}
             hasCrewAssignment={hasCrewAssignment}
             hasDepositInvoice={hasDepositInvoice}
             hasDepositPdf={hasDepositPdf}
@@ -1336,9 +1391,9 @@ export default function ScheduleOrder({
   );
 }
 
-function PreparationProgress({ preparation }) {
+function PreparationProgress({ preparation, bundleMode = false, bundleStep = 0 }) {
   const { translate } = useLanguage();
-  const steps = [
+  const normalSteps = [
     {
       id: "review",
       label: translate("review"),
@@ -1355,6 +1410,14 @@ function PreparationProgress({ preparation }) {
       completed: preparation.billingCompleted,
     },
   ];
+  const bundleSteps = [
+    { id: "pre-review", label: "Review Pre-Wedding", completed: bundleStep >= 1 },
+    { id: "pre-crew", label: "Crew Pre-Wedding", completed: bundleStep >= 2 },
+    { id: "wedding-review", label: "Review Wedding", completed: bundleStep >= 3 },
+    { id: "wedding-crew", label: "Crew Wedding", completed: bundleStep >= 4 },
+    { id: "billing", label: translate("billing"), completed: preparation.billingCompleted },
+  ];
+  const steps = bundleMode ? bundleSteps : normalSteps;
 
   const completedCount = steps.filter((step) => step.completed).length;
   const progress = (completedCount / steps.length) * 100;
@@ -1497,6 +1560,8 @@ function StepConfirmation({
 
 function SubmitBookingPanel({
   preparation,
+  bundleMode = false,
+  bundleStep = 0,
   hasCrewAssignment,
   hasDepositInvoice,
   hasDepositPdf,
@@ -1506,7 +1571,7 @@ function SubmitBookingPanel({
   onSubmit,
 }) {
   const { translate } = useLanguage();
-  const requirements = [
+  const normalRequirements = [
     {
       id: "review",
       label: translate("bookingReviewConfirmed"),
@@ -1533,6 +1598,14 @@ function SubmitBookingPanel({
       completed: pdfReviewed,
     },
   ];
+  const bundleRequirements = [
+    { id: "pre-review", label: "Review Pre-Wedding", completed: bundleStep >= 1 },
+    { id: "pre-crew", label: "Crew Pre-Wedding", completed: bundleStep >= 2 },
+    { id: "wedding-review", label: "Review Wedding", completed: bundleStep >= 3 },
+    { id: "wedding-crew", label: "Crew Wedding", completed: bundleStep >= 4 },
+    { id: "billing", label: translate("depositInvoiceDraftConfirmed"), completed: preparation.billingCompleted && hasDepositInvoice },
+  ];
+  const requirements = bundleMode ? bundleRequirements : normalRequirements;
 
   return (
     <section className="glass-panel rounded-xl p-6">
