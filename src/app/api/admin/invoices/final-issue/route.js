@@ -70,29 +70,62 @@ function normalizeDueDate(
   return getDefaultJakartaDueDate(3);
 }
 
-function getBookingAmounts(
-  booking,
-) {
+function isBundlePackageItem(packageItem) {
+  const packageName = String(
+    packageItem?.name ?? packageItem?.packageName ?? packageItem?.title ?? "",
+  ).toLowerCase();
+  const normalizedPackageName = packageName
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return Boolean(
+    packageItem?.packageCategoryId === "bundle" ||
+      (
+        normalizedPackageName.includes("prewedding") &&
+        normalizedPackageName.includes("wedding") &&
+        (
+          normalizedPackageName.includes("bundle") ||
+          normalizedPackageName.includes("plus") ||
+          normalizedPackageName.includes("+")
+        )
+      ),
+  );
+}
+
+function getBillingPackageItems(booking) {
   const packageItems = Array.isArray(booking?.packages) && booking.packages.length
     ? booking.packages
     : booking?.package
       ? [booking.package]
       : [];
-  const uniquePackageItems = Array.from(
+
+  const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
+
+  if (bundlePackage) {
+    return [bundlePackage];
+  }
+
+  return Array.from(
     new Map(packageItems.map((packageItem, index) => [
       String(packageItem?.id ?? index),
       packageItem,
     ])).values(),
   );
-  const packageAmount = uniquePackageItems.reduce(
-    (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
-    0,
-  );
+}
+
+function getBookingAmounts(
+  booking,
+) {
+  const packageItems = getBillingPackageItems(booking);
   const eventItems = Array.isArray(booking?.events) && booking.events.length
     ? booking.events
     : booking?.event
       ? [booking.event]
       : [];
+  const packageAmount = packageItems.reduce(
+    (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
+    0,
+  );
   const travelCharge = eventItems.reduce(
     (total, eventItem) => total + Math.max(
       Number(eventItem?.location?.accommodationRequest) ||

@@ -306,6 +306,45 @@ function getReceiptPdf(receipt) {
   };
 }
 
+function isBundleBillingPackage(packageItem) {
+  const packageName = String(
+    packageItem?.name ??
+      packageItem?.packageName ??
+      packageItem?.title ??
+      "",
+  ).toLowerCase();
+  const normalizedPackageName = packageName
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return Boolean(
+    packageItem?.packageCategoryId === "bundle" ||
+      (
+        normalizedPackageName.includes("prewedding") &&
+        normalizedPackageName.includes("wedding") &&
+        (
+          normalizedPackageName.includes("bundle") ||
+          normalizedPackageName.includes("plus") ||
+          normalizedPackageName.includes("+")
+        )
+      ),
+  );
+}
+
+function getBillingPackageKey(packageItem) {
+  const packageId = String(
+    packageItem?.id ??
+      packageItem?.packageId ??
+      "",
+  );
+
+  if (isBundleBillingPackage(packageItem)) {
+    return `bundle:${packageId || "prewedding-wedding-bundle"}`;
+  }
+
+  return `package:${packageId}`;
+}
+
 function getPackagePriceLabel(packageItem) {
   const numericPrice =
     Number(packageItem?.price);
@@ -540,16 +579,16 @@ export default function BookingStatus({
       event: packageEvent,
     }));
   });
-  const seenPackageIds = new Set();
+  const seenPackageKeys = new Set();
   const packageTotals = packageEvents.map(({ packageItem, event: packageEvent }) => {
     const eventLocation = typeof packageEvent.location === "object"
       ? packageEvent.location
       : { venueName: packageEvent.location || "" };
-    const packageId = String(packageItem.id ?? "");
-    const packagePrice = seenPackageIds.has(packageId)
+    const packageKey = getBillingPackageKey(packageItem);
+    const packagePrice = seenPackageKeys.has(packageKey)
       ? 0
       : Math.max(Number(packageItem.price) || 0, 0);
-    seenPackageIds.add(packageId);
+    seenPackageKeys.add(packageKey);
     const travelCharge = getTravelCharge(eventLocation);
 
     return {

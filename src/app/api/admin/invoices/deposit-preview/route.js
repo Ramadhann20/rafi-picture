@@ -57,16 +57,57 @@ function normalizeDueDate(
   return getDefaultJakartaDueDate(3);
 }
 
+function isBundlePackageItem(packageItem) {
+  const packageName = String(
+    packageItem?.name ?? packageItem?.packageName ?? packageItem?.title ?? "",
+  ).toLowerCase();
+  const normalizedPackageName = packageName
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return Boolean(
+    packageItem?.packageCategoryId === "bundle" ||
+      (
+        normalizedPackageName.includes("prewedding") &&
+        normalizedPackageName.includes("wedding") &&
+        (
+          normalizedPackageName.includes("bundle") ||
+          normalizedPackageName.includes("plus") ||
+          normalizedPackageName.includes("+")
+        )
+      ),
+  );
+}
+
+function getBillingPackageItems(booking) {
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+
+  const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
+
+  if (bundlePackage) {
+    return [bundlePackage];
+  }
+
+  return Array.from(
+    new Map(packageItems.map((packageItem, index) => [
+      String(packageItem?.id ?? index),
+      packageItem,
+    ])).values(),
+  );
+}
+
 function getBookingAmounts(
   booking,
 ) {
-  const packageAmount =
-    Math.max(
-      Number(
-        booking?.package?.price,
-      ) || 0,
-      0,
-    );
+  const packageItems = getBillingPackageItems(booking);
+  const packageAmount = packageItems.reduce(
+    (total, packageItem) => total + Math.max(Number(packageItem?.price) || 0, 0),
+    0,
+  );
 
   const travelCharge =
     Math.max(

@@ -143,11 +143,24 @@ function getClientDisplayName(client) {
   return `${fullName} & ${partnerName}`;
 }
 
+function isBundleBillingItem(label = "") {
+  const normalized = String(label).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  return Boolean(
+    normalized.includes("prewedding") &&
+    normalized.includes("wedding") &&
+    (
+      normalized.includes("bundle") ||
+      normalized.includes("plus") ||
+      normalized.includes("+")
+    ),
+  );
+}
+
 function getInvoiceItems(invoice, booking) {
   if (Array.isArray(invoice?.items) && invoice.items.length > 0) {
     const seenItemIds = new Set();
-
-    return invoice.items
+    const itemEntries = invoice.items
       .map((item, index) => ({
         id: item.id ?? `${item.label ?? "item"}-${index}`,
         label: item.label ?? item.name ?? "Layanan",
@@ -158,6 +171,23 @@ function getInvoiceItems(invoice, booking) {
         seenItemIds.add(item.id);
         return true;
       });
+
+    const bundleItems = itemEntries.filter((item) => isBundleBillingItem(item.label));
+
+    if (bundleItems.length > 1) {
+      const mergedAmount = Math.max(...bundleItems.map((item) => item.amount), 0);
+
+      return [
+        ...itemEntries.filter((item) => !isBundleBillingItem(item.label)),
+        {
+          id: "bundle-service",
+          label: bundleItems[0].label,
+          amount: mergedAmount,
+        },
+      ];
+    }
+
+    return itemEntries;
   }
 
   const packageAmount =

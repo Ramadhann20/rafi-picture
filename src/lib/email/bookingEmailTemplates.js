@@ -75,11 +75,39 @@ function getBookingCode(booking) {
   );
 }
 
+function isBundleBillingPackage(packageItem) {
+  const packageName = String(
+    packageItem?.name ?? packageItem?.packageName ?? packageItem?.title ?? "",
+  ).toLowerCase();
+  const normalizedPackageName = packageName
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return Boolean(
+    packageItem?.packageCategoryId === "bundle" ||
+      (
+        normalizedPackageName.includes("prewedding") &&
+        normalizedPackageName.includes("wedding") &&
+        (
+          normalizedPackageName.includes("bundle") ||
+          normalizedPackageName.includes("plus") ||
+          normalizedPackageName.includes("+")
+        )
+      ),
+  );
+}
+
 function getBookingTotal(booking) {
-  const packagePrice =
-    Number(
-      booking?.package?.price,
-    ) || 0;
+  const packageItems = Array.isArray(booking?.packages) && booking.packages.length
+    ? booking.packages
+    : booking?.package
+      ? [booking.package]
+      : [];
+
+  const bundlePackage = packageItems.find((packageItem) => isBundleBillingPackage(packageItem));
+  const packagePrice = bundlePackage
+    ? Number(bundlePackage.price) || 0
+    : packageItems.reduce((total, packageItem) => total + (Number(packageItem?.price) || 0), 0);
 
   const travelCharge =
     Number(
