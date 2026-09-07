@@ -288,10 +288,22 @@ export default function BookConfirm({
     submitStatus === "success";
 
   return (
-    <div>
-      <header className="mb-9">
-        <p className="font-label-sm text-[10px] uppercase tracking-[0.24em] text-secondary">
-          {translate("confirmation")}
+    const getPackageEventEntries = (packageItem, index) => {
+      const entries = (formData?.events ?? [])
+        .filter((eventItem) => eventItem.packageId === packageItem.id)
+        .map((eventItem) => ({
+          ...eventItem.data,
+          packageId: eventItem.packageId,
+          sessionId: eventItem.sessionId,
+          sessionName: eventItem.sessionName,
+        }));
+
+      return entries.length
+        ? entries
+        : index === 0
+          ? [{ ...(formData?.event ?? {}), packageId: packageItem.id }]
+          : [];
+    };
         </p>
 
         <h2 className="mt-1 font-headline-md text-headline-md text-on-surface">

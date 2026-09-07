@@ -113,13 +113,16 @@ function getBookingPackageEntries(booking) {
       ? [booking.package]
       : [];
 
-  return packages.map((packageItem, index) => ({
-    packageItem,
-    event:
-      booking?.events?.find(
-        (eventItem) => eventItem.packageId === packageItem.id,
-      ) ?? (index === 0 ? booking?.event ?? {} : {}),
-  }));
+  return packages.flatMap((packageItem, index) => {
+    const packageEvents = Array.isArray(booking?.events)
+      ? booking.events.filter((eventItem) => eventItem.packageId === packageItem.id)
+      : [];
+    const events = packageEvents.length
+      ? packageEvents
+      : [index === 0 ? booking?.event ?? {} : {}];
+
+    return events.map((event) => ({ packageItem, event }));
+  });
 }
 
 function getScheduleDate(
@@ -250,7 +253,7 @@ function mapPendingBookings(
 
       return {
         id:
-          `booking-${booking.id}-${packageItem.id}`,
+          `booking-${booking.id}-${packageItem.id}-${event?.sessionId ?? "main"}`,
         source:
           "booking",
         date:

@@ -528,14 +528,23 @@ export default function BookingStatus({
   const packageEvents = displayPackages.map((packageItem, index) => ({
     packageItem,
     event: booking.events?.find(
+      (eventItem) =>
+        eventItem.packageId === packageItem.id &&
+        (!packageItem.serviceId || eventItem.sessionId === packageItem.serviceId),
+    ) ?? booking.events?.filter(
       (eventItem) => eventItem.packageId === packageItem.id,
-    ) ?? (index === 0 ? event : {}),
+    )[index] ?? (index === 0 ? event : {}),
   }));
+  const seenPackageIds = new Set();
   const packageTotals = packageEvents.map(({ packageItem, event: packageEvent }) => {
     const eventLocation = typeof packageEvent.location === "object"
       ? packageEvent.location
       : { venueName: packageEvent.location || "" };
-    const packagePrice = Math.max(Number(packageItem.price) || 0, 0);
+    const packageId = String(packageItem.id ?? "");
+    const packagePrice = seenPackageIds.has(packageId)
+      ? 0
+      : Math.max(Number(packageItem.price) || 0, 0);
+    seenPackageIds.add(packageId);
     const travelCharge = getTravelCharge(eventLocation);
 
     return {

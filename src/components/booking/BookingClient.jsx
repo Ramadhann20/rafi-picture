@@ -342,7 +342,15 @@ export default function BookingClient({ packageId = null }) {
 
     return {
       ...latestBooking,
-      packages: inquiryBookings.map((booking) => booking.package).filter(Boolean),
+      packages: inquiryBookings
+        .map((booking) => booking.package
+          ? {
+              ...booking.package,
+              serviceId: booking.event?.sessionId ?? null,
+              serviceName: booking.event?.sessionName ?? null,
+            }
+          : null)
+        .filter(Boolean),
       events: inquiryBookings.map((booking) => ({
         ...(booking.event ?? {}),
         packageId: booking.package?.id ?? null,
@@ -643,7 +651,14 @@ export default function BookingClient({ packageId = null }) {
       instagram: formData.personal.instagram?.trim() || null,
     };
 
-    const primaryEvent = eventRecords[0];
+    const primaryEvent = eventRecords[0] ?? {
+      preferredDate: null,
+      startTime: null,
+      endTime: null,
+      endTimeDayOffset: 0,
+      location: normalizeEventLocation(null),
+      vision: null,
+    };
 
     return {
       client: {
@@ -688,13 +703,27 @@ export default function BookingClient({ packageId = null }) {
     const packages = bookingPayload.packages?.length
       ? bookingPayload.packages
       : [bookingPayload.package];
+    const totalBookingCount = packages.reduce((total, packageItem) => {
+      const eventCount = bookingPayload.events?.filter(
+        (eventItem) => eventItem.packageId === packageItem.id,
+      ).length;
 
-    return packages.map((packageItem, index) => {
+      return total + (eventCount || 1);
+    }, 0);
+    let payloadIndex = 0;
+
+    return packages.flatMap((packageItem, index) => {
       const packageId = packageItem.id;
-      const packageEvent =
-        bookingPayload.events?.find(
-          (eventItem) => eventItem.packageId === packageId,
-        ) ?? bookingPayload.event;
+      const packageEvents = bookingPayload.events?.filter(
+        (eventItem) => eventItem.packageId === packageId,
+      );
+      const events = packageEvents?.length
+        ? packageEvents
+        : [bookingPayload.event];
+
+      return events.map((packageEvent, eventIndex) => {
+      const currentPayloadIndex = payloadIndex;
+      payloadIndex += 1;
       const packagePersonal =
         bookingPayload.personalDetails?.find(
           (entry) => entry.packageId === packageId,
@@ -712,14 +741,16 @@ export default function BookingClient({ packageId = null }) {
       return {
         ...bookingPayload,
         inquiryId,
-        inquiryBookingCount: packages.length,
-        inquiryIndex: index + 1,
-        bookingCode: `${bookingCode}-${index + 1}`,
+        inquiryBookingCount: totalBookingCount,
+        inquiryIndex: currentPayloadIndex + 1,
+        bookingCode: `${bookingCode}-${currentPayloadIndex + 1}`,
         client,
         package: packageItem,
         packages: [packageItem],
         event: packageEvent,
         events: [packageEvent],
+        serviceId: packageEvent.sessionId ?? null,
+        serviceName: packageEvent.sessionName ?? null,
         personalDetails: packagePersonal
           ? [{ ...packagePersonal }]
           : [],
@@ -805,6 +836,7 @@ export default function BookingClient({ packageId = null }) {
           (packageBooking) => packageBooking.personalDetails ?? [],
         ),
         submittedAt: currentTime,
+      });
         updatedAt: currentTime,
       };
 

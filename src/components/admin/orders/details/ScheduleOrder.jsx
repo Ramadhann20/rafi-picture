@@ -72,17 +72,25 @@ function getBookingPackageEntries(booking, packageCatalog = []) {
       ? [booking.package]
       : [];
 
-  return packages.map((packageItem, index) => ({
-    key: String(packageItem.id ?? `package-${index}`),
-    packageItem: {
+  return packages.flatMap((packageItem, index) => {
+    const mergedPackage = {
       ...packageItem,
       ...(packageCatalog.find((catalogItem) => catalogItem.id === packageItem.id) ?? {}),
-    },
-    event:
-      booking?.events?.find(
-        (eventItem) => eventItem.packageId === packageItem.id,
-      ) ?? booking?.event ?? {},
-  }));
+    };
+    const packageEvents = Array.isArray(booking?.events)
+      ? booking.events.filter((eventItem) => eventItem.packageId === packageItem.id)
+      : [];
+    const events = packageEvents.length
+      ? packageEvents
+      : [index === 0 ? booking?.event ?? {} : {}];
+
+    return events.map((event, eventIndex) => ({
+      key: `${String(packageItem.id ?? `package-${index}`)}:${event?.sessionId ?? `service-${eventIndex + 1}`}`,
+      packageId: String(packageItem.id ?? `package-${index}`),
+      packageItem: mergedPackage,
+      event,
+    }));
+  });
 }
 
 function getConfiguredCrewCount(packageItem, event = null) {
@@ -212,7 +220,7 @@ function getCrewAssignmentEntries(booking, packageEntries) {
 
       return {
         key: `${entry.key}:${serviceId}`,
-        packageKey: entry.key,
+        packageKey: entry.packageId ?? entry.key,
         packageItem: entry.packageItem,
         event,
         serviceId,
