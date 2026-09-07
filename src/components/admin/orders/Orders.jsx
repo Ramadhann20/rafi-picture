@@ -1125,6 +1125,25 @@ const handleAdvancedFilter = () => {
       throw new Error("Freelance tidak dapat ditambahkan ke booking yang sudah selesai atau dibatalkan.");
     }
 
+    const normalizedEmail = String(crew?.email ?? "").trim().toLowerCase();
+    const normalizedName = String(crew?.name ?? "").trim().toLowerCase();
+    const normalizedPhone = String(crew?.phone ?? "").replace(/\D/g, "");
+    const duplicateCrew = crewMembers.find((member) => {
+      const memberEmail = String(member.email ?? "").trim().toLowerCase();
+      const memberName = String(member.name ?? "").trim().toLowerCase();
+      const memberPhone = String(member.phone ?? "").replace(/\D/g, "");
+
+      return (
+        (normalizedEmail && memberEmail === normalizedEmail) ||
+        (normalizedName && normalizedPhone &&
+          memberName === normalizedName && memberPhone === normalizedPhone)
+      );
+    });
+
+    if (duplicateCrew) {
+      throw new Error("Crew dengan email atau kombinasi nama dan nomor telepon tersebut sudah terdaftar.");
+    }
+
     const crewPayload = {
       ...crew,
       crewType: "freelance",

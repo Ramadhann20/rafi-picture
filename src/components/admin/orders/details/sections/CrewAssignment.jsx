@@ -420,6 +420,10 @@ export default function CrewAssignment({
       .filter((crew) => {
         const isSelected = selectedCrewIds.includes(crew.id);
 
+        if (crew.archived === true && !isSelected) {
+          return false;
+        }
+
         /*
          * Booking non-pending hanya menampilkan
          * kru yang tersimpan di assignment.
@@ -511,6 +515,11 @@ export default function CrewAssignment({
     }
 
     if (!allowUnlimitedSelection && selectedCrewIds.length >= requiredCrewCount) {
+      if (requiredCrewCount === 1) {
+        onSelectedCrewIdsChange?.([crew.id]);
+        return;
+      }
+
       setActionError(`Exactly ${requiredCrewCount} crew members are required.`);
       return;
     }

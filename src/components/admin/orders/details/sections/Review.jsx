@@ -82,6 +82,15 @@ function getLocationLabel(location) {
 }
 
 function getTravelCharge(booking) {
+  const accommodationRequest = Math.max(
+    Number(booking?.event?.location?.accommodationRequest) || 0,
+    0,
+  );
+
+  if (accommodationRequest > 0) {
+    return accommodationRequest;
+  }
+
   return Math.max(
     Number(
       booking?.event?.location?.distanceCharge?.amount,

@@ -1,5 +1,6 @@
 import {
   MdAccessTime,
+  MdApps,
   MdAttachFile,
   MdAdd,
   MdAdminPanelSettings,
@@ -61,8 +62,6 @@ import {
   FaWhatsapp,
   FaInstagram,
 } from "react-icons/fa6";
-
-import { AiFillAppstore } from 'react-icons/ai'
 
 import { TbSocial } from "react-icons/tb";
 
@@ -126,7 +125,7 @@ const iconRegistry = {
   visibility: MdVisibility,
   visibility_off: MdVisibilityOff,
   zoom_in: MdZoomIn,
-  appstore: AiFillAppstore,
+  appstore: MdApps,
 
   whatsapp: FaWhatsapp,
   instagram: FaInstagram,

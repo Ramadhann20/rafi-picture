@@ -246,17 +246,24 @@ export default function EventInfo({
     Number(
       distanceCharge?.amount,
     ) || 0;
+  const accommodationAmount = Math.max(
+    Number(eventLocation.accommodationRequest) || 0,
+    0,
+  );
+  const accommodationCostAmount = accommodationAmount > 0
+    ? accommodationAmount
+    : distanceChargeAmount;
 
   const distanceChargeLabel =
     distanceLabel
-      ? distanceChargeAmount > 0
+      ? accommodationCostAmount > 0
         ? `+${formatCurrency(
-            distanceChargeAmount,
+            accommodationCostAmount,
             distanceCharge?.currency ||
               "IDR",
           )}`
-        : "Tanpa biaya tambahan"
-      : "-";
+        : formatCurrency(0, "IDR")
+      : formatCurrency(accommodationAmount, "IDR");
 
   useEffect(() => {
     const nextDate =

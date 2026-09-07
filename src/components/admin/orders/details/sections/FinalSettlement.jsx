@@ -216,7 +216,12 @@ function getBookingAmounts(booking) {
       : [];
   const travelCharge = eventItems.reduce(
     (total, eventItem) =>
-      total + Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0),
+      total + Math.max(
+        Number(eventItem?.location?.accommodationRequest) ||
+          Number(eventItem?.location?.distanceCharge?.amount) ||
+          0,
+        0,
+      ),
     0,
   );
 

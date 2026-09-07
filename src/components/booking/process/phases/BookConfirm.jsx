@@ -294,6 +294,28 @@ export default function BookConfirm({
         : [];
   };
 
+  const packageAmount = Array.from(
+    new Map(
+      displayPackages.map((packageItem) => [packageItem.id, packageItem]),
+    ).values(),
+  ).reduce((total, packageItem) => total + (Number(packageItem.price) || 0), 0);
+
+  const accommodationAmount = displayPackages.flatMap((packageItem, index) =>
+    getPackageEventEntries(packageItem, index),
+  ).reduce((total, eventData) => {
+    const eventLocation = normalizeEventLocation(eventData.location);
+    const requestAmount = Math.max(
+      Number(eventLocation.accommodationRequest) || 0,
+      0,
+    );
+
+    return total + (requestAmount > 0
+      ? requestAmount
+      : Math.max(Number(eventLocation.distanceCharge?.amount) || 0, 0));
+  }, 0);
+
+  const estimatedTotal = packageAmount + accommodationAmount;
+
   const isSubmitting =
     submitStatus === "loading";
   const isSuccess =
@@ -466,6 +488,29 @@ export default function BookConfirm({
             );
             }),
           )}
+        </div>
+      </section>
+
+      <section className="border-b border-outline-variant/35 py-7">
+        <SectionHeading
+          icon="payments"
+          title={translate("estimatedBookingTotal")}
+          description={translate("costSummaryDescription")}
+        />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <DetailRow
+            label={translate("packagePrice")}
+            value={formatRupiah(packageAmount)}
+          />
+          <DetailRow
+            label={translate("accommodationCost")}
+            value={formatRupiah(accommodationAmount)}
+          />
+          <DetailRow
+            label={translate("totalCost")}
+            value={formatRupiah(estimatedTotal)}
+          />
         </div>
       </section>
 

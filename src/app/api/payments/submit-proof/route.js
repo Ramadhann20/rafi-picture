@@ -333,14 +333,17 @@ export async function POST(
     const booking =
       bookingSnapshot.data();
 
-    const inquiryBookingRefs = booking?.inquiryId
-      ? (
-          await adminDb
-            .collection("Bookings")
-            .where("inquiryId", "==", booking.inquiryId)
-            .get()
-        ).docs.map((document) => document.ref)
-      : [bookingSnapshot.ref];
+    const inquiryBookingSnapshot = booking?.inquiryId
+      ? await adminDb
+          .collection("Bookings")
+          .where("inquiryId", "==", booking.inquiryId)
+          .get()
+      : null;
+    const inquiryBookingDocs = inquiryBookingSnapshot?.docs ?? [bookingSnapshot];
+    const inquiryBookingRefs = inquiryBookingDocs.map((document) => document.ref);
+    const inquiryBookingStatuses = inquiryBookingDocs.map((document) =>
+      normalizeBookingStatus(document.data()?.status),
+    );
 
     const invoice =
       invoiceSnapshot.data();
@@ -367,11 +370,9 @@ export async function POST(
 
     const allowedBookingStatus =
       invoiceType === "deposit"
-        ? bookingStatus ===
-          "approved"
+        ? bookingStatus === "approved" || inquiryBookingStatuses.includes("approved")
         : invoiceType === "final"
-          ? bookingStatus ===
-            "in_progress"
+          ? bookingStatus === "in_progress" || inquiryBookingStatuses.includes("in_progress")
           : false;
 
     if (

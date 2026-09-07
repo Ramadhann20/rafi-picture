@@ -59,6 +59,20 @@ function normalizeBookingStatus(status) {
   return normalizedStatus;
 }
 
+function getInquiryStatus(bookings = []) {
+  const statuses = bookings.map((booking) =>
+    normalizeBookingStatus(booking?.status),
+  );
+
+  if (statuses.includes("in_progress")) return "in_progress";
+  if (statuses.includes("confirmed")) return "confirmed";
+  if (statuses.includes("approved")) return "approved";
+  if (statuses.includes("completed")) return "completed";
+  if (statuses.includes("cancelled")) return "cancelled";
+
+  return statuses[0] ?? "pending";
+}
+
 function normalizePaymentStatus(status) {
   return String(
     status ?? "pending_verification",
@@ -349,6 +363,7 @@ export default function BookingClient({ packageId = null }) {
     return {
       ...latestBooking,
       id: canonicalBooking.id,
+      status: getInquiryStatus(orderedInquiryBookings),
       packages: Array.from(
         new Map(
           orderedInquiryBookings
@@ -389,7 +404,7 @@ export default function BookingClient({ packageId = null }) {
         [bookingId, ...inquiryBookingIds].filter(Boolean),
       ),
     );
-  }, [bookingId, bookingRecord?.inquiryBookingIds]);
+  }, [bookingId, bookingRecord]);
 
   const normalizedBookingStatus =
     normalizeBookingStatus(
@@ -951,10 +966,7 @@ export default function BookingClient({ packageId = null }) {
       );
     }
 
-    if (
-      submittedBookingId !==
-      bookingRecord.id
-    ) {
+    if (!financialBookingIds.includes(submittedBookingId)) {
       throw new Error(
         translate("paymentBookingMismatch"),
       );
@@ -978,10 +990,8 @@ export default function BookingClient({ packageId = null }) {
 
     const statusAllowed =
       invoiceType === "final"
-        ? normalizedBookingStatus ===
-          "in_progress"
-        : normalizedBookingStatus ===
-          "approved";
+        ? normalizedBookingStatus === "in_progress"
+        : normalizedBookingStatus === "approved";
 
     if (!statusAllowed) {
       throw new Error(
@@ -1045,7 +1055,7 @@ export default function BookingClient({ packageId = null }) {
 
     payload.append(
       "bookingId",
-      bookingRecord.id,
+      submittedBookingId,
     );
 
     payload.append(

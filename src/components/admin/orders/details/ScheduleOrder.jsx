@@ -1108,17 +1108,17 @@ export default function ScheduleOrder({
         result?.email?.sent === false
       ) {
         setFinalizationNotice(
-          "Booking berhasil di-approve dan invoice sudah tersimpan, tetapi email belum terkirim. Kamu masih bisa mengirim ulang email dari booking ini.",
+          translate("orderApprovedEmailFailed"),
         );
       } else if (result) {
         setFinalizationNotice(
-          "Booking berhasil di-approve. Invoice PDF tersimpan dan email notifikasi telah dikirim ke client.",
+          translate("orderApprovedEmailSent"),
         );
       }
     } catch (error) {
       console.error("FINAL CONFIRMATION ERROR:", error);
 
-      setActionError(error?.message || "Final confirmation failed.");
+      setActionError(error?.message || translate("finalConfirmationFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -1304,7 +1304,7 @@ export default function ScheduleOrder({
                   ? translate("crewConfirmedBillingUnlocked")
                   : hasCrewAssignment
                     ? translate("confirmProductionTeam")
-                      : "Lengkapi seluruh slot kru pada setiap bagian layanan sebelum melanjutkan."
+                      : translate("completeCrewSlots")
               }
               disabled={!activePreparation.crewCompleted && !hasCrewAssignment}
               onClick={handleToggleCrew}

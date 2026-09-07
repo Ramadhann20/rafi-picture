@@ -428,6 +428,8 @@ export default function Payments() {
     setReviewNotice,
   ] = useState(null);
 
+  const [rejectionNote, setRejectionNote] = useState("");
+
   /* =========================================================
      FIRESTORE DATA
   ========================================================= */
@@ -865,6 +867,7 @@ export default function Payments() {
                 paymentId:
                   selectedPayment.id,
                 action,
+                note: action === "reject" ? rejectionNote.trim() : "",
               }),
           },
         );
@@ -936,6 +939,11 @@ export default function Payments() {
         !selectedPayment ||
         !selectedBooking
       ) {
+        return;
+      }
+
+      if (!rejectionNote.trim()) {
+        setActionError("Catatan penolakan wajib diisi.");
         return;
       }
 
@@ -1694,6 +1702,26 @@ export default function Payments() {
                               ? "Rejecting..."
                               : "Tolak Pembayaran"}
                           </button>
+
+                          <label
+                            htmlFor="payment-rejection-note"
+                            className="block font-label-sm text-label-sm text-on-surface-variant"
+                          >
+                            Catatan Penolakan
+                          </label>
+
+                          <textarea
+                            id="payment-rejection-note"
+                            value={rejectionNote}
+                            onChange={(event) => {
+                              setRejectionNote(event.target.value);
+                              setActionError(null);
+                            }}
+                            disabled={processingAction !== null}
+                            rows={3}
+                            placeholder="Tuliskan alasan penolakan pembayaran..."
+                            className="w-full resize-y rounded-lg border border-outline-variant bg-transparent px-4 py-3 font-body-sm text-body-sm text-on-surface outline-none transition focus:border-error focus:ring-2 focus:ring-error/10 disabled:cursor-not-allowed disabled:opacity-60"
+                          />
                         </div>
                       )}
 
@@ -1718,17 +1746,30 @@ export default function Payments() {
 
                       {selectedPaymentStatus ===
                         "rejected" && (
-                        <ReviewResult
-                          icon="cancel"
-                          title="Payment rejected"
-                          description={
-                            selectedInvoice?.type ===
-                            "final"
-                              ? "Invoice pelunasan kembali issued dan client dapat upload bukti pelunasan baru."
-                              : "Booking kembali menunggu DP dan client dapat upload bukti DP baru."
-                          }
-                          error
-                        />
+                        <div className="space-y-3">
+                          <ReviewResult
+                            icon="cancel"
+                            title="Payment rejected"
+                            description={
+                              selectedInvoice?.type ===
+                              "final"
+                                ? "Invoice pelunasan kembali issued dan client dapat upload bukti pelunasan baru."
+                                : "Booking kembali menunggu DP dan client dapat upload bukti DP baru."
+                            }
+                            error
+                          />
+
+                          {selectedPayment.rejectionNote && (
+                            <div className="rounded-xl border border-error/20 bg-error-container/30 p-4">
+                              <p className="font-label-sm text-label-sm text-error">
+                                Catatan Penolakan
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap font-body-sm text-body-sm text-on-surface">
+                                {selectedPayment.rejectionNote}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </>

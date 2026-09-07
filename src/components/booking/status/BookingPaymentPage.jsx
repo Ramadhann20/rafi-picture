@@ -500,7 +500,7 @@ export default function BookingPaymentPage({
 
     try {
       await onSubmitPayment({
-        bookingId: booking.id,
+        bookingId: invoice.bookingId ?? booking.id,
         invoiceId: invoice.id,
         amount: invoiceAmount,
         currency,

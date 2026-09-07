@@ -107,10 +107,6 @@ function getAssignmentStatus(assignment) {
   return String(assignment?.status ?? "draft").toLowerCase();
 }
 
-function isTemporaryCrew(member) {
-  return member?.temporary === true || member?.crewType === "freelance";
-}
-
 export default function CrewManagement() {
   const db = useDb();
   const { translate } = useLanguage();
@@ -189,8 +185,8 @@ export default function CrewManagement() {
     [crewMembers, assignedCrewIds],
   );
 
-  const studioCrew = useMemo(
-    () => allNormalizedCrew.filter((member) => !isTemporaryCrew(member)),
+  const managedCrew = useMemo(
+    () => allNormalizedCrew.filter((member) => member.archived !== true),
     [allNormalizedCrew],
   );
 
@@ -207,10 +203,10 @@ export default function CrewManagement() {
 
   const crewStats = useMemo(() => {
     const countByStatus = (status) =>
-      studioCrew.filter((member) => member.status === status).length;
+      managedCrew.filter((member) => member.status === status).length;
 
     return [
-      { id: "total", label: translate("totalCrew"), value: studioCrew.length, cardClass: "" },
+      { id: "total", label: translate("totalCrew"), value: managedCrew.length, cardClass: "" },
       {
         id: "available",
         label: translate("available"),
@@ -230,11 +226,31 @@ export default function CrewManagement() {
         cardClass: "border-l-4 border-l-outline",
       },
     ];
-  }, [studioCrew, upcomingAssignments, translate]);
+  }, [managedCrew, upcomingAssignments, translate]);
 
   async function saveStudioCrew(member, payload) {
     const { isFreelance: isFreelanceFlag, ...crewData } = payload ?? {};
     const isFreelance = Boolean(isFreelanceFlag);
+    const normalizedEmail = String(crewData.email ?? "").trim().toLowerCase();
+    const normalizedName = String(crewData.name ?? "").trim().toLowerCase();
+    const normalizedPhone = String(crewData.phone ?? "").replace(/\D/g, "");
+    const duplicate = crewMembers.find((existingMember) => {
+      if (existingMember.id === member?.id) return false;
+
+      const existingEmail = String(existingMember.email ?? "").trim().toLowerCase();
+      const existingName = String(existingMember.name ?? "").trim().toLowerCase();
+      const existingPhone = String(existingMember.phone ?? "").replace(/\D/g, "");
+
+      return (
+        (normalizedEmail && existingEmail === normalizedEmail) ||
+        (normalizedName && normalizedPhone &&
+          existingName === normalizedName && existingPhone === normalizedPhone)
+      );
+    });
+
+    if (duplicate) {
+      throw new Error("Crew dengan email atau kombinasi nama dan nomor telepon tersebut sudah terdaftar.");
+    }
 
     if (member?.id) {
       await db.updateDoc("Crews", member.id, {
@@ -268,36 +284,12 @@ export default function CrewManagement() {
 
     if (!confirmed) return;
 
-    const relatedAssignments = assignments.filter((assignment) => {
-      const crewIds = Array.isArray(assignment?.crewIds)
-        ? assignment.crewIds
-        : [];
-      const temporaryCrewIds = Array.isArray(assignment?.temporaryCrewIds)
-        ? assignment.temporaryCrewIds
-        : [];
-
-      return crewIds.includes(member.id) || temporaryCrewIds.includes(member.id);
+    await db.updateDoc("Crews", member.id, {
+      employmentStatus: "inactive",
+      archived: true,
+      archivedAt: db.serverTimestamp(),
+      updatedAt: db.serverTimestamp(),
     });
-
-    await Promise.all(
-      relatedAssignments.map(async (assignment) => {
-        const nextCrewIds = (Array.isArray(assignment?.crewIds)
-          ? assignment.crewIds
-          : []).filter((crewId) => crewId !== member.id);
-
-        const nextTemporaryCrewIds = (Array.isArray(assignment?.temporaryCrewIds)
-          ? assignment.temporaryCrewIds
-          : []).filter((crewId) => crewId !== member.id);
-
-        await db.updateDoc("CrewAssignments", assignment.id, {
-          crewIds: nextCrewIds,
-          temporaryCrewIds: nextTemporaryCrewIds,
-          updatedAt: db.serverTimestamp(),
-        });
-      }),
-    );
-
-    await db.deleteDoc("Crews", member.id);
   }
 
   function openCreateCrew() {
@@ -411,7 +403,7 @@ export default function CrewManagement() {
             id="crew-table-title"
             className="font-headline-md text-headline-md text-on-surface"
           >
-            {translate("studioCrew")}
+            {translate("managedCrew")}
           </h2>
           <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
             {translate("studioCrewDescription")}
@@ -432,7 +424,7 @@ export default function CrewManagement() {
               </thead>
 
               <tbody className="divide-y divide-outline-variant/10">
-                {studioCrew.map((member) => {
+                {managedCrew.map((member) => {
                   const statusConfig =
                     CREW_STATUS[member.status] || CREW_STATUS.unavailable;
 
@@ -524,13 +516,13 @@ export default function CrewManagement() {
                   );
                 })}
 
-                {studioCrew.length === 0 && (
+                {managedCrew.length === 0 && (
                   <tr>
                     <td
                       colSpan={5}
                       className="px-6 py-12 text-center font-body-md text-body-md text-on-surface-variant"
                     >
-                      Belum ada data studio crew di collection Crews.
+                      Belum ada data crew di collection Crews.
                     </td>
                   </tr>
                 )}

@@ -237,7 +237,12 @@ function getBookingAmounts(booking) {
   );
   const travelCharge = eventItems.reduce(
     (total, eventItem) =>
-      total + Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0),
+      total + Math.max(
+        Number(eventItem?.location?.accommodationRequest) ||
+          Number(eventItem?.location?.distanceCharge?.amount) ||
+          0,
+        0,
+      ),
     0,
   );
 
@@ -268,7 +273,12 @@ function createInvoiceItems(booking) {
   }));
 
   eventItems.forEach((eventItem, index) => {
-    const amount = Math.max(Number(eventItem?.location?.distanceCharge?.amount) || 0, 0);
+    const amount = Math.max(
+      Number(eventItem?.location?.accommodationRequest) ||
+        Number(eventItem?.location?.distanceCharge?.amount) ||
+        0,
+      0,
+    );
     if (amount > 0) {
       items.push({
         id: `travel-charge-${index}`,
@@ -1117,7 +1127,7 @@ function InvoiceReadOnlyCard({
         />
 
         <InfoItem
-          label="Booking Total"
+          label={translate("bookingTotal")}
           value={formatCurrency(
             invoice.bookingTotal ??
               invoice.packageTotal,

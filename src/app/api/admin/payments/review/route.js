@@ -471,6 +471,8 @@ export async function POST(
         .trim()
         .toLowerCase();
 
+      const reviewNote = String(payload?.note ?? "").trim();
+
     if (!paymentId) {
       return jsonError(
         "Payment ID is required.",
@@ -487,6 +489,13 @@ export async function POST(
     ) {
       return jsonError(
         "Payment action is not valid.",
+      );
+    }
+
+    if (action === "reject" && !reviewNote) {
+      return jsonError(
+        "Catatan penolakan wajib diisi.",
+        400,
       );
     }
 
@@ -730,6 +739,9 @@ export async function POST(
 
           rejectedAt:
             timestamp,
+
+          rejectionNote:
+            reviewNote,
 
           reviewedAt:
             timestamp,
