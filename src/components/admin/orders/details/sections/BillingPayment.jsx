@@ -455,7 +455,7 @@ export default function BillingPayment({
 
       <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
-          label="Package"
+          label={translate("package")}
           value={formatCurrency(
             packageAmount,
             currency,
@@ -463,7 +463,7 @@ export default function BillingPayment({
         />
 
         <SummaryCard
-          label="Travel Charge"
+          label={translate("travelCharge")}
           value={formatCurrency(
             travelCharge,
             currency,
@@ -471,7 +471,7 @@ export default function BillingPayment({
         />
 
         <SummaryCard
-          label="Booking Total"
+          label={translate("bookingTotal")}
           value={formatCurrency(
             bookingTotal,
             currency,
@@ -653,6 +653,12 @@ function BillingPreparation({
       );
     };
 
+  const billingStatusMessage = readOnly
+    ? pdfPreview
+      ? translate("billingConfirmedReviewPdf")
+      : translate("billingBeingPrepared")
+    : translate("localChangesInvalidatePdf");
+
   return (
     <section aria-labelledby="billing-payment-title">
       <SectionHeader
@@ -662,7 +668,7 @@ function BillingPreparation({
 
       <div className="mb-gutter grid grid-cols-1 gap-stack-sm sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          label="Package"
+          label={translate("package")}
           value={formatCurrency(
             packageAmount,
             currency,
@@ -670,7 +676,7 @@ function BillingPreparation({
         />
 
         <SummaryCard
-          label="Travel Charge"
+          label={translate("travelCharge")}
           value={formatCurrency(
             travelCharge,
             currency,
@@ -678,7 +684,7 @@ function BillingPreparation({
         />
 
         <SummaryCard
-          label="Booking Total"
+          label={translate("bookingTotal")}
           value={formatCurrency(
             bookingTotal,
             currency,
@@ -687,7 +693,7 @@ function BillingPreparation({
         />
 
         <SummaryCard
-          label="Suggested DP · 30%"
+          label={translate("suggestedDeposit")}
           value={formatCurrency(
             suggestedDeposit,
             currency,
@@ -706,7 +712,7 @@ function BillingPreparation({
           </div>
 
           <h3 className="mt-5 font-headline-md text-headline-md text-primary">
-            No deposit invoice draft
+            {translate("noDepositInvoiceDraft")}
           </h3>
 
           <p className="mt-2 max-w-md font-body-md text-body-md text-on-surface-variant">
@@ -733,20 +739,20 @@ function BillingPreparation({
           <div className="flex flex-col gap-4 border-b border-outline-variant/30 pb-6 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                Local Draft
+                {translate("localDraft")}
               </p>
 
               <h3 className="mt-2 font-headline-md text-headline-md text-primary">
-                Deposit Invoice
+                {translate("depositInvoice")}
               </h3>
 
               <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                Suggested DP is 30% of the full booking total, including travel charge.
+                {translate("depositDraftDescription")}
               </p>
             </div>
 
             <span className="inline-flex w-fit rounded-full bg-surface-container-high px-3 py-1.5 font-label-sm text-label-sm text-on-surface-variant">
-              Draft
+              {translate("draft")}
             </span>
           </div>
 
@@ -756,7 +762,7 @@ function BillingPreparation({
                 htmlFor="deposit-amount"
                 className="font-label-sm text-label-sm text-on-surface-variant"
               >
-                Deposit Amount
+                {translate("depositAmount")}
               </label>
 
               <input
@@ -794,7 +800,7 @@ function BillingPreparation({
                 htmlFor="deposit-due-date"
                 className="font-label-sm text-label-sm text-on-surface-variant"
               >
-                Due Date
+                {translate("dueDate")}
               </label>
 
               <input
@@ -820,7 +826,7 @@ function BillingPreparation({
                 htmlFor="deposit-note"
                 className="font-label-sm text-label-sm text-on-surface-variant"
               >
-                Invoice Note
+                {translate("invoiceNote")}
               </label>
 
               <textarea
@@ -844,11 +850,7 @@ function BillingPreparation({
 
           <div className="mt-6 flex flex-col gap-3 border-t border-outline-variant/30 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-label-sm text-label-sm text-on-surface-variant">
-              {readOnly
-                ? pdfPreview
-                  ? "Billing confirmed. Review the generated PDF before Finalize & Approve."
-                  : "Billing is being prepared."
-                : "Changes remain local. Editing this draft invalidates the previous PDF preview."}
+              {billingStatusMessage}
             </p>
 
             {!readOnly && (
@@ -863,7 +865,7 @@ function BillingPreparation({
                   name="delete"
                   size={17}
                 />
-                Remove Draft
+                {translate("removeDraft")}
               </button>
             )}
           </div>
@@ -883,21 +885,21 @@ function BillingPreparation({
 
               <div className="min-w-0">
                 <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                  Generated Document
+                  {translate("generatedDocument")}
                 </p>
 
                 <h3 className="mt-1 font-headline-md text-headline-md text-primary">
-                  Invoice DP Preview
+                  {translate("depositInvoicePreview")}
                 </h3>
 
                 {pdfGenerating ? (
                   <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
-                    Generating PDF from the latest billing draft...
+                    {translate("generatingPdfFromDraft")}
                   </p>
                 ) : (
                   <>
                     <p className="mt-1 break-all font-label-md text-label-md text-on-surface">
-                      {pdfPreview?.invoiceNumber ?? "Deposit Invoice"}
+                      {pdfPreview?.invoiceNumber ?? translate("depositInvoice")}
                     </p>
 
                     <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
@@ -922,10 +924,10 @@ function BillingPreparation({
                   size={18}
                 />
                 {pdfReviewOpen
-                  ? "Hide Preview"
+                  ? translate("hidePreview")
                   : pdfReviewed
-                    ? "Review Again"
-                    : "Review PDF"}
+                    ? translate("reviewAgain")
+                    : translate("reviewPdf")}
               </button>
             )}
           </div>
@@ -937,11 +939,11 @@ function BillingPreparation({
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-label-sm text-label-sm uppercase tracking-widest text-secondary">
-                      PDF Review
+                      {translate("pdfReview")}
                     </p>
 
                     <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
-                      Review nominal, due date, client data, dan layout sebelum Finalize & Approve.
+                      {translate("reviewPdfDescription")}
                     </p>
                   </div>
 
@@ -954,7 +956,7 @@ function BillingPreparation({
                       name="download"
                       size={17}
                     />
-                    Download PDF
+                    {translate("downloadPdf")}
                   </a>
                 </div>
 
@@ -963,7 +965,7 @@ function BillingPreparation({
                     data={pdfPreview.url}
                     type="application/pdf"
                     className="h-[70vh] min-h-[620px] w-full"
-                    aria-label="Deposit invoice PDF preview"
+                    aria-label={translate("depositInvoicePdfPreview")}
                   >
                     <div className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
                       <AppIcon
@@ -973,11 +975,11 @@ function BillingPreparation({
                       />
 
                       <p className="mt-4 font-label-md text-label-md text-on-surface">
-                        Browser tidak dapat menampilkan PDF secara inline.
+                        {translate("browserPdfUnavailable")}
                       </p>
 
                       <p className="mt-1 max-w-md font-body-sm text-body-sm text-on-surface-variant">
-                        File PDF tetap valid. Gunakan Download PDF untuk membukanya dengan PDF viewer.
+                        {translate("downloadPdfToOpen")}
                       </p>
                     </div>
                   </object>
@@ -1000,8 +1002,8 @@ function BillingPreparation({
 
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
                   {pdfReviewed
-                    ? "PDF has been opened for review. Finalize & Approve is now available when all preparation requirements are complete."
-                    : "Open this PDF and review the client, amount, due date, and document layout before final approval."}
+                    ? translate("pdfReviewComplete")
+                    : translate("openPdfBeforeApproval")}
                 </p>
               </div>
             </div>
@@ -1016,10 +1018,12 @@ function SectionHeader({
   title,
   description,
 }) {
+  const { translate } = useLanguage();
+
   return (
     <div className="mb-stack-md">
       <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-        Step 03
+        {translate("stepBilling")}
       </p>
 
       <h2

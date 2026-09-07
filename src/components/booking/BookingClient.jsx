@@ -379,6 +379,18 @@ export default function BookingClient({ packageId = null }) {
   const bookingId =
     bookingRecord?.id ?? null;
 
+  const financialBookingIds = useMemo(() => {
+    const inquiryBookingIds = Array.isArray(bookingRecord?.inquiryBookingIds)
+      ? bookingRecord.inquiryBookingIds
+      : [];
+
+    return Array.from(
+      new Set(
+        [bookingId, ...inquiryBookingIds].filter(Boolean),
+      ),
+    );
+  }, [bookingId, bookingRecord?.inquiryBookingIds]);
+
   const normalizedBookingStatus =
     normalizeBookingStatus(
       bookingRecord?.status,
@@ -397,7 +409,7 @@ export default function BookingClient({ packageId = null }) {
    * - receipt setelah lunas
    */
   const shouldLoadFinancials =
-    Boolean(bookingId) &&
+      financialBookingIds.length > 0 &&
     normalizedBookingStatus !==
       "pending";
 
@@ -408,7 +420,7 @@ export default function BookingClient({ packageId = null }) {
   } = useCollection(
     () => {
       if (
-        !bookingId ||
+        !financialBookingIds.length ||
         !shouldLoadFinancials
       ) {
         return null;
@@ -418,13 +430,13 @@ export default function BookingClient({ packageId = null }) {
         db.colRef("Invoices"),
         db.where(
           "bookingId",
-          "==",
-          bookingId,
+          "in",
+          financialBookingIds,
         ),
       );
     },
     [
-      bookingId,
+      financialBookingIds,
       shouldLoadFinancials,
     ],
     {
@@ -440,7 +452,7 @@ export default function BookingClient({ packageId = null }) {
   } = useCollection(
     () => {
       if (
-        !bookingId ||
+        !financialBookingIds.length ||
         !shouldLoadFinancials
       ) {
         return null;
@@ -450,13 +462,13 @@ export default function BookingClient({ packageId = null }) {
         db.colRef("Payments"),
         db.where(
           "bookingId",
-          "==",
-          bookingId,
+          "in",
+          financialBookingIds,
         ),
       );
     },
     [
-      bookingId,
+      financialBookingIds,
       shouldLoadFinancials,
     ],
     {

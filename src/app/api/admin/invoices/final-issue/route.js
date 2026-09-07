@@ -260,6 +260,7 @@ export async function POST(
         bookingSnapshot.id,
       ...bookingSnapshot.data(),
     };
+    let inquiryBookingRefs = [bookingRef];
 
     if (booking.inquiryId) {
       const inquirySnapshot = await adminDb
@@ -267,6 +268,7 @@ export async function POST(
         .where("inquiryId", "==", booking.inquiryId)
         .get();
       const inquiryBookings = inquirySnapshot.docs.map((document) => document.data());
+      inquiryBookingRefs = inquirySnapshot.docs.map((document) => document.ref);
 
       if (inquiryBookings.length > 1) {
         booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
@@ -578,25 +580,17 @@ export async function POST(
       },
     );
 
-    batch.update(
-      bookingRef,
-      {
-        finalInvoiceId:
-          invoiceId,
+    const finalInvoiceIssuedBookingData = {
+      finalInvoiceId: invoiceId,
+      paymentStatus: "final_due",
+      financialStatus: "partially_paid",
+      finalInvoiceIssuedAt: timestamp,
+      updatedAt: timestamp,
+    };
 
-        paymentStatus:
-          "final_due",
-
-        financialStatus:
-          "partially_paid",
-
-        finalInvoiceIssuedAt:
-          timestamp,
-
-        updatedAt:
-          timestamp,
-      },
-    );
+    inquiryBookingRefs.forEach((reference) => {
+      batch.update(reference, finalInvoiceIssuedBookingData);
+    });
 
     try {
       await batch.commit();

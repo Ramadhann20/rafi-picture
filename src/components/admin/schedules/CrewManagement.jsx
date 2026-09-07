@@ -233,20 +233,23 @@ export default function CrewManagement() {
   }, [studioCrew, upcomingAssignments, translate]);
 
   async function saveStudioCrew(member, payload) {
+    const { isFreelance: isFreelanceFlag, ...crewData } = payload ?? {};
+    const isFreelance = Boolean(isFreelanceFlag);
+
     if (member?.id) {
       await db.updateDoc("Crews", member.id, {
-        ...payload,
-        crewType: member.crewType || "studio",
-        temporary: false,
+        ...crewData,
+        crewType: isFreelance ? "freelance" : "studio",
+        temporary: isFreelance,
         updatedAt: db.serverTimestamp(),
       });
       return member.id;
     }
 
     const ref = await db.addDoc("Crews", {
-      ...payload,
-      crewType: "studio",
-      temporary: false,
+      ...crewData,
+      crewType: isFreelance ? "freelance" : "studio",
+      temporary: isFreelance,
       avatarUrl: null,
       userId: null,
       createdAt: db.serverTimestamp(),
@@ -254,6 +257,47 @@ export default function CrewManagement() {
     });
 
     return ref.id;
+  }
+
+  async function handleDeleteCrew(member) {
+    if (!member?.id) return;
+
+    const confirmed = window.confirm(
+      `Hapus crew ${member.name || "ini"}? Data akan dihapus dari database dan assignment terkait akan dibersihkan.`,
+    );
+
+    if (!confirmed) return;
+
+    const relatedAssignments = assignments.filter((assignment) => {
+      const crewIds = Array.isArray(assignment?.crewIds)
+        ? assignment.crewIds
+        : [];
+      const temporaryCrewIds = Array.isArray(assignment?.temporaryCrewIds)
+        ? assignment.temporaryCrewIds
+        : [];
+
+      return crewIds.includes(member.id) || temporaryCrewIds.includes(member.id);
+    });
+
+    await Promise.all(
+      relatedAssignments.map(async (assignment) => {
+        const nextCrewIds = (Array.isArray(assignment?.crewIds)
+          ? assignment.crewIds
+          : []).filter((crewId) => crewId !== member.id);
+
+        const nextTemporaryCrewIds = (Array.isArray(assignment?.temporaryCrewIds)
+          ? assignment.temporaryCrewIds
+          : []).filter((crewId) => crewId !== member.id);
+
+        await db.updateDoc("CrewAssignments", assignment.id, {
+          crewIds: nextCrewIds,
+          temporaryCrewIds: nextTemporaryCrewIds,
+          updatedAt: db.serverTimestamp(),
+        });
+      }),
+    );
+
+    await db.deleteDoc("Crews", member.id);
   }
 
   function openCreateCrew() {
@@ -455,14 +499,26 @@ export default function CrewManagement() {
                       </td>
 
                       <td className="px-6 py-5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openCrewDetails(member)}
-                          aria-label={`Open Crew Details for ${member.name}`}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-primary"
-                        >
-                          <AppIcon name="more_vert" size={21} />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCrew(member)}
+                            aria-label={`Delete Crew ${member.name}`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+                            title="Hapus crew"
+                          >
+                            <AppIcon name="delete" size={18} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openCrewDetails(member)}
+                            aria-label={`Open Crew Details for ${member.name}`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-primary"
+                          >
+                            <AppIcon name="more_vert" size={21} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

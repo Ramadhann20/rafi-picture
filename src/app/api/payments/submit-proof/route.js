@@ -333,6 +333,15 @@ export async function POST(
     const booking =
       bookingSnapshot.data();
 
+    const inquiryBookingRefs = booking?.inquiryId
+      ? (
+          await adminDb
+            .collection("Bookings")
+            .where("inquiryId", "==", booking.inquiryId)
+            .get()
+        ).docs.map((document) => document.ref)
+      : [bookingSnapshot.ref];
+
     const invoice =
       invoiceSnapshot.data();
 
@@ -637,43 +646,25 @@ export async function POST(
       paymentPayload,
     );
 
-    batch.update(
-      bookingSnapshot.ref,
-      invoiceType ===
-        "final"
-        ? {
-            status:
-              "in_progress",
+    const paymentSubmittedBookingData = invoiceType === "final"
+      ? {
+          status: "in_progress",
+          paymentStatus: "final_pending_verification",
+          latestPaymentId: paymentRef.id,
+          finalPaymentProofSubmittedAt: serverTimestamp,
+          updatedAt: serverTimestamp,
+        }
+      : {
+          status: "confirmed",
+          paymentStatus: "deposit_pending_verification",
+          latestPaymentId: paymentRef.id,
+          paymentProofSubmittedAt: serverTimestamp,
+          updatedAt: serverTimestamp,
+        };
 
-            paymentStatus:
-              "final_pending_verification",
-
-            latestPaymentId:
-              paymentRef.id,
-
-            finalPaymentProofSubmittedAt:
-              serverTimestamp,
-
-            updatedAt:
-              serverTimestamp,
-          }
-        : {
-            status:
-              "confirmed",
-
-            paymentStatus:
-              "deposit_pending_verification",
-
-            latestPaymentId:
-              paymentRef.id,
-
-            paymentProofSubmittedAt:
-              serverTimestamp,
-
-            updatedAt:
-              serverTimestamp,
-          },
-    );
+    inquiryBookingRefs.forEach((bookingRef) => {
+      batch.update(bookingRef, paymentSubmittedBookingData);
+    });
 
     try {
       await batch.commit();

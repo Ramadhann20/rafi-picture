@@ -604,6 +604,17 @@ export default function Orders() {
         (Number(first.inquiryIndex) || 0) - (Number(second.inquiryIndex) || 0),
       )[0]?.id ?? selectedBookingId;
   }, [bookings, selectedBookingId]);
+  const transactionBookingIds = useMemo(() => {
+    if (!selectedBookingId) return [];
+
+    const selected = bookings.find((booking) => booking.id === selectedBookingId);
+    if (!selected?.inquiryId) return [selectedBookingId];
+
+    return bookings
+      .filter((booking) => booking.inquiryId === selected.inquiryId)
+      .map((booking) => booking.id)
+      .filter(Boolean);
+  }, [bookings, selectedBookingId]);
 
   /*
    * Membuka detail pesanan dari URL:
@@ -651,6 +662,7 @@ export default function Orders() {
     processingBillingId,
     setProcessingBillingId,
   ] = useState(null);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
 
   const perPage = 5;
 
@@ -669,22 +681,20 @@ export default function Orders() {
     error: invoicesError,
   } = useCollection(
     () => {
-      if (!transactionBookingId) return null;
+      if (!transactionBookingIds.length) return null;
 
       return db.query(
         db.colRef("Invoices"),
         db.where(
           "bookingId",
-          "==",
-          transactionBookingId
+          "in",
+          transactionBookingIds,
         )
       );
     },
-    [transactionBookingId],
+    [transactionBookingIds],
     {
-      enabled: Boolean(
-        transactionBookingId
-      ),
+      enabled: transactionBookingIds.length > 0,
     }
   );
 
@@ -699,22 +709,20 @@ export default function Orders() {
     error: paymentsError,
   } = useCollection(
     () => {
-      if (!transactionBookingId) return null;
+      if (!transactionBookingIds.length) return null;
 
       return db.query(
         db.colRef("Payments"),
         db.where(
           "bookingId",
-          "==",
-          transactionBookingId
+          "in",
+          transactionBookingIds,
         )
       );
     },
-    [transactionBookingId],
+    [transactionBookingIds],
     {
-      enabled: Boolean(
-        selectedBookingId
-      ),
+      enabled: transactionBookingIds.length > 0,
     }
   );
 
@@ -756,16 +764,17 @@ export default function Orders() {
   const bookingPayments = useMemo(() => {
     if (!selectedBookingId) return [];
 
+    const bookingIdSet = new Set(transactionBookingIds);
+
     return paymentRows
       .map(normalizePaymentRecord)
       .filter(
         (payment) =>
-          payment.bookingId ===
-          selectedBookingId
+          bookingIdSet.has(payment.bookingId)
       );
   }, [
     paymentRows,
-    selectedBookingId,
+    transactionBookingIds,
   ]);
 
   /* ---------------------------------------------------------
@@ -962,6 +971,92 @@ export default function Orders() {
       );
     }
   };
+
+  const handleDeleteBooking = async (booking) => {
+    if (!booking?.id || deletingBookingId) return;
+
+    const relatedBookings = booking.inquiryId
+      ? bookings.filter((item) => item.inquiryId === booking.inquiryId)
+      : [booking];
+    const relatedBookingIds = new Set(
+      relatedBookings.map((item) => item.id).filter(Boolean),
+    );
+    const clientUid = booking.client?.uid;
+    const clientEmail = booking.client?.email?.trim().toLowerCase();
+    const clientName = getClientDisplayName(booking.client);
+
+    const confirmed = window.confirm(
+      `Hapus pesanan ${booking.bookingCode || booking.id} milik ${clientName}? Data pesanan, tagihan, pembayaran, dan assignment terkait akan dihapus. Data pelanggan juga akan dihapus jika tidak memiliki pesanan lain.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingBookingId(booking.id);
+
+    try {
+      const relatedCollectionRows = await Promise.all(
+        ["Invoices", "Payments"].map(async (collectionName) => {
+          const snapshot = await db.getDocs(
+            db.query(
+              db.colRef(collectionName),
+              db.where("bookingId", "in", [...relatedBookingIds]),
+            ),
+          );
+
+          return snapshot.docs.map((document) => ({
+            collectionName,
+            id: document.id,
+          }));
+        }),
+      );
+
+      const relatedAssignments = assignments.filter((assignment) =>
+        relatedBookingIds.has(assignment.bookingId),
+      );
+
+      await Promise.all(
+        relatedCollectionRows
+          .flat()
+          .map(({ collectionName, id }) => db.deleteDoc(collectionName, id)),
+      );
+
+      await Promise.all(
+        relatedAssignments.map((assignment) =>
+          db.deleteDoc("CrewAssignments", assignment.id),
+        ),
+      );
+
+      await Promise.all(
+        [...relatedBookingIds].map((bookingId) =>
+          db.deleteDoc("Bookings", bookingId),
+        ),
+      );
+
+      const hasOtherCustomerBookings = bookings.some((item) => {
+        if (relatedBookingIds.has(item.id)) return false;
+
+        const itemUid = item.client?.uid;
+        const itemEmail = item.client?.email?.trim().toLowerCase();
+
+        return (
+          (clientUid && itemUid === clientUid) ||
+          (!clientUid && clientEmail && itemEmail === clientEmail)
+        );
+      });
+
+      if (clientUid && !hasOtherCustomerBookings) {
+        await db.deleteDoc("Users", clientUid);
+      }
+    } catch (error) {
+      console.error("DELETE BOOKING ERROR:", error);
+      window.alert(
+        "Pesanan gagal dihapus. Periksa koneksi dan permission Firestore, lalu coba lagi.",
+      );
+    } finally {
+      setDeletingBookingId(null);
+    }
+  };
+
 const handleAdvancedFilter = () => {
     console.log("OPEN_ADVANCED_FILTER");
   };
@@ -2072,21 +2167,41 @@ const handleAdvancedFilter = () => {
                         </td>
 
                         <td className="px-6 py-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleOpenDetail(booking)
-                            }
-                            aria-label={`Open booking detail for ${getClientDisplayName(
-                              booking.client
-                            )}`}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-primary transition-all hover:bg-surface-variant active:scale-95"
-                          >
-                            <AppIcon
-                              name="chevron_right"
-                              size={20}
-                            />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBooking(booking)}
+                              disabled={deletingBookingId === booking.id}
+                              aria-label={`Delete order for ${getClientDisplayName(
+                                booking.client
+                              )}`}
+                              title="Hapus pesanan"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-all hover:bg-error-container hover:text-error active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <AppIcon
+                                name={
+                                  deletingBookingId === booking.id
+                                    ? "progress_activity"
+                                    : "delete"
+                                }
+                                size={19}
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDetail(booking)}
+                              aria-label={`Open booking detail for ${getClientDisplayName(
+                                booking.client
+                              )}`}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-primary transition-all hover:bg-surface-variant active:scale-95"
+                            >
+                              <AppIcon
+                                name="chevron_right"
+                                size={20}
+                              />
+                            </button>
+                          </div>
                         </td>
 
                       </tr>

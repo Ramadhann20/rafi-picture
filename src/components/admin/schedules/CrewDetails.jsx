@@ -36,6 +36,8 @@ function createInitialForm(crew, mode) {
     email: crew?.email ?? "",
     phone: crew?.phone ?? "",
     baseRole: getRoleValue(crew),
+    isFreelance:
+      crew?.temporary === true || crew?.crewType === "freelance" || false,
     employmentStatus:
       crew?.employmentStatus ?? (mode === "freelance" ? "active" : "active"),
     skills: Array.isArray(crew?.skills) ? crew.skills.join(", ") : "",
@@ -141,9 +143,11 @@ export default function CrewDetails({
   }, [assignments, crew?.id]);
 
   function updateField(event) {
-    const { name, value } = event.target;
+    const { name, type, checked, value } = event.target;
 
-    setForm((current) => ({ ...current, [name]: value }));
+    const nextValue = type === "checkbox" ? checked : value;
+
+    setForm((current) => ({ ...current, [name]: nextValue }));
     setFieldErrors((current) => ({ ...current, [name]: undefined }));
     setSubmitError("");
   }
@@ -190,6 +194,7 @@ export default function CrewDetails({
       .filter(Boolean);
 
     const payload = {
+      isFreelance: form.isFreelance,
       name: form.name.trim(),
       email: form.email.trim().toLowerCase() || null,
       phone: form.phone.trim() || null,
@@ -335,6 +340,22 @@ export default function CrewDetails({
                       </option>
                     ))}
                   </select>
+                </Field>
+
+                <Field label="Freelance" fullWidth>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-outline-variant bg-transparent px-4 py-3 text-on-surface transition hover:border-primary/70 hover:bg-primary/5">
+                    <input
+                      type="checkbox"
+                      name="isFreelance"
+                      checked={Boolean(form.isFreelance)}
+                      onChange={updateField}
+                      disabled={submitting}
+                      className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/20"
+                    />
+                    <span className="font-label-md text-label-md text-on-surface">
+                      {form.isFreelance ? "Crew ini adalah freelance" : "Tandai sebagai freelance"}
+                    </span>
+                  </label>
                 </Field>
 
                 <Field

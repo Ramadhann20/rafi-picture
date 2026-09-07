@@ -991,7 +991,7 @@ export default function ScheduleOrder({
 
     if (!hasDepositInvoice) {
       setActionError(
-        "Create a valid deposit invoice draft before confirming billing.",
+        translate("billingDraftRequired"),
       );
 
       return;
@@ -1021,7 +1021,7 @@ export default function ScheduleOrder({
 
       setActionError(
         error?.message ||
-          "Deposit invoice PDF gagal dibuat.",
+          translate("depositPdfGenerationFailed"),
       );
     } finally {
       setGeneratingDepositPdf(false);
@@ -1344,11 +1344,11 @@ export default function ScheduleOrder({
               description={
                 preparation.billingCompleted
                   ? depositPdfReviewed
-                    ? "Billing confirmed and the generated DP invoice has been reviewed."
-                    : "Billing confirmed. Review the generated PDF below before Finalize & Approve."
+                    ? translate("billingConfirmedPdfReviewed")
+                    : translate("billingConfirmedReviewPdfBelow")
                   : hasDepositInvoice
-                    ? "Confirm billing to generate the DP invoice PDF preview."
-                    : "Create the deposit invoice draft before confirming billing."
+                    ? translate("confirmBillingToGeneratePdf")
+                    : translate("createDraftBeforeBilling")
               }
               disabled={
                 generatingDepositPdf ||
@@ -1411,10 +1411,10 @@ function PreparationProgress({ preparation, bundleMode = false, bundleStep = 0 }
     },
   ];
   const bundleSteps = [
-    { id: "pre-review", label: "Review Pre-Wedding", completed: bundleStep >= 1 },
-    { id: "pre-crew", label: "Crew Pre-Wedding", completed: bundleStep >= 2 },
-    { id: "wedding-review", label: "Review Wedding", completed: bundleStep >= 3 },
-    { id: "wedding-crew", label: "Crew Wedding", completed: bundleStep >= 4 },
+    { id: "pre-review", label: translate("reviewPreWedding"), completed: bundleStep >= 1 },
+    { id: "pre-crew", label: translate("crewPreWedding"), completed: bundleStep >= 2 },
+    { id: "wedding-review", label: translate("reviewWedding"), completed: bundleStep >= 3 },
+    { id: "wedding-crew", label: translate("crewWedding"), completed: bundleStep >= 4 },
     { id: "billing", label: translate("billing"), completed: preparation.billingCompleted },
   ];
   const steps = bundleMode ? bundleSteps : normalSteps;
@@ -1599,10 +1599,10 @@ function SubmitBookingPanel({
     },
   ];
   const bundleRequirements = [
-    { id: "pre-review", label: "Review Pre-Wedding", completed: bundleStep >= 1 },
-    { id: "pre-crew", label: "Crew Pre-Wedding", completed: bundleStep >= 2 },
-    { id: "wedding-review", label: "Review Wedding", completed: bundleStep >= 3 },
-    { id: "wedding-crew", label: "Crew Wedding", completed: bundleStep >= 4 },
+    { id: "pre-review", label: translate("reviewPreWedding"), completed: bundleStep >= 1 },
+    { id: "pre-crew", label: translate("crewPreWedding"), completed: bundleStep >= 2 },
+    { id: "wedding-review", label: translate("reviewWedding"), completed: bundleStep >= 3 },
+    { id: "wedding-crew", label: translate("crewWedding"), completed: bundleStep >= 4 },
     { id: "billing", label: translate("depositInvoiceDraftConfirmed"), completed: preparation.billingCompleted && hasDepositInvoice },
   ];
   const requirements = bundleMode ? bundleRequirements : normalRequirements;
