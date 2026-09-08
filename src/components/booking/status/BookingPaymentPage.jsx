@@ -406,6 +406,15 @@ export default function BookingPaymentPage({
   );
 
   const remainingBalance = Math.max(0, packageTotal - totalVerified);
+  const rejectedPayments = useMemo(
+    () => payments.filter(
+      (payment) =>
+        payment.invoiceId === invoice?.id &&
+        normalizePaymentStatus(payment.status) === "rejected",
+    ),
+    [payments, invoice?.id],
+  );
+  const latestRejectedPayment = rejectedPayments[rejectedPayments.length - 1] ?? null;
 
   const handleFile = (file) => {
     setFormError(null);
@@ -531,6 +540,32 @@ export default function BookingPaymentPage({
 
   return (
     <section className="relative">
+      {latestRejectedPayment && (
+        <div className="mb-stack-md rounded-xl border border-error/30 bg-error-container/50 p-5 text-error">
+          <div className="flex items-start gap-3">
+            <AppIcon name="cancel" size={22} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="font-label-md text-label-md">
+                {translate("paymentRejectedTitle")}
+              </p>
+              <p className="mt-1 font-body-sm text-body-sm">
+                {translate("paymentRejectedDescription")}
+              </p>
+              {latestRejectedPayment.rejectionNote && (
+                <div className="mt-3 rounded-lg border border-error/25 bg-surface/60 p-3">
+                  <p className="font-label-sm text-label-sm uppercase tracking-wide">
+                    {translate("rejectionNote")}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap font-body-sm text-body-sm text-on-surface">
+                    {latestRejectedPayment.rejectionNote}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="mb-stack-lg flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
@@ -841,6 +876,11 @@ function PaymentHistory({
                   const statusConfig =
                     PAYMENT_STATUS[normalizedStatus] ??
                     PAYMENT_STATUS.pending_verification;
+                  const statusLabelKey = normalizedStatus === "rejected"
+                    ? "transactionFailed"
+                    : ["verified", "paid"].includes(normalizedStatus)
+                      ? "transactionSuccessful"
+                      : null;
 
                   return (
                     <tr
@@ -872,7 +912,9 @@ function PaymentHistory({
                         <span
                           className={`inline-flex rounded px-2 py-1 font-label-sm text-[11px] ${statusConfig.badgeClass}`}
                         >
-                          {translate("transactionSuccessful")}
+                          {statusLabelKey
+                            ? translate(statusLabelKey)
+                            : translate(statusConfig.labelKey ?? "awaitingVerification")}
                         </span>
                       </td>
                     </tr>
