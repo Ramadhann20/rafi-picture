@@ -88,16 +88,29 @@ function getBillingPackageItems(booking) {
 
   const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
 
-  if (bundlePackage) {
-    return [bundlePackage];
-  }
-
+  const billingItems = bundlePackage
+    ? [bundlePackage, ...packageItems.filter((packageItem) => packageItem !== bundlePackage)]
+    : packageItems;
   return Array.from(
-    new Map(packageItems.map((packageItem, index) => [
+    new Map(billingItems.map((packageItem, index) => [
       String(packageItem?.id ?? index),
       packageItem,
     ])).values(),
   );
+}
+
+function isCombinedPayment(booking) {
+  return String(booking?.paymentArrangement ?? "separate").toLowerCase() === "combined";
+}
+
+function getCombinedInvoiceItems(booking, type = "deposit") {
+  const packageItems = getBillingPackageItems(booking);
+
+  return packageItems.map((packageItem, index) => ({
+    id: `package-service-${packageItem?.id ?? index}`,
+    label: `${type === "deposit" ? "Down Payment" : "Final Payment"} Package ${index + 1} for ${packageItem?.name || "Package Service"}`,
+    amount: Math.max(Number(packageItem?.price) || 0, 0),
+  }));
 }
 
 function getBookingAmounts(
@@ -174,6 +187,21 @@ export async function POST(
       ...bookingSnapshot.data(),
     };
 
+    if (isCombinedPayment(booking) && booking.inquiryId) {
+      const inquirySnapshot = await adminDb
+        .collection("Bookings")
+        .where("inquiryId", "==", booking.inquiryId)
+        .get();
+      const inquiryBookings = inquirySnapshot.docs.map((document) => document.data());
+
+      if (inquiryBookings.length > 1) {
+        booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
+        booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
+        booking.package = booking.packages[0] ?? booking.package;
+        booking.event = booking.events[0] ?? booking.event;
+      }
+    }
+
     const packageId = String(body?.packageId || "").trim();
     const selectedPackage = packageId
       ? (booking.packages || []).find((item) => item.id === packageId)
@@ -182,7 +210,7 @@ export async function POST(
     const selectedEvent = packageId
       ? (booking.events || []).find((item) => item.packageId === packageId)
       : null;
-    const scopedBooking = selectedPackage && !isBundle
+    const scopedBooking = selectedPackage && !isBundle && !isCombinedPayment(booking)
       ? {
           ...booking,
           package: selectedPackage,
@@ -266,6 +294,9 @@ export async function POST(
             ?.dueAt,
         ),
       invoiceDate,
+      items: isCombinedPayment(scopedBooking)
+        ? getCombinedInvoiceItems(scopedBooking, "deposit")
+        : undefined,
       note:
         String(
           body?.invoiceDraft

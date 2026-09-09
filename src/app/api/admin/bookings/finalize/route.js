@@ -135,6 +135,10 @@ function getRequiredCrewCount(booking, assignment) {
     packageItem?.requiredCrewCount ?? packageItem?.crewCount,
   );
   if (Number.isInteger(packageCount) && packageCount > 0) {
+    if (packageCount === 1 && defaultCount > 1) {
+      return defaultCount;
+    }
+
     return packageCount;
   }
 
@@ -215,16 +219,19 @@ function getBillingPackageItems(booking) {
 
   const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
 
-  if (bundlePackage) {
-    return [bundlePackage];
-  }
-
+  const billingItems = bundlePackage
+    ? [bundlePackage, ...packageItems.filter((packageItem) => packageItem !== bundlePackage)]
+    : packageItems;
   return Array.from(
-    new Map(packageItems.map((packageItem, index) => [
+    new Map(billingItems.map((packageItem, index) => [
       String(packageItem?.id ?? index),
       packageItem,
     ])).values(),
   );
+}
+
+function isCombinedPayment(booking) {
+  return String(booking?.paymentArrangement ?? "separate").toLowerCase() === "combined";
 }
 
 function getBookingAmounts(
@@ -282,7 +289,9 @@ function createInvoiceItems(
 
   const items = packageItems.map((packageItem, index) => ({
     id: `package-service-${packageItem.id ?? index}`,
-    label: packageItem.name || "Package Service",
+    label: isCombinedPayment(booking)
+      ? `Down Payment Package ${index + 1} for ${packageItem.name || "Package Service"}`
+      : packageItem.name || "Package Service",
     amount: Math.max(Number(packageItem.price) || 0, 0),
   }));
 
@@ -578,7 +587,16 @@ export async function POST(
       }));
 
       inquiryBookingRefs = inquirySnapshot.docs.map((document) => document.ref);
-      if (inquiryBookings.length > 1) {
+      const uniquePackageIds = new Set(
+        inquiryBookings
+          .map((item) => item.package?.id ?? item.packageId ?? null)
+          .filter(Boolean),
+      );
+
+      if (
+        inquiryBookings.length > 1 &&
+        (uniquePackageIds.size === 1 || isCombinedPayment(booking))
+      ) {
         booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
         booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
         booking.package = booking.packages[0] ?? booking.package;

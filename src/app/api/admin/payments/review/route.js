@@ -174,12 +174,11 @@ function getBillingPackageItems(booking) {
 
   const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
 
-  if (bundlePackage) {
-    return [bundlePackage];
-  }
-
+  const billingItems = bundlePackage
+    ? [bundlePackage, ...packageItems.filter((packageItem) => packageItem !== bundlePackage)]
+    : packageItems;
   return Array.from(
-    new Map(packageItems.map((packageItem, index) => [
+    new Map(billingItems.map((packageItem, index) => [
       String(packageItem?.id ?? index),
       packageItem,
     ])).values(),
@@ -665,7 +664,13 @@ export async function POST(
 
       inquiryBookingRecords = inquiryBookings;
       inquiryBookingRefs = inquirySnapshot.docs.map((document) => document.ref);
-      if (inquiryBookings.length > 1) {
+      const uniquePackageIds = new Set(
+        inquiryBookings
+          .map((item) => item.package?.id ?? item.packageId ?? null)
+          .filter(Boolean),
+      );
+
+      if (inquiryBookings.length > 1 && uniquePackageIds.size === 1) {
         booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
         booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
         booking.package = booking.packages[0] ?? booking.package;

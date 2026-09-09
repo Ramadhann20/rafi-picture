@@ -70,16 +70,27 @@ function getBillingPackageItems(booking) {
 
   const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
 
-  if (bundlePackage) {
-    return [bundlePackage];
-  }
-
+  const billingItems = bundlePackage
+    ? [bundlePackage, ...packageItems.filter((packageItem) => packageItem !== bundlePackage)]
+    : packageItems;
   return Array.from(
-    new Map(packageItems.map((packageItem, index) => [
+    new Map(billingItems.map((packageItem, index) => [
       String(packageItem?.id ?? index),
       packageItem,
     ])).values(),
   );
+}
+
+function isCombinedPayment(booking) {
+  return String(booking?.paymentArrangement ?? "separate").toLowerCase() === "combined";
+}
+
+function getCombinedInvoiceItems(booking) {
+  return getBillingPackageItems(booking).map((packageItem, index) => ({
+    id: `package-service-${packageItem?.id ?? index}`,
+    label: `Final Payment Package ${index + 1} for ${packageItem?.name || "Package Service"}`,
+    amount: Math.max(Number(packageItem?.price) || 0, 0),
+  }));
 }
 
 function getBookingAmounts(
@@ -214,7 +225,16 @@ export async function POST(
         .get();
       const inquiryBookings = inquirySnapshot.docs.map((document) => document.data());
 
-      if (inquiryBookings.length > 1) {
+      const uniquePackageIds = new Set(
+        inquiryBookings
+          .map((item) => item.package?.id ?? item.packageId ?? null)
+          .filter(Boolean),
+      );
+
+      if (
+        inquiryBookings.length > 1 &&
+        (uniquePackageIds.size === 1 || isCombinedPayment(booking))
+      ) {
         booking.packages = inquiryBookings.map((item) => item.package).filter(Boolean);
         booking.events = inquiryBookings.map((item) => item.event).filter(Boolean);
         booking.package = booking.packages[0] ?? booking.package;
@@ -353,15 +373,13 @@ export async function POST(
       bookingTotal,
 
       items: [
-        {
-          id:
-            "package-service",
-          label:
-            booking?.package?.name ||
-            "Package Service",
-          amount:
-            packageAmount,
-        },
+        ...(isCombinedPayment(booking)
+          ? getCombinedInvoiceItems(booking)
+          : [{
+              id: "package-service",
+              label: booking?.package?.name || "Package Service",
+              amount: packageAmount,
+            }]),
         ...(travelCharge > 0
           ? [
               {

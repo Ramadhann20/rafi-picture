@@ -305,6 +305,22 @@ function mergeInquiryBookings(bookings, selectedBookingId) {
 
   if (inquiryBookings.length <= 1) return selectedBooking;
 
+  const uniquePackageIds = new Set(
+    inquiryBookings
+      .map((booking) => booking.package?.id ?? booking.packageId ?? null)
+      .filter(Boolean),
+  );
+  const paymentArrangement = String(
+    inquiryBookings[0]?.paymentArrangement ?? selectedBooking.paymentArrangement ?? "separate",
+  ).toLowerCase();
+
+  const shouldMergeForCombinedBilling =
+    paymentArrangement === "combined" && uniquePackageIds.size > 1;
+
+  if (!shouldMergeForCombinedBilling) {
+    return selectedBooking;
+  }
+
   const packages = Array.from(
     new Map(
       inquiryBookings
@@ -328,6 +344,7 @@ function mergeInquiryBookings(bookings, selectedBookingId) {
     personalDetails,
     inquiryBookingIds: inquiryBookings.map((booking) => booking.id),
     inquiryBookings,
+    paymentArrangement,
   };
 }
 
@@ -598,11 +615,21 @@ export default function Orders() {
     const selected = bookings.find((booking) => booking.id === selectedBookingId);
     if (!selected?.inquiryId) return selectedBookingId;
 
-    return bookings
+    const inquiryBookings = bookings
       .filter((booking) => booking.inquiryId === selected.inquiryId)
       .sort((first, second) =>
         (Number(first.inquiryIndex) || 0) - (Number(second.inquiryIndex) || 0),
-      )[0]?.id ?? selectedBookingId;
+      );
+
+    const paymentArrangement = String(
+      inquiryBookings[0]?.paymentArrangement ?? selected.paymentArrangement ?? "separate",
+    ).toLowerCase();
+
+    if (paymentArrangement === "combined") {
+      return inquiryBookings[0]?.id ?? selectedBookingId;
+    }
+
+    return selectedBookingId;
   }, [bookings, selectedBookingId]);
   const transactionBookingIds = useMemo(() => {
     if (!selectedBookingId) return [];
@@ -610,10 +637,23 @@ export default function Orders() {
     const selected = bookings.find((booking) => booking.id === selectedBookingId);
     if (!selected?.inquiryId) return [selectedBookingId];
 
-    return bookings
+    const inquiryBookings = bookings
       .filter((booking) => booking.inquiryId === selected.inquiryId)
-      .map((booking) => booking.id)
-      .filter(Boolean);
+      .sort((first, second) =>
+        (Number(first.inquiryIndex) || 0) - (Number(second.inquiryIndex) || 0),
+      );
+
+    const paymentArrangement = String(
+      inquiryBookings[0]?.paymentArrangement ?? selected.paymentArrangement ?? "separate",
+    ).toLowerCase();
+
+    if (paymentArrangement === "combined") {
+      return inquiryBookings
+        .map((booking) => booking.id)
+        .filter(Boolean);
+    }
+
+    return [selectedBookingId];
   }, [bookings, selectedBookingId]);
 
   /*

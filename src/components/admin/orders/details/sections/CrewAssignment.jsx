@@ -532,7 +532,7 @@ export default function CrewAssignment({
       <div className="mb-stack-md flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-            Step 02
+            {translate("stepLabel")} 2
           </p>
 
           <h2

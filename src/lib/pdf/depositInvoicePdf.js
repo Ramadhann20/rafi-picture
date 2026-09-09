@@ -1076,14 +1076,15 @@ export async function generateDepositInvoicePdf({
       COLORS.white,
   });
 
-  const packageName =
-    booking?.package
-      ?.name ||
-    "Booking Package";
+  const packageName = Array.isArray(invoice?.items) && invoice.items.length
+    ? invoice.items.map((item) => item.label).join("; ")
+    : booking?.package?.name || "Booking Package";
 
   drawWrappedText(
     page,
-    `Down Payment for ${packageName}`,
+    packageName.startsWith("Down Payment")
+      ? packageName
+      : `Down Payment for ${packageName}`,
     {
       x:
         tableX + 11,

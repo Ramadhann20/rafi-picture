@@ -187,7 +187,7 @@ export default function Review({
     <section aria-labelledby="booking-review-title">
       <div className="mb-stack-md">
         <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-          Step 01
+          {translate("stepLabel")} 1
         </p>
 
         <h2

@@ -66,6 +66,9 @@ function getInitialPreparation(booking) {
 }
 
 function isBundleBooking(booking, packageEntries = []) {
+  const uniquePackageIds = new Set(packageEntries.map((entry) => entry.packageId));
+  if (uniquePackageIds.size > 1) return false;
+
   const packageItem = packageEntries[0]?.packageItem ?? booking?.package ?? {};
   const packageName = String(packageItem.name ?? "").toLowerCase();
 
@@ -102,6 +105,20 @@ function getBookingPackageEntries(booking, packageCatalog = []) {
       event,
     }));
   });
+}
+
+function getPaymentArrangement(booking) {
+  return String(booking?.paymentArrangement ?? "separate").toLowerCase() === "combined"
+    ? "combined"
+    : "separate";
+}
+
+function getUniquePackageEntries(packageEntries = []) {
+  return Array.from(
+    new Map(
+      packageEntries.map((entry) => [entry.packageId, entry]),
+    ).values(),
+  );
 }
 
 function getConfiguredCrewCount(packageItem, event = null) {
@@ -353,8 +370,16 @@ export default function ScheduleOrder({
     () => getCrewAssignmentEntries(booking, packageEntries),
     [booking, packageEntries],
   );
+  const isCombinedPayment =
+    getPaymentArrangement(booking) === "combined" &&
+    getUniquePackageEntries(packageEntries).length > 1;
+  const preparationPackageEntries = useMemo(
+    () => isCombinedPayment
+      ? getUniquePackageEntries(packageEntries)
+      : packageEntries,
+    [isCombinedPayment, packageEntries],
+  );
 
-  const [activePackageIndex, setActivePackageIndex] = useState(0);
   const [bundleStep, setBundleStep] = useState(0);
   const [packagePreparation, setPackagePreparation] = useState(() =>
     Object.fromEntries(
@@ -418,7 +443,6 @@ export default function ScheduleOrder({
 
   useEffect(() => {
     setPreparation(getInitialPreparation(booking));
-    setActivePackageIndex(0);
     setBundleStep(0);
     setPackagePreparation(
       Object.fromEntries(
@@ -490,11 +514,40 @@ export default function ScheduleOrder({
     ),
   };
 
+  let activeWorkflow = null;
+
+  if (!isBundlePreparation) {
+    for (let index = 0; index < preparationPackageEntries.length; index += 1) {
+      const entry = preparationPackageEntries[index];
+      const current = packagePreparation[entry.key] ?? getInitialPreparation(booking);
+
+      if (!current.reviewCompleted) {
+        activeWorkflow = { type: "review", packageIndex: index };
+        break;
+      }
+
+      if (!current.crewCompleted) {
+        activeWorkflow = { type: "crew", packageIndex: index };
+        break;
+      }
+
+      if (!isCombinedPayment && !current.billingCompleted) {
+        activeWorkflow = { type: "billing", packageIndex: index };
+        break;
+      }
+    }
+
+    activeWorkflow ??= {
+      type: "billing",
+      packageIndex: Math.max(0, preparationPackageEntries.length - 1),
+    };
+  }
+
   const selectedPackageIndex = isBundlePreparation
     ? bundleStep >= 2 ? 1 : 0
-    : activePackageIndex;
+    : activeWorkflow?.packageIndex ?? 0;
   const activePackageEntry =
-    packageEntries[selectedPackageIndex] ?? packageEntries[0] ?? null;
+    preparationPackageEntries[selectedPackageIndex] ?? preparationPackageEntries[0] ?? null;
   const activePackageKey = activePackageEntry?.key ?? "default";
   const activeBooking = activePackageEntry
     ? {
@@ -505,10 +558,20 @@ export default function ScheduleOrder({
     : booking;
   const activePreparation =
     packagePreparation[activePackageKey] ?? preparation;
-  const activeDepositDraft = depositDrafts[activePackageKey] ?? null;
+  const activeBillingCompleted = isCombinedPayment
+    ? preparation.billingCompleted
+    : activePreparation.billingCompleted;
+  const billingKey = isCombinedPayment ? "combined" : activePackageKey;
+  const activeDepositDraft = depositDrafts[billingKey] ?? null;
   const activeCrewAssignmentEntries = crewAssignmentEntries.filter(
-    (entry) => entry.packageKey === activePackageKey,
+    (entry) => isCombinedPayment
+      ? entry.packageId === activePackageEntry?.packageId
+      : entry.packageKey === activePackageKey,
   );
+  const activePackageCompleted =
+    activePreparation.reviewCompleted &&
+    activePreparation.crewCompleted &&
+    activePreparation.billingCompleted;
   const activeCrewGroups = activeCrewAssignmentEntries.map((entry) => {
     const assignment = existingAssignments.find(
       (item) =>
@@ -544,14 +607,19 @@ export default function ScheduleOrder({
     !isPreparationMode || (
       isBundlePreparation
         ? bundleStep === 1 || bundleStep === 3
-        : activePreparation.reviewCompleted
+        : activeWorkflow?.type === "crew"
     );
 
   const billingEnabled =
     !isPreparationMode ||
     (isBundlePreparation
       ? bundleStep === 4
-      : activePreparation.reviewCompleted && activePreparation.crewCompleted);
+      : isCombinedPayment
+        ? preparationPackageEntries.every((entry) => {
+            const current = packagePreparation[entry.key] ?? getInitialPreparation(booking);
+            return current.reviewCompleted && current.crewCompleted;
+          })
+        : activeWorkflow?.type === "billing");
 
   const hasDepositPdf =
     Boolean(
@@ -560,16 +628,19 @@ export default function ScheduleOrder({
 
   const canFinalize =
     isPreparationMode &&
-    packageEntries.every(
-      (entry) =>
-        packagePreparation[entry.key]?.reviewCompleted &&
-        packagePreparation[entry.key]?.crewCompleted,
-    ) &&
-    preparation.billingCompleted &&
+    (isCombinedPayment
+      ? preparationPackageEntries.every((entry) => {
+          const current = packagePreparation[entry.key] ?? getInitialPreparation(booking);
+          return current.reviewCompleted && current.crewCompleted;
+        })
+      : activePreparation.reviewCompleted && activePreparation.crewCompleted) &&
+    (isCombinedPayment
+      ? preparation.billingCompleted
+      : activePreparation.billingCompleted) &&
     (!isBundlePreparation || bundleStep === 4) &&
     crewAssignmentEntries.every((entry) => {
       const draft = packageCrewDrafts[entry.key];
-      return draft?.crewIds?.length === entry.requiredCrewCount;
+      return (draft?.crewIds?.length ?? 0) === entry.requiredCrewCount;
     }) &&
     hasDepositInvoice &&
     hasDepositPdf &&
@@ -595,26 +666,20 @@ export default function ScheduleOrder({
     }
 
     setPackagePreparation((currentMap) => {
+      const targetEntries = isCombinedPayment
+        ? packageEntries.filter((entry) => entry.packageId === activePackageEntry?.packageId)
+        : [activePackageEntry];
       const current = currentMap[activePackageKey] ?? getInitialPreparation(booking);
+      const nextState = current.reviewCompleted
+        ? { reviewCompleted: false, crewCompleted: false, billingCompleted: false }
+        : { ...current, reviewCompleted: true };
+      const nextMap = { ...currentMap };
 
-      if (current.reviewCompleted) {
-        return {
-          ...currentMap,
-          [activePackageKey]: {
-            reviewCompleted: false,
-            crewCompleted: false,
-            billingCompleted: false,
-          },
-        };
-      }
+      targetEntries.forEach((entry) => {
+        nextMap[entry.key] = { ...nextState };
+      });
 
-      return {
-        ...currentMap,
-        [activePackageKey]: {
-          ...current,
-          reviewCompleted: true,
-        },
-      };
+      return nextMap;
     });
 
     setPreparation((current) => ({
@@ -638,14 +703,22 @@ export default function ScheduleOrder({
       },
     }));
 
-    setPackagePreparation((currentMap) => ({
-      ...currentMap,
-      [activePackageKey]: {
-        ...(currentMap[activePackageKey] ?? activePreparation),
-        crewCompleted: false,
-        billingCompleted: false,
-      },
-    }));
+    setPackagePreparation((currentMap) => {
+      const nextMap = { ...currentMap };
+      const targetEntries = isCombinedPayment
+        ? packageEntries.filter((entry) => entry.packageId === activePackageEntry?.packageId)
+        : [activePackageEntry];
+
+      targetEntries.forEach((entry) => {
+        nextMap[entry.key] = {
+          ...(currentMap[entry.key] ?? activePreparation),
+          crewCompleted: false,
+          billingCompleted: false,
+        };
+      });
+
+      return nextMap;
+    });
 
     setActionError(null);
   };
@@ -720,25 +793,19 @@ export default function ScheduleOrder({
 
     setPackagePreparation((currentMap) => {
       const current = currentMap[activePackageKey] ?? activePreparation;
+      const nextState = current.crewCompleted
+        ? { ...current, crewCompleted: false, billingCompleted: false }
+        : { ...current, crewCompleted: true };
+      const targetEntries = isCombinedPayment
+        ? packageEntries.filter((entry) => entry.packageId === activePackageEntry?.packageId)
+        : [activePackageEntry];
+      const nextMap = { ...currentMap };
 
-      if (current.crewCompleted) {
-        return {
-          ...currentMap,
-          [activePackageKey]: {
-            ...current,
-            crewCompleted: false,
-            billingCompleted: false,
-          },
-        };
-      }
+      targetEntries.forEach((entry) => {
+        nextMap[entry.key] = { ...nextState };
+      });
 
-      return {
-        ...currentMap,
-        [activePackageKey]: {
-          ...current,
-          crewCompleted: true,
-        },
-      };
+      return nextMap;
     });
 
     if (isBundlePreparation) {
@@ -764,7 +831,7 @@ export default function ScheduleOrder({
 
     setDepositDrafts((current) => ({
       ...current,
-      [activePackageKey]: nextDraft,
+      [billingKey]: nextDraft,
     }));
     clearDepositPdfPreview();
 
@@ -805,7 +872,9 @@ export default function ScheduleOrder({
               booking.id,
               invoiceDraft:
                 activeDepositDraft,
-              packageId: activePackageEntry?.packageId ?? activePackageKey,
+              ...(isCombinedPayment
+                ? {}
+                : { packageId: activePackageEntry?.packageId ?? activePackageKey }),
           }),
         },
       );
@@ -974,13 +1043,27 @@ export default function ScheduleOrder({
      * preview lama langsung dibuang supaya admin tidak mungkin
      * meng-approve PDF yang sudah stale.
      */
-    if (preparation.billingCompleted) {
+    const billingCompleted = isCombinedPayment
+      ? preparation.billingCompleted
+      : activePreparation.billingCompleted;
+
+    if (billingCompleted) {
       clearDepositPdfPreview();
 
-      setPreparation((current) => ({
-        ...current,
-        billingCompleted: false,
-      }));
+      if (isCombinedPayment) {
+        setPreparation((current) => ({
+          ...current,
+          billingCompleted: false,
+        }));
+      } else {
+        setPackagePreparation((currentMap) => ({
+          ...currentMap,
+          [activePackageKey]: {
+            ...(currentMap[activePackageKey] ?? activePreparation),
+            billingCompleted: false,
+          },
+        }));
+      }
 
       if (isBundlePreparation) {
         setBundleStep(4);
@@ -1006,10 +1089,20 @@ export default function ScheduleOrder({
        * Billing baru dianggap confirmed SETELAH server berhasil
        * membuat PDF preview.
        */
-      setPreparation((current) => ({
-        ...current,
-        billingCompleted: true,
-      }));
+      if (isCombinedPayment) {
+        setPreparation((current) => ({
+          ...current,
+          billingCompleted: true,
+        }));
+      } else {
+        setPackagePreparation((currentMap) => ({
+          ...currentMap,
+          [activePackageKey]: {
+            ...(currentMap[activePackageKey] ?? activePreparation),
+            billingCompleted: true,
+          },
+        }));
+      }
       if (isBundlePreparation) {
         setBundleStep(4);
       }
@@ -1085,7 +1178,9 @@ export default function ScheduleOrder({
 
           depositInvoice: {
             ...activeDepositDraft,
-            packageId: activePackageEntry?.packageId ?? activePackageKey,
+            ...(isCombinedPayment
+              ? {}
+              : { packageId: activePackageEntry?.packageId ?? activePackageKey }),
           },
 
           preparation: {
@@ -1176,7 +1271,10 @@ export default function ScheduleOrder({
       {isPreparationMode && (
         <PreparationProgress
           preparation={preparation}
+          packageEntries={preparationPackageEntries}
+          packagePreparation={packagePreparation}
           bundleMode={isBundlePreparation}
+          combinedPayment={isCombinedPayment}
           bundleStep={bundleStep}
         />
       )}
@@ -1199,44 +1297,9 @@ export default function ScheduleOrder({
         </div>
       )}
 
-      {packageEntries.length > 1 && !isBundlePreparation && (
-        <div className="mb-stack-lg flex flex-wrap gap-2" role="tablist" aria-label={translate("selectedPackages")}>
-          {packageEntries.map((entry, index) => {
-            const entryPreparation = packagePreparation[entry.key] ?? {};
-            const isActive = index === activePackageIndex;
-
-            return (
-              <button
-                key={entry.key}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActivePackageIndex(index)}
-                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                  isActive
-                    ? "border-primary bg-primary text-on-primary"
-                    : "border-outline-variant/40 bg-surface-container-low text-on-surface hover:border-primary"
-                }`}
-              >
-                <span className="block font-label-sm text-label-sm">
-                  {translate("bookingDetails")} {index + 1}
-                </span>
-                <span className="mt-1 block max-w-52 truncate font-body-sm text-body-sm">
-                  {entry.packageItem.name}
-                </span>
-                <span className="mt-1 block font-label-sm text-[11px] opacity-80">
-                  {entryPreparation.crewCompleted
-                    ? translate("stepConfirmed")
-                    : translate("confirmationRequired")}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       <div className="space-y-stack-lg">
-        {(!isBundlePreparation || bundleStep === 0 || bundleStep === 2) && <div>
+        {(!isBundlePreparation && activeWorkflow?.type === "review" || isBundlePreparation && (bundleStep === 0 || bundleStep === 2)) && <div>
+          <StepTitle label={translate("reviewOrder")} packageItem={activePackageEntry?.packageItem} />
           <Review booking={activeBooking} statusConfig={statusConfig} />
 
           {isPreparationMode && (
@@ -1256,11 +1319,12 @@ export default function ScheduleOrder({
 
         <SectionDivider />
 
-        {(!isBundlePreparation || bundleStep === 1 || bundleStep === 3) && <StepContainer
+        {(!isBundlePreparation && activeWorkflow?.type === "crew" || isBundlePreparation && (bundleStep === 1 || bundleStep === 3)) && <StepContainer
           locked={isPreparationMode && !crewAssignmentEnabled}
           lockedTitle={translate("crewAssignmentLocked")}
           lockedDescription={translate("confirmReviewUnlockCrew")}
         >
+          <StepTitle label={translate("crewAssignment")} packageItem={activePackageEntry?.packageItem} />
           {activeCrewGroups.map((group) => (
             <div key={group.key} className="space-y-4">
               {activeCrewGroups.length > 1 && (
@@ -1314,18 +1378,23 @@ export default function ScheduleOrder({
 
         <SectionDivider />
 
-        {(!isBundlePreparation || bundleStep === 4) && <StepContainer
+        {(!isBundlePreparation && activeWorkflow?.type === "billing" || isBundlePreparation && bundleStep === 4) && <StepContainer
           locked={isPreparationMode && !billingEnabled}
           lockedTitle={translate("billingPreparationLocked")}
           lockedDescription={translate("confirmCrewUnlockBilling")}
         >
+          <StepTitle
+            label={translate("billingPreparation")}
+            packageItem={isCombinedPayment ? null : activePackageEntry?.packageItem}
+            combined={isCombinedPayment}
+          />
           <BillingPayment
-            booking={activeBooking}
+            booking={isCombinedPayment ? booking : activeBooking}
             invoices={invoices}
             payments={payments}
             preparationMode={isPreparationMode}
             invoiceDraft={activeDepositDraft}
-            readOnly={isPreparationMode && preparation.billingCompleted}
+            readOnly={isPreparationMode && activeBillingCompleted}
             pdfPreview={depositPdfPreview}
             pdfReviewed={depositPdfReviewed}
             pdfReviewOpen={depositPdfReviewOpen}
@@ -1336,13 +1405,13 @@ export default function ScheduleOrder({
 
           {isPreparationMode && billingEnabled && (
             <StepConfirmation
-              confirmed={preparation.billingCompleted}
+              confirmed={activeBillingCompleted}
               confirmLabel={translate("confirmBillingGeneratePdf")}
               editLabel={translate("editBilling")}
               loading={generatingDepositPdf}
               loadingLabel={translate("generatingPdf")}
               description={
-                preparation.billingCompleted
+                activeBillingCompleted
                   ? depositPdfReviewed
                     ? translate("billingConfirmedPdfReviewed")
                     : translate("billingConfirmedReviewPdfBelow")
@@ -1352,7 +1421,7 @@ export default function ScheduleOrder({
               }
               disabled={
                 generatingDepositPdf ||
-                (!preparation.billingCompleted &&
+                (!activeBillingCompleted &&
                   !hasDepositInvoice)
               }
               onClick={handleToggleBilling}
@@ -1391,25 +1460,46 @@ export default function ScheduleOrder({
   );
 }
 
-function PreparationProgress({ preparation, bundleMode = false, bundleStep = 0 }) {
+function PreparationProgress({ preparation, packageEntries = [], packagePreparation = {}, bundleMode = false, combinedPayment = false, bundleStep = 0 }) {
   const { translate } = useLanguage();
-  const normalSteps = [
-    {
-      id: "review",
-      label: translate("review"),
-      completed: preparation.reviewCompleted,
-    },
-    {
-      id: "crew",
-      label: translate("crew"),
-      completed: preparation.crewCompleted,
-    },
-    {
-      id: "billing",
-      label: translate("billing"),
-      completed: preparation.billingCompleted,
-    },
-  ];
+  const stepName = (number, label, packageNumber = null) =>
+    `${translate("stepLabel")} ${number} - ${label}${packageNumber ? ` ${translate("package")} ${packageNumber}` : ""}`;
+
+  const normalSteps = packageEntries.length > 1
+    ? packageEntries.flatMap((entry, index) => [
+        {
+          id: `${entry.key}-review`,
+          label: stepName(combinedPayment ? index * 2 + 1 : index * 3 + 1, translate("reviewOrder"), index + 1),
+          completed: (packagePreparation[entry.key] ?? preparation)?.reviewCompleted,
+        },
+        {
+          id: `${entry.key}-crew`,
+          label: stepName(combinedPayment ? index * 2 + 2 : index * 3 + 2, translate("crewAssignment"), index + 1),
+          completed: (packagePreparation[entry.key] ?? preparation)?.crewCompleted,
+        },
+        ...(combinedPayment ? [] : [{
+          id: `${entry.key}-billing`,
+          label: stepName(index * 3 + 3, translate("billingPreparation"), index + 1),
+          completed: (packagePreparation[entry.key] ?? preparation)?.billingCompleted,
+        }]),
+      ])
+    : [
+        {
+          id: "review",
+          label: stepName(1, translate("reviewOrder")),
+          completed: preparation.reviewCompleted,
+        },
+        {
+          id: "crew",
+          label: stepName(2, translate("crewAssignment")),
+          completed: preparation.crewCompleted,
+        },
+        {
+          id: "billing",
+          label: stepName(3, translate("billingPreparation")),
+          completed: preparation.billingCompleted,
+        },
+      ];
   const bundleSteps = [
     { id: "pre-review", label: translate("reviewPreWedding"), completed: bundleStep >= 1 },
     { id: "pre-crew", label: translate("crewPreWedding"), completed: bundleStep >= 2 },
@@ -1417,10 +1507,17 @@ function PreparationProgress({ preparation, bundleMode = false, bundleStep = 0 }
     { id: "wedding-crew", label: translate("crewWedding"), completed: bundleStep >= 4 },
     { id: "billing", label: translate("billing"), completed: preparation.billingCompleted },
   ];
-  const steps = bundleMode ? bundleSteps : normalSteps;
+  const steps = bundleMode ? bundleSteps : [
+    ...normalSteps,
+    ...(combinedPayment ? [{
+      id: "combined-billing",
+      label: stepName(packageEntries.length * 2 + 1, translate("billingPreparation")),
+      completed: preparation.billingCompleted,
+    }] : []),
+  ];
 
   const completedCount = steps.filter((step) => step.completed).length;
-  const progress = (completedCount / steps.length) * 100;
+  const progress = steps.length > 0 ? (completedCount / steps.length) * 100 : 0;
 
   return (
     <section className="glass-panel mb-stack-lg rounded-xl p-6">
@@ -1459,6 +1556,21 @@ function PreparationProgress({ preparation, bundleMode = false, bundleStep = 0 }
         />
       </div>
     </section>
+  );
+}
+
+function StepTitle({ label, packageItem = null, combined = false }) {
+  const { translate } = useLanguage();
+
+  return (
+    <div className="mb-stack-md rounded-xl border border-primary/20 bg-primary/5 px-5 py-4">
+      <p className="font-label-sm text-label-sm uppercase tracking-widest text-primary">
+        {label}
+      </p>
+      <p className="mt-1 font-headline-md text-headline-md text-on-surface">
+        {combined ? translate("allPackages") : packageItem?.name || translate("package")}
+      </p>
+    </div>
   );
 }
 

@@ -92,7 +92,9 @@ export default function PackageOption({
   loading = false,
   error = null,
   errors = {},
+  paymentArrangement = "separate",
   onChange,
+  onPaymentArrangementChange,
 }) {
   const { openOverlay, closeOverlay } = useOverlay();
   const { language, translate } = useLanguage();
@@ -221,6 +223,12 @@ export default function PackageOption({
             >
               + {translate("addAnotherPackage")}
             </button>
+
+            {activePackageIds.length === 1 && (
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                Tambahkan paket kedua untuk memilih antara pembayaran digabung atau terpisah.
+              </p>
+            )}
           </div>
         </>
       ) : (
@@ -229,6 +237,52 @@ export default function PackageOption({
           disabled={packageOptions.length === 0}
           onOpen={openPackagePicker}
         />
+      )}
+
+      {activePackageIds.length > 1 && (
+        <fieldset className="mt-6 rounded-xl border-2 border-primary/40 bg-primary/5 p-5">
+          <legend className="px-2 font-label-md text-label-md uppercase tracking-wider text-primary">
+            Metode Pembayaran
+          </legend>
+
+          <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">
+            {activePackageIds.length} paket dipilih. Tentukan cara invoice dan DP dibuat.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${paymentArrangement === "combined" ? "border-primary bg-primary/10" : "border-outline-variant bg-surface"}`}>
+              <input
+                type="radio"
+                name="paymentArrangement"
+                checked={paymentArrangement === "combined"}
+                onChange={() => onPaymentArrangementChange?.("combined")}
+                className="mt-1 h-4 w-4 accent-primary"
+              />
+              <span>
+                <span className="block font-label-md text-label-md text-on-surface">Pembayaran Digabung</span>
+                <span className="mt-1 block font-body-sm text-body-sm text-on-surface-variant">
+                  Semua paket yang dipilih akan dihitung dalam satu total pembayaran. DP dan pelunasan dibuat berdasarkan total gabungan transaksi.
+                </span>
+              </span>
+            </label>
+
+            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${paymentArrangement === "separate" ? "border-primary bg-primary/10" : "border-outline-variant bg-surface"}`}>
+              <input
+                type="radio"
+                name="paymentArrangement"
+                checked={paymentArrangement === "separate"}
+                onChange={() => onPaymentArrangementChange?.("separate")}
+                className="mt-1 h-4 w-4 accent-primary"
+              />
+              <span>
+                <span className="block font-label-md text-label-md text-on-surface">Pembayaran Terpisah</span>
+                <span className="mt-1 block font-body-sm text-body-sm text-on-surface-variant">
+                  Setiap paket memiliki invoice, DP, dan pelunasan sendiri-sendiri sesuai kebutuhan masing-masing paket.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
       )}
 
       {errors.packageId && (

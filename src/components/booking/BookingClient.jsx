@@ -723,6 +723,7 @@ export default function BookingClient({ packageId = null }) {
       packages: packageRecords.map(serializePackage),
       events: eventRecords,
       personalDetails: personalRecords,
+      paymentArrangement: formData.paymentArrangement ?? (packageRecords.length > 1 ? "separate" : "combined"),
 
       status: "pending",
       source: "website_booking_form",
@@ -788,6 +789,7 @@ export default function BookingClient({ packageId = null }) {
         personalDetails: packagePersonal
           ? [{ ...packagePersonal }]
           : [],
+        paymentArrangement: bookingPayload.paymentArrangement ?? (packages.length > 1 ? "separate" : "combined"),
       };
       });
     });

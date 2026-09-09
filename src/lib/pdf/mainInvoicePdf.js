@@ -612,11 +612,13 @@ export async function generateMainInvoicePdf({
     },
   );
 
+  const packageDescription = Array.isArray(invoice?.items) && invoice.items.length
+    ? invoice.items.map((item) => item.label).join("; ")
+    : booking?.package?.name || "Package Service";
+
   drawWrappedText(
     page,
-    booking?.package
-      ?.name ||
-      "Package Service",
+    packageDescription,
     {
       x:
         tableX + 8,

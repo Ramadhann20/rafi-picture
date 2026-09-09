@@ -210,13 +210,12 @@ function getBillingPackageItems(booking) {
 
   const bundlePackage = packageItems.find((packageItem) => isBundlePackageItem(packageItem));
 
-  if (bundlePackage) {
-    return [bundlePackage];
-  }
-
+  const billingItems = bundlePackage
+    ? [bundlePackage, ...packageItems.filter((packageItem) => packageItem !== bundlePackage)]
+    : packageItems;
   return Array.from(
     new Map(
-      packageItems.map((packageItem, index) => [
+      billingItems.map((packageItem, index) => [
         String(packageItem?.id ?? index),
         packageItem,
       ]),
@@ -1033,7 +1032,7 @@ function SectionHeader({
   return (
     <div className="mb-stack-md">
       <p className="font-label-md text-label-md uppercase tracking-widest text-secondary">
-        {translate("stepBilling")}
+        {translate("stepLabel")} 3 · {translate("billing")}
       </p>
 
       <h2

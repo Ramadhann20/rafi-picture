@@ -125,6 +125,7 @@ function createInitialFormData(initialPackageId) {
       packageId: packageIds[0] ?? "",
       packageIds,
     },
+    paymentArrangement: packageIds.length > 1 ? "separate" : "combined",
   };
 }
 
@@ -603,6 +604,9 @@ export default function BookingProcess({
         .map((packageId) => packageOptions.find((item) => item.id === packageId))
         .filter(Boolean);
       const events = createEventEntries(packagesForSelection, previousData.events);
+      const nextArrangement = normalizedIds.length > 1
+        ? previousData.paymentArrangement ?? "separate"
+        : "combined";
 
       return {
         ...previousData,
@@ -613,6 +617,7 @@ export default function BookingProcess({
         },
         events,
         event: events[0]?.data ?? createEventData(),
+        paymentArrangement: nextArrangement,
       };
     });
 
@@ -738,7 +743,14 @@ export default function BookingProcess({
               loading={packagesLoading}
               error={packagesError}
               errors={errors.package ?? {}}
+              paymentArrangement={formData.paymentArrangement ?? (selectedPackageIds.length > 1 ? "separate" : "combined")}
               onChange={handlePackageSelection}
+              onPaymentArrangementChange={(nextValue) => {
+                setFormData((previousData) => ({
+                  ...previousData,
+                  paymentArrangement: nextValue,
+                }));
+              }}
             />
           )}
 
